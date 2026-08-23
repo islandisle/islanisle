@@ -1,0 +1,23 @@
+{
+  "name": "atoll-isle-api",
+  "version": "0.1.0",
+  "description": "Atoll Isle backend API - Phase 1 MVP",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "migrate": "node src/config/migrate.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.11.5",
+    "stripe": "^15.7.0",
+    "uuid": "^9.0.1"
+  }
+}

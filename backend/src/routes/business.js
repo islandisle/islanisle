@@ -1,0 +1,147 @@
+// Business accounts + listings — script Sections 2.3 (signup) and 4.1–4.5
+// (per-type listing fields, via type_specific_fields JSONB on the listings table).
+//
+// A business account is owned by a user account (businesses.owner_user_id),
+// so business signup requires an existing logged-in user — it doesn't create
+// a new login, it attaches a business to the one you already have.
+
+import { Router } from 'express';
+import { query } from '../config/db.js';
+import { authenticate } from '../middleware/auth.js';
+
+const router = Router();
+
+const VALID_BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
+
+// Verifies the logged-in user owns the business_id in the route — used on
+// every listing-management route below.
+async function requireBusinessOwner(req, res, next) {
+  const { businessId } = req.params;
+  const result = await query('SELECT owner_user_id FROM businesses WHERE id = $1', [businessId]);
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Business not found.' });
+  }
+  if (result.rows[0].owner_user_id !== req.user.id) {
+    return res.status(403).json({ error: 'You do not manage this business.' });
+  }
+  next();
+}
+
+/**
+ * POST /api/business/signup
+ * Section 2.3: "What kind of business are you?" -> routes into that type's setup.
+ * body: { type, name, location_island, contact_info }
+ */
+router.post('/signup', authenticate, async (req, res) => {
+  try {
+    const { type, name, location_island, contact_info } = req.body;
+
+    if (!VALID_BUSINESS_TYPES.includes(type)) {
+      return res.status(400).json({
+        error: `type must be one of: ${VALID_BUSINESS_TYPES.join(', ')}`,
+      });
+    }
+    if (!name) {
+      return res.status(400).json({ error: 'Business name is required.' });
+    }
+
+    const result = await query(
+      `INSERT INTO businesses (owner_user_id, name, type, location_island, contact_info)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, type, approval_status, subscription_tier`,
+      [req.user.id, name, type, location_island || null, contact_info ? JSON.stringify(contact_info) : null]
+    );
+
+    res.status(201).json({
+      business: result.rows[0],
+      message: 'Business created. It will appear once Super Admin approves it (Section 10.2).',
+      commission_summary: 'You only pay 1% when a guest pays and gets their stay/service — nothing upfront, nothing if they don\'t book.',
+    });
+  } catch (err) {
+    console.error('Business signup error:', err);
+    res.status(500).json({ error: 'Could not create business.' });
+  }
+});
+
+/**
+ * POST /api/business/:businessId/listings
+ * Section 4.1–4.5: fields differ by business type but all share the same
+ * core shape (title, description, tourist_price, local_price, photos, plus
+ * type_specific_fields for anything unique to that business type — room
+ * capacity, excursion duration, luggage_allowance, etc.)
+ */
+router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const { title, description, tourist_price, local_price, type_specific_fields, photos, stock_count, fulfillment_options, free_delivery } = req.body;
+
+    if (!title || tourist_price == null || local_price == null) {
+      return res.status(400).json({ error: 'title, tourist_price, and local_price are required.' });
+    }
+
+    const result = await query(
+      `INSERT INTO listings (
+         business_id, title, description, type_specific_fields, tourist_price, local_price,
+         photos, stock_count, fulfillment_options, free_delivery
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id, title, tourist_price, local_price, approval_status`,
+      [
+        businessId, title, description || null, JSON.stringify(type_specific_fields || {}),
+        tourist_price, local_price, photos || [], stock_count || null,
+        fulfillment_options || null, free_delivery || false,
+      ]
+    );
+
+    res.status(201).json({
+      listing: result.rows[0],
+      message: 'Listing created — pending Super Admin approval before it goes live (Section 10.2).',
+    });
+  } catch (err) {
+    console.error('Listing creation error:', err);
+    res.status(500).json({ error: 'Could not create listing.' });
+  }
+});
+
+/**
+ * GET /api/business/:businessId/listings
+ * Business's own listing management view.
+ */
+router.get('/:businessId/listings', authenticate, requireBusinessOwner, async (req, res) => {
+  const { businessId } = req.params;
+  const result = await query(
+    `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, created_at
+     FROM listings WHERE business_id = $1 ORDER BY created_at DESC`,
+    [businessId]
+  );
+  res.json({ listings: result.rows });
+});
+
+/**
+ * PATCH /api/business/:businessId/listings/:listingId
+ * Edit price, description, availability — anything except approval_status
+ * (only Super Admin can change that, via the admin routes).
+ */
+router.patch('/:businessId/listings/:listingId', authenticate, requireBusinessOwner, async (req, res) => {
+  const { listingId } = req.params;
+  const { title, description, tourist_price, local_price, photos } = req.body;
+
+  const result = await query(
+    `UPDATE listings SET
+       title = COALESCE($1, title),
+       description = COALESCE($2, description),
+       tourist_price = COALESCE($3, tourist_price),
+       local_price = COALESCE($4, local_price),
+       photos = COALESCE($5, photos),
+       updated_at = now()
+     WHERE id = $6
+     RETURNING id, title, tourist_price, local_price`,
+    [title, description, tourist_price, local_price, photos, listingId]
+  );
+
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+  res.json({ listing: result.rows[0] });
+});
+
+export default router;

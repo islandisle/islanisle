@@ -1,0 +1,116 @@
+// Island browsing + listing discovery — script Section 3.2 and 7.4's
+// "Browse as guest" (no auth required to view; auth required to book).
+//
+// Dual pricing (Section 3.4): this endpoint returns BOTH tourist_price and
+// local_price. The frontend decides which one to display based on the
+// logged-in user's type — or shows tourist_price by default for guests
+// browsing without an account.
+
+import { Router } from 'express';
+import { query } from '../config/db.js';
+
+const router = Router();
+
+/**
+ * GET /api/islands/:island/listings?type=guesthouse
+ * Section 3.2: everything available on the selected island, optionally
+ * filtered by business type. No auth required (browse-as-guest, Section 7.4).
+ */
+router.get('/:island/listings', async (req, res) => {
+  const { island } = req.params;
+  const { type } = req.query;
+
+  const params = [island];
+  let typeFilter = '';
+  if (type) {
+    params.push(type);
+    typeFilter = 'AND b.type = $2';
+  }
+
+  const result = await query(
+    `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.photos,
+            b.id AS business_id, b.name AS business_name, b.type AS business_type,
+            b.verified_badge
+     FROM listings l
+     JOIN businesses b ON b.id = l.business_id
+     WHERE b.location_island = $1
+       AND l.approval_status = 'approved'
+       AND b.approval_status = 'approved'
+       AND b.account_status = 'active'
+       ${typeFilter}
+     ORDER BY l.created_at DESC`,
+    params
+  );
+
+  res.json({ island, listings: result.rows });
+});
+
+/**
+ * GET /api/listings/:id
+ * Full detail for one listing.
+ */
+router.get('/detail/:id', async (req, res) => {
+  const result = await query(
+    `SELECT l.*, b.name AS business_name, b.type AS business_type, b.verified_badge
+     FROM listings l JOIN businesses b ON b.id = l.business_id
+     WHERE l.id = $1 AND l.approval_status = 'approved'`,
+    [req.params.id]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+  res.json({ listing: result.rows[0] });
+});
+
+/**
+ * GET /api/islands/arrivals?destination=<island>
+ * Section 3.1: Arrival Transfers screen — speedboat/airplane options from
+ * the airport to the tourist's chosen destination island.
+ */
+router.get('/arrivals', async (req, res) => {
+  const { destination } = req.query;
+  if (!destination) {
+    return res.status(400).json({ error: 'destination query param is required.' });
+  }
+
+  const result = await query(
+    `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.type_specific_fields,
+            b.id AS business_id, b.name AS business_name
+     FROM listings l
+     JOIN businesses b ON b.id = l.business_id
+     WHERE b.type = 'speedboat'
+       AND l.approval_status = 'approved' AND b.approval_status = 'approved'
+       AND (l.type_specific_fields->>'destination' = $1)
+     ORDER BY l.tourist_price ASC`,
+    [destination]
+  );
+  res.json({ destination, transfers: result.rows });
+});
+
+/**
+ * GET /api/islands/transfers?origin=<island>&destination=<island>
+ * Section 3.2: Island Transfers screen — same idea, island-to-island rather
+ * than airport-to-island.
+ */
+router.get('/transfers', async (req, res) => {
+  const { origin, destination } = req.query;
+  if (!origin || !destination) {
+    return res.status(400).json({ error: 'origin and destination query params are required.' });
+  }
+
+  const result = await query(
+    `SELECT l.id, l.title, l.tourist_price, l.local_price, l.type_specific_fields,
+            b.id AS business_id, b.name AS business_name
+     FROM listings l
+     JOIN businesses b ON b.id = l.business_id
+     WHERE b.type = 'speedboat'
+       AND l.approval_status = 'approved' AND b.approval_status = 'approved'
+       AND (l.type_specific_fields->>'origin' = $1)
+       AND (l.type_specific_fields->>'destination' = $2)
+     ORDER BY l.tourist_price ASC`,
+    [origin, destination]
+  );
+  res.json({ origin, destination, transfers: result.rows });
+});
+
+export default router;

@@ -1,0 +1,118 @@
+/*
+  "Horizon Line" — Atoll Isle's design system.
+  Established and iterated on earlier in this conversation via the
+  Visualizer mockups (header, weather line-art, tap-to-toggle badge).
+  This is the same palette and motion language, now as real CSS.
+*/
+
+:root {
+  --lagoon: #0e7c66;
+  --lagoon-light: #e4f3ee;
+  --sand: #faf6ee;
+  --coral: #ff6c4a;
+  --coral-light: #ffeae3;
+  --navy: #0b2e3d;
+  --text-secondary: #5b7570;
+  --text-muted: #8fa39d;
+  --border: #e2e8e5;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-pill: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sand);
+  color: var(--navy);
+  font-family: var(--font-sans);
+}
+
+/* Reduced-motion respected everywhere, per script Section 11's motion design rule. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes sun-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+}
+
+@keyframes rays-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wave-ripple {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.btn-primary {
+  background: var(--lagoon);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.card {
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.input-field {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: var(--font-sans);
+}
+
+.input-field:focus {
+  outline: 2px solid var(--lagoon);
+  outline-offset: 1px;
+}
+
+.error-text {
+  color: var(--coral);
+  font-size: 13px;
+  margin-top: 4px;
+}
