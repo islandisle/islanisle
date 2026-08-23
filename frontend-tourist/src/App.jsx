@@ -7,7 +7,7 @@ import ListingDetail from './pages/ListingDetail';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/atollisle/">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />

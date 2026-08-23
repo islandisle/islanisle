@@ -4,7 +4,7 @@ import Dashboard from './pages/Dashboard';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/atollisle-business/">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
