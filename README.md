@@ -1,15 +1,18 @@
-# Atoll Isle — Phase 1 Backend
+# Atoll Isle — Phase 1
 
-A real, working backend for the app described in the full script, built
-against the **Phase 1 (MVP) build order** (script Section 13.1). Building the
-complete app (three frontends, 44 tables, escrow payments, OCR, weather
-system, admin console) is a multi-month project — this is the backend
-foundation, done properly, not a shortcut version of the whole thing.
+A real, working backend and three frontends (tourist, business, admin) for
+the app described in the full script, built against the **Phase 1 (MVP)
+build order** (script Section 13.1). Building the complete app (44 tables,
+escrow payments, OCR, weather system, real payment collection UI) is a
+multi-month project — this is the Phase 1 foundation, done properly, not a
+shortcut version of the whole thing.
 
-## Status: Phase 1 (MVP) backend is functionally complete
+## Status: Phase 1 (MVP) backend and all three frontends are functionally complete
 
 Every backend item in the script's Phase 1 build order is built, except #15
-which needs no backend code. **No frontend exists yet** — see below.
+which needs no backend code. All three frontends exist and have been tested
+working end to end against a live database — see "Frontend status" below for
+exactly what's covered.
 
 | # | Script item | Endpoint(s) |
 |---|---|---|
@@ -109,7 +112,7 @@ transfers or cross-island delivery matching.
   scanning needs real device testing this sandbox can't do).
 - **`frontend-business/`**: Login, business creation, listing CRUD, a manual
   "mark booking fulfilled" action wired to the real escrow-release endpoint.
-- **`frontend-admin/`**: not started yet.
+- **`frontend-admin/`**: login, approval queue (approve/reject businesses, listings, and Local ID verifications with a required reason), open dispute resolution (no action/warning/refund/suspension outcomes), and manual business suspend/reinstate. **Before this is usable at all, you must create the first admin account** — see "Bootstrapping the first admin" below, since admin accounts have no public signup by design (Section 10.1).
 
 No JSX compiler is available in this sandbox (no network to install
 Vite/Babel/esbuild) — see each frontend's own README for exactly how that
@@ -132,6 +135,22 @@ positive's root cause identified rather than dismissed).
   Starter before going live.
 - Real `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` from your Stripe
   dashboard, and the Stripe CLI to forward webhook events locally during dev.
+
+## Bootstrapping the first admin
+
+Admin accounts have no public signup form on purpose (Section 10.1) — the
+console controls approvals, suspensions, and disputes, so it isn't
+self-service. Create the first one with the included script, once your
+backend's `.env` is set up:
+
+```bash
+cd backend
+node scripts/createAdmin.js "Your Name" "you@example.com" "your-password"
+```
+
+Log into `frontend-admin` with that email and password. Any admin created
+after this first one can be added the same way — there's no "invite another
+admin" feature in the console UI yet.
 
 ## Local setup
 
