@@ -43,6 +43,23 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+        <button
+          className="btn-secondary"
+          style={{ padding: '4px 12px', fontSize: 12 }}
+          onClick={() => navigate('/payouts')}
+        >
+          Payouts
+        </button>
+        <button
+          className="btn-secondary"
+          style={{ padding: '4px 12px', fontSize: 12 }}
+          onClick={() => navigate('/settings')}
+        >
+          Settings
+        </button>
+      </div>
+
       <div style={{ background: 'var(--lagoon)', color: '#fff', padding: 16, borderRadius: 12, marginBottom: 20 }}>
         <p style={{ fontSize: 12, opacity: 0.8, margin: '0 0 4px' }}>{business.type}</p>
         <p style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{business.name}</p>
