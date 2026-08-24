@@ -121,4 +121,122 @@ export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
   }
 
   useEffect(() => {
-    return () =>
+    return () => stopCamera();
+  }, [stopCamera]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card"
+        style={{ width: '100%', maxWidth: 420, borderRadius: '20px 20px 0 0', padding: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top half — scan someone else's QR */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+            Scan a code
+          </p>
+
+          <div
+            style={{
+              background: 'var(--navy)', borderRadius: 12, height: 200,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--lagoon-light)', fontSize: 12, textAlign: 'center',
+              padding: 16, position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                display: scanState === 'scanning' ? 'block' : 'none',
+              }}
+            />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+            {scanState === 'idle' && (
+              <button className="btn-secondary" onClick={startScanning} style={{ color: 'var(--navy)' }}>
+                Tap to scan with camera
+              </button>
+            )}
+            {scanState === 'starting' && <span>Starting camera…</span>}
+            {scanState === 'denied' && (
+              <span>
+                Camera access was denied. Enable it in your browser settings, or enter the code below.
+              </span>
+            )}
+            {scanState === 'unsupported' && (
+              <span>Camera scanning isn't available on this device — enter the code below instead.</span>
+            )}
+          </div>
+
+          {scanState === 'scanning' && (
+            <button
+              className="btn-secondary"
+              style={{ width: '100%', marginTop: 8 }}
+              onClick={() => {
+                stopCamera();
+                setScanState('idle');
+              }}
+            >
+              Stop scanning
+            </button>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <input
+              className="input-field"
+              placeholder="Or enter group code"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button
+              className="btn-primary"
+              onClick={() => handleJoinWithCode(manualCode)}
+              disabled={joining}
+            >
+              {joining ? '…' : 'Join'}
+            </button>
+          </div>
+          {error && <p className="error-text">{error}</p>}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+        {/* Bottom half — show your own QR */}
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 12 }}>
+            Your code
+          </p>
+          {qrValue ? (
+            <QRCodeSVG value={qrValue} size={160} fgColor="#0b2e3d" />
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              No group yet — start one from your Profile.
+            </p>
+          )}
+        </div>
+
+        <button
+          className="btn-secondary"
+          onClick={() => {
+            stopCamera();
+            onClose();
+          }}
+          style={{ width: '100%', marginTop: 20 }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
