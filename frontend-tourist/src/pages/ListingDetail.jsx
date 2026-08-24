@@ -216,11 +216,12 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 // 'online' Stripe path still exists on the backend for later, but isn't
 // exposed here.
 function PendingPayment({ result, onDone }) {
+  const isOrder = Boolean(result.order);
   return (
     <div style={{ maxWidth: 420, margin: '60px auto', padding: 20, textAlign: 'center' }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          Booking confirmed
+          {isOrder ? 'Order confirmed' : 'Booking confirmed'}
         </p>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
           {result.message}
