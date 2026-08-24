@@ -88,6 +88,13 @@ export async function getCurrentStay() {
   return handleResponse(res);
 }
 
+// --- Trips (routes/trips.js) ---
+
+export async function getMyTrips() {
+  const res = await fetch(`${API_BASE}/api/trips/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
 export async function createOrder({ items, fulfillment_method, payment_method }) {

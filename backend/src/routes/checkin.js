@@ -20,6 +20,69 @@ import { notify } from '../services/notifications.js';
 
 const router = Router();
 
+// Trip/itinerary linkage (script Section 12: Trip/TripIslandStay). A trip
+// has no explicit status column, so "active" is derived: the user's most
+// recent trip that has at least one stay not clearly over yet (open-ended
+// end_date, or end_date today or later). Guesthouse bookings' slot_end is
+// almost always null in the current app (no checkout-date picker on the
+// frontend yet), so in practice a stay — and the trip it belongs to — stays
+// "active" until a later stay's dates supersede it.
+async function findOrCreateActiveTrip(userId) {
+  const activeTripResult = await query(
+    `SELECT t.id FROM trips t
+     WHERE t.user_id = $1
+       AND EXISTS (
+         SELECT 1 FROM trip_island_stays s
+         WHERE s.trip_id = t.id AND (s.end_date IS NULL OR s.end_date >= CURRENT_DATE)
+       )
+     ORDER BY t.created_at DESC
+     LIMIT 1`,
+    [userId]
+  );
+  if (activeTripResult.rows.length) {
+    return activeTripResult.rows[0].id;
+  }
+  const newTrip = await query('INSERT INTO trips (user_id) VALUES ($1) RETURNING id', [userId]);
+  return newTrip.rows[0].id;
+}
+
+// Finds this user's active trip (or starts a new one), adds this island stay
+// to it — skipping the insert if it's already there, so a repeat check-in
+// call on the same booking doesn't create a duplicate stay — and backfills
+// trip_id onto every one of the user's own bookings/orders that fall inside
+// the stay window and aren't linked to a trip yet (the guesthouse booking
+// itself included, plus any transfer/excursion/restaurant booking or shop
+// order from the same trip).
+async function linkTripForCheckIn(userId, island, startAt, endAt) {
+  const tripId = await findOrCreateActiveTrip(userId);
+
+  const existingStay = await query(
+    'SELECT id FROM trip_island_stays WHERE trip_id = $1 AND island = $2 AND start_date = $3::date',
+    [tripId, island, startAt]
+  );
+  if (!existingStay.rows.length) {
+    await query(
+      'INSERT INTO trip_island_stays (trip_id, island, start_date, end_date) VALUES ($1, $2, $3, $4)',
+      [tripId, island, startAt, endAt]
+    );
+  }
+
+  await query(
+    `UPDATE bookings SET trip_id = $1
+     WHERE user_id = $2 AND trip_id IS NULL
+       AND slot_start::date >= $3::date AND ($4::date IS NULL OR slot_start::date <= $4::date)`,
+    [tripId, userId, startAt, endAt]
+  );
+  await query(
+    `UPDATE orders SET trip_id = $1
+     WHERE user_id = $2 AND trip_id IS NULL
+       AND created_at::date >= $3::date AND ($4::date IS NULL OR created_at::date <= $4::date)`,
+    [tripId, userId, startAt, endAt]
+  );
+
+  return tripId;
+}
+
 async function requireGuesthouseOwner(req, res, next) {
   const result = await query('SELECT owner_user_id, type FROM businesses WHERE id = $1', [req.params.businessId]);
   if (!result.rows.length) {
@@ -100,7 +163,8 @@ router.post('/:bookingId', authenticate, async (req, res) => {
   }
 
   const bookingResult = await query(
-    `SELECT b.id, b.user_id, b.status, b.per_member_check_in, l.business_id, u.name AS customer_name
+    `SELECT b.id, b.user_id, b.status, b.per_member_check_in, b.slot_start, b.slot_end,
+            l.business_id, u.name AS customer_name
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN users u ON u.id = b.user_id
@@ -112,7 +176,7 @@ router.post('/:bookingId', authenticate, async (req, res) => {
   }
   const booking = bookingResult.rows[0];
 
-  const businessResult = await query('SELECT owner_user_id, type, name FROM businesses WHERE id = $1', [booking.business_id]);
+  const businessResult = await query('SELECT owner_user_id, type, name, location_island FROM businesses WHERE id = $1', [booking.business_id]);
   const business = businessResult.rows[0];
   if (!business || business.owner_user_id !== req.user.id) {
     return res.status(403).json({ error: 'You do not manage this business.' });
@@ -185,6 +249,14 @@ router.post('/:bookingId', authenticate, async (req, res) => {
        WHERE id = ANY($3::uuid[])`,
       [booking.business_id, trimmedRoomNumber, checkedInUserIds]
     );
+
+    // Trip/itinerary linkage — one trip per (real) checked-in user, since
+    // trips.user_id is per-user, not per-group. Each gets their own trip
+    // found-or-created and a stay added to it for this island/date window.
+    const island = business.location_island || business.name;
+    for (const uid of checkedInUserIds) {
+      await linkTripForCheckIn(uid, island, booking.slot_start, booking.slot_end);
+    }
   }
 
   await notify({

@@ -87,6 +87,14 @@ export default function Profile() {
         My bookings &amp; orders
       </Link>
 
+      <Link
+        to="/trips"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}
+      >
+        My trips
+      </Link>
+
       <button
         className="btn-primary"
         style={{ width: '100%', marginBottom: 24 }}

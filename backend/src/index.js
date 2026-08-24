@@ -16,6 +16,7 @@ import twoFactorRoutes from './routes/twoFactor.js';
 import sosRoutes from './routes/sos.js';
 import groupRoutes from './routes/groups.js';
 import checkinRoutes from './routes/checkin.js';
+import tripRoutes from './routes/trips.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use('/api/2fa', twoFactorRoutes);
 app.use('/api/sos', sosRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/checkin', checkinRoutes);
+app.use('/api/trips', tripRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

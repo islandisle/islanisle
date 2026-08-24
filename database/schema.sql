@@ -210,6 +210,7 @@ CREATE TABLE orders (
     handover_method                  handover_method, -- [PHASE 2]
     status                          order_status NOT NULL DEFAULT 'pending_payment',
     escrow_status                   escrow_status NOT NULL DEFAULT 'not_applicable',
+    trip_id                         UUID, -- FK added after trips table exists
     refund_fee_applicable             BOOLEAN NOT NULL DEFAULT true,
     gross_refund_amount               NUMERIC(12,2),
     refund_app_fee                    NUMERIC(12,2),
@@ -354,6 +355,11 @@ CREATE TABLE trip_island_stays (
 );
 
 ALTER TABLE bookings ADD CONSTRAINT fk_bookings_trip FOREIGN KEY (trip_id) REFERENCES trips(id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_trip FOREIGN KEY (trip_id) REFERENCES trips(id);
+CREATE INDEX idx_bookings_trip ON bookings(trip_id);
+CREATE INDEX idx_orders_trip ON orders(trip_id);
+CREATE INDEX idx_trip_stays_trip ON trip_island_stays(trip_id);
+CREATE INDEX idx_trips_user ON trips(user_id);
 
 -- ---------------------------------------------------------------------------
 -- [MVP] messages — Section 12: Message (tourist<->business chat is Phase 2,
