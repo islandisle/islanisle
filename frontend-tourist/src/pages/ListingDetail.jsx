@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking } from '../api/client';
+import { getListingDetail, createBooking, createOrder } from '../api/client';
+
+function getCurrentUser() {
+  const raw = localStorage.getItem('atollisle_user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -8,9 +18,10 @@ export default function ListingDetail() {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [slotStart, setSlotStart] = useState('');
-  const [booking, setBooking] = useState(false);
-  const [bookingResult, setBookingResult] = useState(null);
+  const [result, setResult] = useState(null); // shared pending-payment result for both bookings and orders
+
+  const user = getCurrentUser();
+  const isLocal = user?.type === 'local';
 
   useEffect(() => {
     getListingDetail(id)
@@ -19,33 +30,14 @@ export default function ListingDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  async function handleBook() {
-    if (!slotStart) {
-      setError('Please choose a date/time.');
-      return;
-    }
-    setBooking(true);
-    setError('');
-    try {
-      const result = await createBooking({ listing_id: id, slot_start: slotStart });
-      setBookingResult(result);
-      // In a real checkout, result.client_secret goes to Stripe Elements
-      // here to actually collect payment. That UI isn't built in this pass
-      // — see README's "genuinely not here yet" list.
-    } catch (err) {
-      // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
-      setError(err.message);
-    } finally {
-      setBooking(false);
-    }
-  }
-
   if (loading) return <p style={{ padding: 20 }}>Loading…</p>;
   if (!listing) return <p style={{ padding: 20 }} className="error-text">Listing not found.</p>;
 
-  if (bookingResult) {
-    return <BookingPendingPayment result={bookingResult} onDone={() => navigate('/')} />;
+  if (result) {
+    return <PendingPayment result={result} onDone={() => navigate('/')} />;
   }
+
+  const price = isLocal ? listing.local_price : listing.tourist_price;
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
@@ -58,6 +50,7 @@ export default function ListingDetail() {
       </h1>
       <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
         {listing.business_name}
+        {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
       </p>
 
       {listing.description && (
@@ -65,12 +58,48 @@ export default function ListingDetail() {
       )}
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>Tourist price</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+          {isLocal ? 'Local price' : 'Tourist price'}
+        </p>
         <p style={{ fontSize: 22, fontWeight: 600, color: 'var(--lagoon)', margin: 0 }}>
-          ${listing.tourist_price}
+          ${price}
         </p>
       </div>
 
+      {listing.business_type === 'shop' ? (
+        <ShopCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
+      ) : (
+        <SlotCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
+      )}
+    </div>
+  );
+}
+
+// Guesthouse / restaurant / excursion / speedboat — date/time slot booking.
+function SlotCheckout({ listing, onSuccess, error, setError }) {
+  const [slotStart, setSlotStart] = useState('');
+  const [booking, setBooking] = useState(false);
+
+  async function handleBook() {
+    if (!slotStart) {
+      setError('Please choose a date/time.');
+      return;
+    }
+    setBooking(true);
+    setError('');
+    try {
+      const res = await createBooking({ listing_id: listing.id, slot_start: slotStart });
+      onSuccess(res);
+    } catch (err) {
+      // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
+      setError(err.message);
+    } finally {
+      setBooking(false);
+    }
+  }
+
+  return (
+    <>
       <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Date &amp; time
       </label>
@@ -81,17 +110,104 @@ export default function ListingDetail() {
         onChange={(e) => setSlotStart(e.target.value)}
         style={{ marginBottom: 16 }}
       />
-
       {error && <p className="error-text">{error}</p>}
-
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleBook} disabled={booking}>
         {booking ? 'Booking…' : 'Book now'}
       </button>
-    </div>
+    </>
   );
 }
 
-function BookingPendingPayment({ result, onDone }) {
+// Shop — stock-based purchase: quantity + pickup/delivery, not a time slot.
+// A shop listing page is a single product; multi-item carts across several
+// listings from the same shop aren't built on the frontend yet even though
+// POST /api/orders' items array supports it — that's a real, separate gap.
+function ShopCheckout({ listing, onSuccess, error, setError }) {
+  const [quantity, setQuantity] = useState(1);
+  const [fulfillment, setFulfillment] = useState(
+    Array.isArray(listing.fulfillment_options) && listing.fulfillment_options.length > 0
+      ? listing.fulfillment_options[0]
+      : ''
+  );
+  const [ordering, setOrdering] = useState(false);
+
+  const fulfillmentOptions = Array.isArray(listing.fulfillment_options) ? listing.fulfillment_options : [];
+  const outOfStock = listing.stock_count != null && listing.stock_count <= 0;
+
+  async function handleOrder() {
+    if (quantity < 1) {
+      setError('Quantity must be at least 1.');
+      return;
+    }
+    setOrdering(true);
+    setError('');
+    try {
+      const res = await createOrder({
+        items: [{ listing_id: listing.id, quantity }],
+        fulfillment_method: fulfillment || undefined,
+      });
+      onSuccess(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOrdering(false);
+    }
+  }
+
+  if (outOfStock) {
+    return <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Currently out of stock.</p>;
+  }
+
+  return (
+    <>
+      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        Quantity
+      </label>
+      <input
+        className="input-field"
+        type="number"
+        min="1"
+        max={listing.stock_count ?? undefined}
+        value={quantity}
+        onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+        style={{ marginBottom: 16 }}
+      />
+
+      {fulfillmentOptions.length > 0 && (
+        <>
+          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+            How would you like it?
+          </label>
+          <select
+            className="input-field"
+            value={fulfillment}
+            onChange={(e) => setFulfillment(e.target.value)}
+            style={{ marginBottom: 16 }}
+          >
+            {fulfillmentOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt === 'pickup' ? 'In-store pickup' : 'Delivery'}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
+      {listing.stock_count != null && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          {listing.stock_count} left in stock
+        </p>
+      )}
+
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={ordering}>
+        {ordering ? 'Placing order…' : 'Buy now'}
+      </button>
+    </>
+  );
+}
+
+function PendingPayment({ result, onDone }) {
   return (
     <div style={{ maxWidth: 420, margin: '60px auto', padding: 20, textAlign: 'center' }}>
       <div className="card" style={{ padding: 24 }}>

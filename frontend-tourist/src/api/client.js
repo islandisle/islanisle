@@ -81,6 +81,22 @@ export async function cancelBooking(id, cancelled_by = 'user') {
   return handleResponse(res);
 }
 
+// --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
+
+export async function createOrder({ items, fulfillment_method }) {
+  const res = await fetch(`${API_BASE}/api/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ items, fulfillment_method }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyOrders() {
+  const res = await fetch(`${API_BASE}/api/orders/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Disputes (routes/disputes.js) ---
 
 export async function fileDispute({ booking_id, order_id, reason, description }) {
