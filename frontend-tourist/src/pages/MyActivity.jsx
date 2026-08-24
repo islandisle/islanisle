@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyBookings, getMyOrders, cancelBooking } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, fileDispute } from '../api/client';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -106,15 +106,18 @@ function BookingRow({ booking, onCancel }) {
         {new Date(booking.slot_start).toLocaleString()} · ${booking.price_charged} ·{' '}
         {BOOKING_STATUS_LABEL[booking.status] || booking.status}
       </p>
-      {canCancel && (
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }}
-          onClick={() => onCancel(booking.id)}
-        >
-          Cancel booking
-        </button>
-      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {canCancel && (
+          <button
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }}
+            onClick={() => onCancel(booking.id)}
+          >
+            Cancel booking
+          </button>
+        )}
+      </div>
+      <ReportProblem bookingId={booking.id} />
     </div>
   );
 }
@@ -139,6 +142,107 @@ function OrderRow({ order }) {
         ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
       </p>
+      <ReportProblem orderId={order.id} />
     </div>
+  );
+}
+
+const DISPUTE_REASONS = [
+  { value: 'no_show', label: 'Business was a no-show' },
+  { value: 'item_not_delivered', label: 'Item not delivered' },
+  { value: 'quality_issue', label: 'Quality issue' },
+  { value: 'other', label: 'Other' },
+];
+
+// Section 7.1 "Report a problem" — files a Dispute via POST /api/disputes.
+// Each row owns its own open/submit/success state so reporting one booking
+// or order doesn't affect any other row on the page.
+function ReportProblem({ bookingId, orderId }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState(DISPUTE_REASONS[0].value);
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fileDispute({ booking_id: bookingId, order_id: orderId, reason, description });
+      setSuccess(res.message || "We've received your report. You'll hear back once it's reviewed.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <p style={{ fontSize: 12, color: 'var(--lagoon)', marginTop: 8 }}>{success}</p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)', marginTop: 8 }}
+        onClick={() => setOpen(true)}
+      >
+        Report a problem
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}
+    >
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        What went wrong?
+      </label>
+      <select
+        className="input-field"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={{ fontSize: 13, marginBottom: 8 }}
+      >
+        {DISPUTE_REASONS.map((r) => (
+          <option key={r.value} value={r.value}>{r.label}</option>
+        ))}
+      </select>
+
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Details (optional)
+      </label>
+      <textarea
+        className="input-field"
+        rows={3}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        style={{ fontSize: 13, marginBottom: 8, resize: 'vertical' }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12 }}
+          onClick={() => setOpen(false)}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button type="submit" className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit report'}
+        </button>
+      </div>
+    </form>
   );
 }
