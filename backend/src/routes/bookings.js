@@ -1,17 +1,28 @@
 // Booking engine — script Section 9.
 //
 // Implements: the document-upload gate, dual pricing (tourist/local rate
-// selection), and the unified commission rule (business always pays 1%,
-// tourist additionally pays 2% when paying online).
+// selection), the unified commission rule (business always pays 1%,
+// tourist additionally pays 2% when paying online), and now real
+// capacity-aware slot booking instead of a flat "one booking per slot"
+// limit (see the CAPACITY note below).
 //
 // NOT yet implemented (flagged honestly rather than faked):
-//   - Real timed slot-holds. This does a simple "no exact duplicate booking"
-//     check, but the script's "held for a few minutes while paying, then
-//     auto-releases" behavior needs a scheduled job or a TTL store (Redis),
-//     which isn't part of this stack yet. Fine for early testing, not for
-//     real concurrent traffic.
-//   - Actual payment processing. price_charged is calculated correctly but
-//     no payment gateway is wired in — see README.
+//   - Real timed slot-holds. This does a capacity check against already-
+//     confirmed bookings, but the script's "held for a few minutes while
+//     paying, then auto-releases" behavior needs a scheduled job or a TTL
+//     store (Redis), which isn't part of this stack yet. A still-pending-
+//     payment booking does NOT count against capacity yet, so in theory
+//     more people than seats/tables exist could reach checkout
+//     simultaneously (though only the first ones to actually pay before
+//     capacity fills will get a confirmed booking — see the confirmed-only
+//     COUNT below). Fine for early testing, not for real concurrent traffic.
+//   - Actual payment processing beyond Stripe PaymentIntent creation.
+//   - Shop purchases. Shops are stock-based (product + quantity), not
+//     slot-based (date/time) — the `orders` table exists in the schema and
+//     is referenced by disputes.js/legal.js/payouts.js, but there is no
+//     orders.js route yet to actually create one. Routing a shop "Book now"
+//     through this booking endpoint would be wrong (no time slot, no stock
+//     decrement) — that's a separate, not-yet-built piece.
 
 import { Router } from 'express';
 import { query, pool } from '../config/db.js';
@@ -24,6 +35,26 @@ const router = Router();
 
 const BUSINESS_COMMISSION_RATE = 0.01; // 1%, always applies (Section 9)
 const TOURIST_COMMISSION_RATE = 0.02;  // 2%, only when payer is Tourist paying online
+
+// CAPACITY: which type_specific_fields key holds the per-slot capacity for
+// each business type that books by time slot. Guesthouse rooms and any type
+// without a matching field default to a capacity of 1 (a room, once booked
+// for a given night, is not double-bookable) — this preserves the previous
+// exact-duplicate-blocking behavior for those cases rather than silently
+// allowing overbooking if a field is missing.
+const CAPACITY_FIELD_BY_TYPE = {
+  restaurant: 'table_capacity',
+  excursion: 'capacity_per_slot',
+  speedboat: 'seat_capacity',
+};
+
+function getSlotCapacity(businessType, typeSpecificFields) {
+  const fieldName = CAPACITY_FIELD_BY_TYPE[businessType];
+  if (!fieldName) return 1;
+  const value = typeSpecificFields?.[fieldName];
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
 /**
  * POST /api/bookings
@@ -51,7 +82,11 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const payerType = userResult.rows[0].type; // 'tourist' | 'local'
 
     const listingResult = await query(
-      'SELECT tourist_price, local_price, approval_status FROM listings WHERE id = $1',
+      `SELECT l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
+              b.type AS business_type
+       FROM listings l
+       JOIN businesses b ON b.id = l.business_id
+       WHERE l.id = $1`,
       [listing_id]
     );
     if (!listingResult.rows.length) {
@@ -65,16 +100,24 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.
     const basePrice = payerType === 'tourist' ? listing.tourist_price : listing.local_price;
 
-    // Simplified conflict check — see README re: real timed slot-holds.
-    // Only checks against already-confirmed bookings; a still-pending-payment
-    // booking on the same slot does NOT block others yet (see README's known
-    // simplification — a proper hold needs a TTL/expiry mechanism).
-    const conflict = await query(
-      `SELECT id FROM bookings WHERE listing_id = $1 AND slot_start = $2 AND status = 'confirmed'`,
+    // Capacity-aware conflict check: count CONFIRMED bookings already on
+    // this exact slot and compare against the listing's capacity for its
+    // business type (table_capacity / capacity_per_slot / seat_capacity, or
+    // 1 for guesthouse/anything else — see CAPACITY_FIELD_BY_TYPE above).
+    // Only 'confirmed' bookings count, matching the previous behavior and
+    // the documented pending-payment limitation above.
+    const capacity = getSlotCapacity(listing.business_type, listing.type_specific_fields);
+    const existingCount = await query(
+      `SELECT COUNT(*)::int AS count FROM bookings
+       WHERE listing_id = $1 AND slot_start = $2 AND status = 'confirmed'`,
       [listing_id, slot_start]
     );
-    if (conflict.rows.length) {
-      return res.status(409).json({ error: 'That slot was just taken. Please pick another.' });
+    if (existingCount.rows[0].count >= capacity) {
+      return res.status(409).json({
+        error: capacity === 1
+          ? 'That slot was just taken. Please pick another.'
+          : `That slot is fully booked (${capacity} spots taken). Please pick another.`,
+      });
     }
 
     // Unified commission rule (Section 9): business always 1%; tourist +2% online only.
@@ -121,6 +164,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         tourist_service_fee: touristCommission,
         total_charged: priceCharged,
       },
+      capacity_remaining: capacity - existingCount.rows[0].count - 1,
       client_secret: paymentIntent.client_secret,
       message: 'Booking created — confirm payment on the client to finalize it.',
     });
