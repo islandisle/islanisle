@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings } from '../api/client';
+import { getIslandListings, sendSOS } from '../api/client';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -91,6 +91,19 @@ export default function Home() {
           ))}
         </div>
 
+        <Link
+          to="/transfers"
+          style={{
+            display: 'inline-block',
+            fontSize: 13,
+            color: 'var(--lagoon)',
+            textDecoration: 'none',
+            marginBottom: 14,
+          }}
+        >
+          Arriving by air? Find a speedboat transfer →
+        </Link>
+
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
           What's on {island}
         </p>
@@ -103,7 +116,112 @@ export default function Home() {
           <ListingCard key={listing.id} listing={listing} isLocal={isLocal} />
         ))}
       </div>
+
+      <SOSButton island={island} />
     </div>
+  );
+}
+
+// Section 8.3 emergency/panic button. Deliberately a small fixed corner
+// button — visible everywhere on Home but out of the way until tapped —
+// rather than a banner or anything competing with normal browsing.
+function SOSButton({ island }) {
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [message, setMessage] = useState('');
+
+  function handleClick() {
+    if (status === 'sending') return;
+    const confirmed = window.confirm('Send an SOS alert with your location?');
+    if (!confirmed) return;
+
+    setStatus('sending');
+    setMessage('');
+
+    if (!navigator.geolocation) {
+      sendAlert(null, null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => sendAlert(position.coords.latitude, position.coords.longitude),
+      // Still send the alert without coordinates rather than blocking on a
+      // denied/unavailable location — an emergency alert with no location
+      // beats none at all.
+      () => sendAlert(null, null),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  async function sendAlert(latitude, longitude) {
+    try {
+      const res = await sendSOS({ latitude, longitude, island });
+      setMessage(res.message || 'Alert sent.');
+      setStatus('sent');
+    } catch (err) {
+      setMessage(err.message);
+      setStatus('error');
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={handleClick}
+        disabled={status === 'sending'}
+        aria-label="Send SOS alert"
+        style={{
+          position: 'fixed',
+          bottom: 20,
+          right: 16,
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'var(--coral)',
+          color: '#fff',
+          border: 'none',
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          boxShadow: '0 4px 14px rgba(255, 108, 74, 0.45)',
+          cursor: status === 'sending' ? 'not-allowed' : 'pointer',
+          zIndex: 1000,
+        }}
+      >
+        {status === 'sending' ? '…' : 'SOS'}
+      </button>
+
+      {(status === 'sent' || status === 'error') && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            bottom: 86,
+            right: 16,
+            left: 16,
+            maxWidth: 448,
+            margin: '0 auto',
+            background: '#fff',
+            border: '1px solid var(--coral)',
+            borderRadius: 'var(--radius-md)',
+            padding: 14,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+            zIndex: 1000,
+          }}
+        >
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 4px' }}>
+            {status === 'sent' ? 'SOS alert sent' : 'Could not send SOS alert'}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{message}</p>
+          <button
+            className="btn-secondary"
+            style={{ marginTop: 10, padding: '6px 12px', fontSize: 12 }}
+            onClick={() => setStatus('idle')}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
