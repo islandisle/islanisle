@@ -2,27 +2,27 @@
 //
 // Implements: the document-upload gate, dual pricing (tourist/local rate
 // selection), the unified commission rule (business always pays 1%,
-// tourist additionally pays 2% when paying online), and now real
-// capacity-aware slot booking instead of a flat "one booking per slot"
-// limit (see the CAPACITY note below).
+// tourist additionally pays 2% when paying online), real capacity-aware
+// slot booking, and two payment paths — 'online' (Stripe PaymentIntent,
+// stays pending_payment until the webhook in payments.js confirms a real
+// charge) and 'pay_at_visit' (settle with the business in person; no
+// payment processor involved, booking is confirmed immediately, no 2%
+// online fee applies).
 //
 // NOT yet implemented (flagged honestly rather than faked):
-//   - Real timed slot-holds. This does a capacity check against already-
-//     confirmed bookings, but the script's "held for a few minutes while
-//     paying, then auto-releases" behavior needs a scheduled job or a TTL
-//     store (Redis), which isn't part of this stack yet. A still-pending-
-//     payment booking does NOT count against capacity yet, so in theory
-//     more people than seats/tables exist could reach checkout
-//     simultaneously (though only the first ones to actually pay before
-//     capacity fills will get a confirmed booking — see the confirmed-only
-//     COUNT below). Fine for early testing, not for real concurrent traffic.
-//   - Actual payment processing beyond Stripe PaymentIntent creation.
+//   - Real timed slot-holds for the 'online' path. This does a capacity
+//     check against already-confirmed bookings, but the script's "held for
+//     a few minutes while paying, then auto-releases" behavior needs a
+//     scheduled job or a TTL store (Redis), which isn't part of this stack
+//     yet. A still-pending-payment booking does NOT count against capacity
+//     yet. Not an issue for pay_at_visit, which confirms immediately.
+//   - Collecting the business's 1% commission on pay_at_visit bookings.
+//     business_commission is still calculated and stored for payout
+//     reconciliation, but since no payment ever flows through the platform
+//     for these bookings, there's no separate invoicing mechanism yet to
+//     actually collect it from the business afterward.
 //   - Shop purchases. Shops are stock-based (product + quantity), not
-//     slot-based (date/time) — the `orders` table exists in the schema and
-//     is referenced by disputes.js/legal.js/payouts.js, but there is no
-//     orders.js route yet to actually create one. Routing a shop "Book now"
-//     through this booking endpoint would be wrong (no time slot, no stock
-//     decrement) — that's a separate, not-yet-built piece.
+//     slot-based (date/time) — see orders.js instead.
 
 import { Router } from 'express';
 import { query, pool } from '../config/db.js';
@@ -70,10 +70,17 @@ function getSlotCapacity(businessType, typeSpecificFields) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { listing_id, slot_start, slot_end } = req.body;
+    const { listing_id, slot_start, slot_end, payment_method } = req.body;
     if (!listing_id || !slot_start) {
       return res.status(400).json({ error: 'listing_id and slot_start are required.' });
     }
+    // payment_method: 'online' (Stripe, default) or 'pay_at_visit' (schema's
+    // payment_method enum already supports this — settle with the business
+    // in person, no payment processor involved). pay_at_visit skips the 2%
+    // tourist online-payment fee entirely (that fee is explicitly tied to
+    // paying online), and the booking is confirmed immediately rather than
+    // waiting on a Stripe webhook that will never fire for it.
+    const isPayAtVisit = payment_method === 'pay_at_visit';
 
     const userResult = await query('SELECT type FROM users WHERE id = $1', [req.user.id]);
     if (!userResult.rows.length) {
@@ -120,9 +127,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       });
     }
 
-    // Unified commission rule (Section 9): business always 1%; tourist +2% online only.
+    // Unified commission rule (Section 9): business always 1%; tourist +2%
+    // only when paying online. pay_at_visit never applies the tourist fee.
     const businessCommission = round2(basePrice * BUSINESS_COMMISSION_RATE);
-    const touristCommissionApplicable = payerType === 'tourist';
+    const touristCommissionApplicable = !isPayAtVisit && payerType === 'tourist';
     const touristCommission = touristCommissionApplicable ? round2(basePrice * TOURIST_COMMISSION_RATE) : 0;
     const priceCharged = round2(basePrice + touristCommission);
 
@@ -133,14 +141,38 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
          listing_id, user_id, slot_start, slot_end, base_price, payer_type, payment_method,
          business_commission, tourist_commission_applicable, tourist_commission, price_charged,
          status, escrow_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,'online',$7,$8,$9,$10,'pending_payment','not_applicable')
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING id, base_price, price_charged, status, escrow_status`,
       [
         listing_id, req.user.id, slot_start, slot_end || null, basePrice, payerType,
+        isPayAtVisit ? 'pay_at_visit' : 'online',
         businessCommission, touristCommissionApplicable, touristCommission, priceCharged,
+        isPayAtVisit ? 'confirmed' : 'pending_payment',
+        isPayAtVisit ? 'not_applicable' : 'not_applicable',
       ]
     );
     const booking = bookingResult.rows[0];
+
+    // pay_at_visit: no Stripe involved at all — the booking is already
+    // confirmed above, so return immediately. Section 6.5's confirmation
+    // notification, normally sent from the webhook once Stripe confirms a
+    // real charge, is sent here instead since there's no webhook to send it.
+    if (isPayAtVisit) {
+      await client.query('COMMIT');
+      await notify({
+        recipientType: 'user',
+        recipientId: req.user.id,
+        type: 'booking_confirmation',
+        title: 'Booking confirmed',
+        body: `Your booking is confirmed — pay $${priceCharged} in person when you arrive.`,
+      });
+      return res.status(201).json({
+        booking,
+        price_breakdown: { base_price: basePrice, tourist_service_fee: 0, total_charged: priceCharged },
+        capacity_remaining: capacity - existingCount.rows[0].count - 1,
+        message: `Booking confirmed. Pay $${priceCharged} in person when you arrive.`,
+      });
+    }
 
     // Stripe amount is in the smallest currency unit (cents for USD).
     const paymentIntent = await stripe.paymentIntents.create({

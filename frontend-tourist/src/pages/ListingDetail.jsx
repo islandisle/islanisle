@@ -88,7 +88,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
     setBooking(true);
     setError('');
     try {
-      const res = await createBooking({ listing_id: listing.id, slot_start: slotStart });
+      const res = await createBooking({ listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit' });
       onSuccess(res);
     } catch (err) {
       // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
@@ -145,6 +145,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       const res = await createOrder({
         items: [{ listing_id: listing.id, quantity }],
         fulfillment_method: fulfillment || undefined,
+        payment_method: 'pay_at_visit',
       });
       onSuccess(res);
     } catch (err) {
@@ -207,25 +208,29 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
   );
 }
 
+// Pay at Visit — the schema's payment_method enum already supported this
+// alongside 'online', but nothing used it. Bookings/orders created this way
+// go straight to 'confirmed' on the backend (see bookings.js / orders.js),
+// no payment processor involved at all — settle with the business in
+// person. This is deliberately the only path wired up in this pass; the
+// 'online' Stripe path still exists on the backend for later, but isn't
+// exposed here.
 function PendingPayment({ result, onDone }) {
   return (
     <div style={{ maxWidth: 420, margin: '60px auto', padding: 20, textAlign: 'center' }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          Almost there
+          Booking confirmed
         </p>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
           {result.message}
         </p>
         <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
           <PriceLine label="Base price" value={result.price_breakdown.base_price} />
-          <PriceLine label="Service fee (2%)" value={result.price_breakdown.tourist_service_fee} />
-          <PriceLine label="Total" value={result.price_breakdown.total_charged} bold />
+          <PriceLine label="Total to pay in person" value={result.price_breakdown.total_charged} bold />
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          Payment collection UI (Stripe Elements) isn't built in this pass —
-          the backend already issued a real PaymentIntent (client_secret
-          below) for whoever wires up that final step.
+          You'll find this in "My bookings &amp; orders" on your profile.
         </p>
         <button className="btn-primary" onClick={onDone} style={{ width: '100%' }}>
           Done
