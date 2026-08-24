@@ -233,6 +233,51 @@ router.get('/mine', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/orders/business/:businessId
+ * Owner-only view of everything ordered from a shop — same gap as bookings:
+ * previously no list existed on the business frontend at all.
+ */
+router.get('/business/:businessId', authenticate, async (req, res) => {
+  const ownerCheck = await query(
+    'SELECT id FROM businesses WHERE id = $1 AND owner_user_id = $2',
+    [req.params.businessId, req.user.id]
+  );
+  if (!ownerCheck.rows.length) {
+    return res.status(404).json({ error: 'Business not found for this account.' });
+  }
+
+  const ordersResult = await query(
+    `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.fulfillment_method,
+            o.created_at, u.name AS customer_name
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     WHERE o.business_id = $1
+     ORDER BY o.created_at DESC`,
+    [req.params.businessId]
+  );
+
+  const orders = ordersResult.rows;
+  if (orders.length) {
+    const itemsResult = await query(
+      `SELECT oi.order_id, oi.quantity, l.title
+       FROM order_items oi
+       JOIN listings l ON l.id = oi.listing_id
+       WHERE oi.order_id = ANY($1::uuid[])`,
+      [orders.map((o) => o.id)]
+    );
+    const itemsByOrder = {};
+    for (const row of itemsResult.rows) {
+      (itemsByOrder[row.order_id] ??= []).push({ title: row.title, quantity: row.quantity });
+    }
+    for (const order of orders) {
+      order.items = itemsByOrder[order.id] || [];
+    }
+  }
+
+  res.json({ orders });
+});
+
+/**
  * PATCH /api/orders/:id/status
  * body: { status: 'confirmed' | 'ready' | 'out_for_delivery' | 'completed' }
  * Business-only, own shop's orders only. Mirrors bookings.js's /complete —

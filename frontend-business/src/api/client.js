@@ -71,3 +71,24 @@ export async function markBookingFulfilled(bookingId) {
   });
   return handleResponse(res);
 }
+
+// --- Incoming bookings & orders (routes/bookings.js, routes/orders.js) ---
+
+export async function getBusinessBookings(businessId) {
+  const res = await fetch(`${API_BASE}/api/bookings/business/${businessId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getBusinessOrders(businessId) {
+  const res = await fetch(`${API_BASE}/api/orders/business/${businessId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function markOrderStatus(orderId, status) {
+  const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse(res);
+}

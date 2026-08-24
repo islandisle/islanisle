@@ -198,6 +198,35 @@ function round2(n) {
 }
 
 /**
+ * GET /api/bookings/business/:businessId
+ * Owner-only view of everything booked on a business's listings — the
+ * business-frontend Dashboard previously had no way to see this at all; the
+ * only booking-related control was a manual "type in a Booking ID" box with
+ * no list backing it. This is what that list is queried from.
+ */
+router.get('/business/:businessId', authenticate, async (req, res) => {
+  const ownerCheck = await query(
+    'SELECT id FROM businesses WHERE id = $1 AND owner_user_id = $2',
+    [req.params.businessId, req.user.id]
+  );
+  if (!ownerCheck.rows.length) {
+    return res.status(404).json({ error: 'Business not found for this account.' });
+  }
+
+  const result = await query(
+    `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type,
+            l.title, u.name AS customer_name
+     FROM bookings b
+     JOIN listings l ON l.id = b.listing_id
+     JOIN users u ON u.id = b.user_id
+     WHERE l.business_id = $1
+     ORDER BY b.slot_start DESC`,
+    [req.params.businessId]
+  );
+  res.json({ bookings: result.rows });
+});
+
+/**
  * PATCH /api/bookings/:id/complete
  * Business marks a confirmed booking as fulfilled (guest checked in, table
  * seated, excursion run, etc.) — Section 7.2: this is what makes the booking

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createBusiness, getMyListings, createListing, markBookingFulfilled } from '../api/client';
+import {
+  createBusiness, getMyListings, createListing, markBookingFulfilled,
+  getBusinessBookings, getBusinessOrders, markOrderStatus,
+} from '../api/client';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -67,7 +70,7 @@ export default function Dashboard() {
         </div>
       ))}
 
-      <BookingFulfillment />
+      <IncomingActivity businessId={business.id} />
     </div>
   );
 }
@@ -375,36 +378,132 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   );
 }
 
-function BookingFulfillment() {
-  const [bookingId, setBookingId] = useState('');
-  const [status, setStatus] = useState('');
+// Real incoming bookings/orders list — replaces the previous "type in a
+// Booking ID you'd have to already know from somewhere else" stand-in.
+// Pulls from the new GET /api/bookings/business/:id and
+// GET /api/orders/business/:id endpoints (owner-only, built alongside this).
+function IncomingActivity({ businessId }) {
+  const [bookings, setBookings] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  async function handleMark() {
+  function loadAll() {
+    setLoading(true);
+    Promise.all([
+      getBusinessBookings(businessId).catch(() => ({ bookings: [] })),
+      getBusinessOrders(businessId).catch(() => ({ orders: [] })),
+    ])
+      .then(([bookingsData, ordersData]) => {
+        setBookings(bookingsData.bookings || []);
+        setOrders(ordersData.orders || []);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadAll();
+  }, [businessId]);
+
+  async function handleMarkBookingFulfilled(id) {
     try {
-      await markBookingFulfilled(bookingId);
-      setStatus('Marked fulfilled — eligible for the next payout run.');
-      setBookingId('');
+      await markBookingFulfilled(id);
+      loadAll();
     } catch (err) {
-      setStatus(err.message);
+      setError(err.message);
     }
   }
 
+  async function handleAdvanceOrder(id, nextStatus) {
+    try {
+      await markOrderStatus(id, nextStatus);
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const openBookings = bookings.filter((b) => b.status === 'confirmed');
+  const openOrders = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
+
   return (
-    <div className="card" style={{ padding: 16, marginTop: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
-        Mark a booking fulfilled
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Incoming bookings
       </p>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-        A proper bookings list view isn't built yet — this is a manual
-        stand-in for the "Mark fulfilled" action described in Section 7.2,
-        so the escrow-release payout flow (already built on the backend) has
-        something real to trigger against.
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && openBookings.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Nothing pending right now.</p>
+      )}
+      {openBookings.map((b) => (
+        <div key={b.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {b.title} — {b.customer_name}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+            {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
+          </p>
+          <button
+            className="btn-primary"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+            onClick={() => handleMarkBookingFulfilled(b.id)}
+          >
+            Mark fulfilled
+          </button>
+        </div>
+      ))}
+
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
+        Incoming orders
       </p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input className="input-field" placeholder="Booking ID" value={bookingId} onChange={(e) => setBookingId(e.target.value)} />
-        <button className="btn-primary" onClick={handleMark}>Mark fulfilled</button>
-      </div>
-      {status && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>{status}</p>}
+      {!loading && openOrders.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending right now.</p>
+      )}
+      {openOrders.map((o) => (
+        <OrderRow key={o.id} order={o} onAdvance={handleAdvanceOrder} />
+      ))}
+
+      {error && <p className="error-text">{error}</p>}
+    </div>
+  );
+}
+
+const NEXT_ORDER_STATUS = {
+  confirmed: 'ready',
+  ready: 'out_for_delivery',
+  out_for_delivery: 'completed',
+};
+
+const ORDER_STATUS_LABEL = {
+  confirmed: 'Confirmed',
+  ready: 'Ready',
+  out_for_delivery: 'Out for delivery',
+  completed: 'Completed',
+};
+
+function OrderRow({ order, onAdvance }) {
+  const nextStatus = NEXT_ORDER_STATUS[order.status];
+  const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {itemsSummary} — {order.customer_name}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+        ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
+        {order.fulfillment_method && ` · ${order.fulfillment_method}`}
+      </p>
+      {nextStatus && (
+        <button
+          className="btn-primary"
+          style={{ padding: '4px 10px', fontSize: 12 }}
+          onClick={() => onAdvance(order.id, nextStatus)}
+        >
+          Mark {ORDER_STATUS_LABEL[nextStatus].toLowerCase()}
+        </button>
+      )}
     </div>
   );
 }
