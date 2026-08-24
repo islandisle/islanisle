@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getMyGroup, removeGroupMember } from '../api/client';
 import QRPopup from '../components/QRPopup';
 
@@ -58,6 +58,14 @@ export default function Profile() {
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
         {user?.type === 'local' ? 'Local account' : 'Tourist account'}
       </p>
+
+      <Link
+        to="/bookings"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}
+      >
+        My bookings &amp; orders
+      </Link>
 
       <button
         className="btn-primary"

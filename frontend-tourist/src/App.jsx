@@ -4,6 +4,7 @@ import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import ListingDetail from './pages/ListingDetail';
+import MyActivity from './pages/MyActivity';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/listing/:id" element={<ListingDetail />} />
+        <Route path="/bookings" element={<MyActivity />} />
       </Routes>
     </BrowserRouter>
   );
