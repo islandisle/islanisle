@@ -4,16 +4,41 @@ import { getIslandListings } from '../api/client';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
+// Script Section 4.9 / spec's business_type enum — used here to build the
+// type filter pills. Kept in sync manually with backend/database/schema.sql
+// (CREATE TYPE business_type) since there's no shared-constants file yet.
+const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
+
+function getCurrentUser() {
+  const raw = localStorage.getItem('atollisle_user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   const [island, setIsland] = useState(DEFAULT_ISLAND);
+  const [islandInput, setIslandInput] = useState(DEFAULT_ISLAND);
+  const [typeFilter, setTypeFilter] = useState('');
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Section 3.4 Pricing Visibility: a Local account should see local_price
+  // everywhere prices are shown, not tourist_price. The backend has always
+  // returned both fields (see backend/src/routes/listings.js) — this was
+  // previously never read, so every account, tourist or local, saw the same
+  // tourist price.
+  const user = getCurrentUser();
+  const isLocal = user?.type === 'local';
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getIslandListings(island)
+    getIslandListings(island, typeFilter || undefined)
       .then((data) => {
         if (!cancelled) setListings(data.listings);
       })
@@ -24,13 +49,48 @@ export default function Home() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [island]);
+  }, [island, typeFilter]);
+
+  function handleIslandSubmit(e) {
+    e.preventDefault();
+    const trimmed = islandInput.trim();
+    if (trimmed) setIsland(trimmed);
+  }
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <Header island={island} />
 
       <div style={{ padding: 16 }}>
+        {/* Section 3.2 "Choosing a Stay Island": a plain text switcher, not
+            a curated island directory with photos/descriptions — that's a
+            larger, separate piece. This at least makes the island genuinely
+            choosable instead of hardcoded, and reuses the same
+            getIslandListings(island, type) call the backend already
+            supports. */}
+        <form onSubmit={handleIslandSubmit} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <input
+            className="input-field"
+            value={islandInput}
+            onChange={(e) => setIslandInput(e.target.value)}
+            placeholder="Island name"
+            style={{ flex: 1 }}
+          />
+          <button className="btn-secondary" type="submit">Go</button>
+        </form>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          <FilterPill label="All" active={typeFilter === ''} onClick={() => setTypeFilter('')} />
+          {BUSINESS_TYPES.map((t) => (
+            <FilterPill
+              key={t}
+              label={t.charAt(0).toUpperCase() + t.slice(1)}
+              active={typeFilter === t}
+              onClick={() => setTypeFilter(t)}
+            />
+          ))}
+        </div>
+
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
           What's on {island}
         </p>
@@ -40,10 +100,29 @@ export default function Home() {
         {!loading && !error && listings.length === 0 && <EmptyState island={island} />}
 
         {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
+          <ListingCard key={listing.id} listing={listing} isLocal={isLocal} />
         ))}
       </div>
     </div>
+  );
+}
+
+function FilterPill({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '6px 12px',
+        borderRadius: 20,
+        fontSize: 12,
+        border: active ? 'none' : '1px solid var(--border)',
+        background: active ? 'var(--lagoon)' : '#fff',
+        color: active ? '#fff' : 'var(--text-secondary)',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -85,7 +164,8 @@ function Header({ island }) {
   );
 }
 
-function ListingCard({ listing }) {
+function ListingCard({ listing, isLocal }) {
+  const price = isLocal ? listing.local_price : listing.tourist_price;
   return (
     <Link to={`/listing/${listing.id}`} className="card" style={{ display: 'block', marginBottom: 12, textDecoration: 'none', color: 'inherit' }}>
       <div style={{ padding: '12px 14px' }}>
@@ -97,7 +177,8 @@ function ListingCard({ listing }) {
           {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
         </p>
         <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--lagoon)', margin: 0 }}>
-          ${listing.tourist_price}
+          ${price}
+          {isLocal && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}> local price</span>}
         </p>
       </div>
     </Link>
