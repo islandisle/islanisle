@@ -243,10 +243,15 @@ function AddListingForm({ businessType, businessId, onCreated }) {
 
       if (businessType === 'shop') {
         payload.stock_count = stockCount === '' ? null : Number(stockCount);
-        payload.fulfillment_options = {
-          pickup: pickupAvailable,
-          delivery: deliveryAvailable,
-        };
+        // fulfillment_options is a Postgres fulfillment_method[] column
+        // (CREATE TYPE fulfillment_method AS ENUM ('pickup', 'delivery')) —
+        // it needs an array of those exact strings, not an object of
+        // booleans. Sending the wrong shape here is what caused every shop
+        // listing save to fail with a 500.
+        const options = [];
+        if (pickupAvailable) options.push('pickup');
+        if (deliveryAvailable) options.push('delivery');
+        payload.fulfillment_options = options;
         payload.free_delivery = freeDelivery;
       }
 
