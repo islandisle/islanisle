@@ -24,10 +24,10 @@ router.post('/', authenticate, async (req, res) => {
   }
 
   const result = await query(
-    `INSERT INTO disputes (booking_id, order_id, raised_by, reason, description, photos, status)
-     VALUES ($1, $2, 'user', $3, $4, $5, 'open')
+    `INSERT INTO disputes (booking_id, order_id, raised_by, raised_by_id, reason, description, photos, status)
+     VALUES ($1, $2, 'user', $3, $4, $5, $6, 'open')
      RETURNING id, status, created_at`,
-    [booking_id || null, order_id || null, reason, description || null, photos || []]
+    [booking_id || null, order_id || null, req.user.id, reason, description || null, photos || []]
   );
 
   res.status(201).json({
