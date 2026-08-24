@@ -92,3 +92,19 @@ export async function markOrderStatus(orderId, status) {
   });
   return handleResponse(res);
 }
+
+// --- Guesthouse check-in (routes/checkin.js) ---
+
+export async function getArrivals(businessId) {
+  const res = await fetch(`${API_BASE}/api/checkin/business/${businessId}/arrivals`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function checkInBooking(bookingId, { method, room_number, whole_group, member_ids }) {
+  const res = await fetch(`${API_BASE}/api/checkin/${bookingId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ method, room_number, whole_group, member_ids }),
+  });
+  return handleResponse(res);
+}

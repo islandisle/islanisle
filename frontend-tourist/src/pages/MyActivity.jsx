@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { getMyBookings, getMyOrders, cancelBooking, fileDispute } from '../api/client';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
@@ -97,6 +98,10 @@ const BOOKING_STATUS_LABEL = {
 
 function BookingRow({ booking, onCancel }) {
   const canCancel = booking.status === 'confirmed';
+  const isGuesthouse = booking.business_type === 'guesthouse';
+  const isCheckedIn = booking.check_in_status === 'checked_in';
+  const canCheckIn = isGuesthouse && booking.status === 'confirmed' && !isCheckedIn;
+
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
@@ -105,6 +110,8 @@ function BookingRow({ booking, onCancel }) {
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
         {new Date(booking.slot_start).toLocaleString()} · ${booking.price_charged} ·{' '}
         {BOOKING_STATUS_LABEL[booking.status] || booking.status}
+        {isGuesthouse && isCheckedIn && ` · Checked in — Room ${booking.room_number}`}
+        {isGuesthouse && !isCheckedIn && booking.status === 'confirmed' && ' · Not checked in yet'}
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
         {canCancel && (
@@ -117,7 +124,45 @@ function BookingRow({ booking, onCancel }) {
           </button>
         )}
       </div>
+      {canCheckIn && <CheckInQR bookingId={booking.id} />}
       <ReportProblem bookingId={booking.id} />
+    </div>
+  );
+}
+
+// The guest's "personal QR" for guesthouse check-in — encodes this specific
+// booking's id, which backend/src/routes/checkin.js validates a scan against.
+// Front desk scans this from frontend-business's CheckInScanner; distinct
+// from the travel-group QR shown via Profile.jsx's "My QR code" (QRPopup),
+// which is for joining a group, not checking in.
+function CheckInQR({ bookingId }) {
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
+        onClick={() => setOpen(true)}
+      >
+        Show check-in QR
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+        Show this to the guesthouse front desk to check in.
+      </p>
+      <QRCodeSVG value={bookingId} size={140} fgColor="#0b2e3d" />
+      <button
+        className="btn-secondary"
+        style={{ display: 'block', margin: '10px auto 0', padding: '4px 10px', fontSize: 12 }}
+        onClick={() => setOpen(false)}
+      >
+        Hide
+      </button>
     </div>
   );
 }

@@ -214,7 +214,8 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
  */
 router.get('/mine', authenticate, async (req, res) => {
   const result = await query(
-    `SELECT b.id, b.slot_start, b.status, b.price_charged, l.title, biz.name AS business_name
+    `SELECT b.id, b.slot_start, b.status, b.price_charged, b.check_in_status, b.room_number,
+            l.title, biz.name AS business_name, biz.type AS business_type
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN businesses biz ON biz.id = l.business_id

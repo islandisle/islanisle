@@ -15,6 +15,7 @@ import legalRoutes from './routes/legal.js';
 import twoFactorRoutes from './routes/twoFactor.js';
 import sosRoutes from './routes/sos.js';
 import groupRoutes from './routes/groups.js';
+import checkinRoutes from './routes/checkin.js';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use('/api', legalRoutes); // exposes /api/terms, /api/account/export, /api/a
 app.use('/api/2fa', twoFactorRoutes);
 app.use('/api/sos', sosRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/checkin', checkinRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

@@ -81,6 +81,13 @@ export async function cancelBooking(id, cancelled_by = 'user') {
   return handleResponse(res);
 }
 
+// --- Guesthouse check-in (routes/checkin.js) ---
+
+export async function getCurrentStay() {
+  const res = await fetch(`${API_BASE}/api/checkin/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
 export async function createOrder({ items, fulfillment_method, payment_method }) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getMyGroup, removeGroupMember } from '../api/client';
+import { getMyGroup, removeGroupMember, getCurrentStay } from '../api/client';
 import QRPopup from '../components/QRPopup';
 
 export default function Profile() {
@@ -9,6 +9,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
   const [error, setError] = useState('');
+  const [currentStay, setCurrentStay] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('atollisle_user') || 'null');
 
@@ -18,6 +19,9 @@ export default function Profile() {
       return;
     }
     loadGroup();
+    getCurrentStay()
+      .then((data) => setCurrentStay(data.current_stay))
+      .catch(() => {});
   }, []);
 
   function loadGroup() {
@@ -58,6 +62,22 @@ export default function Profile() {
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
         {user?.type === 'local' ? 'Local account' : 'Tourist account'}
       </p>
+
+      {currentStay && (
+        <div className="card" style={{ padding: 16, marginBottom: 20, background: 'var(--lagoon-light)', border: 'none' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+            Currently staying at
+          </p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+            {currentStay.business_name}
+          </p>
+          {currentStay.room_number && (
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Room {currentStay.room_number}
+            </p>
+          )}
+        </div>
+      )}
 
       <Link
         to="/bookings"
