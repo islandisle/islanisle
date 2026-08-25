@@ -75,6 +75,51 @@ export async function reinstateBusiness(id, reason) {
   return handleResponse(res);
 }
 
+export async function markBusinessTrusted(id, reason) {
+  const res = await fetch(`${API_BASE}/api/admin/businesses/${id}/mark-trusted`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+// --- Agent directory + suspend/reinstate (routes/admin.js) ---
+
+export async function getAgentDirectory({ search, status, page = 1 } = {}) {
+  const params = new URLSearchParams({ page });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  const res = await fetch(`${API_BASE}/api/admin/agents?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function suspendAgent(id, reason) {
+  const res = await fetch(`${API_BASE}/api/admin/agents/${id}/suspend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+export async function reinstateAgent(id, reason) {
+  const res = await fetch(`${API_BASE}/api/admin/agents/${id}/reinstate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+// --- Audit log (routes/admin.js) ---
+
+export async function getAuditLog({ page = 1 } = {}) {
+  const params = new URLSearchParams({ page });
+  const res = await fetch(`${API_BASE}/api/admin/audit-log?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Business directory (routes/admin.js) ---
 
 export async function getBusinessDirectory({ search, status, page = 1 } = {}) {

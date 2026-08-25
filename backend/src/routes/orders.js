@@ -592,7 +592,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       );
 
   if (status === 'completed' && isPayAtVisit) {
-    await accruePayAtVisitCommission(order.business_id, order.business_commission);
+    await accruePayAtVisitCommission(order.business_id, order.business_commission, { orderId: id });
   }
 
   res.json({ order: result.rows[0], message: `Order marked ${status}.` });

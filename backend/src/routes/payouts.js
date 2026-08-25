@@ -8,18 +8,19 @@
 
 import { Router } from 'express';
 import { query } from '../config/db.js';
-import { authenticate, requireRole } from '../middleware/auth.js';
+import { authenticate, requireRole, requireFullAdmin } from '../middleware/auth.js';
 import { runPayoutBatch } from '../services/payoutRun.js';
 
 const router = Router();
 
 /**
  * POST /api/payouts/run
- * Admin-only. Runs a payout batch for every business with at least one
- * released, not-yet-paid-out online booking/order, or outstanding Pay at
- * Visit commission dues.
+ * Full-Admin-only (Section 10.1's role levels — moves real money). Runs a
+ * payout batch for every business with at least one released,
+ * not-yet-paid-out online booking/order, or outstanding Pay at Visit
+ * commission dues.
  */
-router.post('/run', authenticate, requireRole('admin'), async (req, res) => {
+router.post('/run', authenticate, requireFullAdmin, async (req, res) => {
   try {
     const result = await runPayoutBatch();
     res.json(result);

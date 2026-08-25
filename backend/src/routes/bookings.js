@@ -52,6 +52,7 @@ import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
+import { round2, computeRefund } from '../services/refunds.js';
 
 const router = Router();
 
@@ -416,23 +417,6 @@ router.get('/mine', authenticate, async (req, res) => {
   res.json({ bookings: result.rows });
 });
 
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
-
-// Section 7.1's refund math, shared by the cancel-preview endpoint (below)
-// and the actual cancel route, so the popup a tourist confirms against and
-// the numbers that actually get applied can never drift apart.
-function computeRefund({ priceCharged, paymentMethod, refundFeeBusinessPercent, isOperatorFault }) {
-  const grossRefundAmount = priceCharged; // Phase 1: full policy amount; partial-window % is a later refinement
-  if (isOperatorFault || paymentMethod !== 'online') {
-    return { grossRefundAmount, refundAppFee: 0, refundBusinessCredit: 0, refundAmount: grossRefundAmount };
-  }
-  const refundAppFee = round2(grossRefundAmount * 0.05); // fixed platform 5%
-  const refundBusinessCredit = round2(grossRefundAmount * (refundFeeBusinessPercent / 100));
-  const refundAmount = round2(grossRefundAmount - refundAppFee - refundBusinessCredit);
-  return { grossRefundAmount, refundAppFee, refundBusinessCredit, refundAmount };
-}
 
 /**
  * GET /api/bookings/:id/cancel-preview
@@ -610,7 +594,7 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
   );
 
   if (isPayAtVisit) {
-    await accruePayAtVisitCommission(booking.business_id, booking.business_commission);
+    await accruePayAtVisitCommission(booking.business_id, booking.business_commission, { bookingId: id });
   }
 
   // Agent bookings (Section 12 / [PHASE 2]): if an agent made this booking

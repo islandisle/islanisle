@@ -25,3 +25,22 @@ export function requireRole(role) {
     next();
   };
 }
+
+// Section 10.1's role levels: "Moderator — approvals only, vs. Full Admin —
+// approvals + suspensions + disputes + refund overrides." Every admin route
+// still authenticates via requireRole('admin') — a moderator IS an
+// admin-role JWT, adminRole is a second claim carrying admin_users.role
+// (see admin.js's login) — this additionally blocks the moderator-role
+// case from the full-admin-only actions (suspend/reinstate, dispute
+// resolution, payout runs, marking a business trusted). Approve/reject and
+// the approval queue stay on plain requireRole('admin') so both levels can
+// still do the one thing moderators exist for.
+export function requireFullAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'This action requires an admin account.' });
+  }
+  if (req.user?.adminRole === 'moderator') {
+    return res.status(403).json({ error: 'This action requires Full Admin — moderators can only manage the approval queue.' });
+  }
+  next();
+}

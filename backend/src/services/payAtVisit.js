@@ -44,17 +44,32 @@ export async function isPayAtVisitEligible(userId, payAtVisitEligible) {
 // becomes optional rather than forced). Tune freely.
 const GRADUATION_THRESHOLD = 10;
 
-export async function accruePayAtVisitCommission(businessId, commissionAmount) {
+// target: { bookingId } or { orderId } — whichever this commission is tied
+// to, so graduation can check "without a dispute" (Section 9: "complete a
+// set number of successful Pay at Visit bookings without a dispute").
+// pay_at_visit_commission_owed itself is unaffected by a dispute — the
+// business still fulfilled the transaction and still owes its 1% either
+// way; only the trust-graduation counter cares whether it was disputed.
+export async function accruePayAtVisitCommission(businessId, commissionAmount, target = {}) {
   const amount = Math.round((Number(commissionAmount) || 0) * 100) / 100;
   if (amount <= 0) return;
+
+  let hadDispute = false;
+  if (target.bookingId || target.orderId) {
+    const disputeResult = await query(
+      `SELECT 1 FROM disputes WHERE booking_id = $1 OR order_id = $2 LIMIT 1`,
+      [target.bookingId || null, target.orderId || null]
+    );
+    hadDispute = disputeResult.rows.length > 0;
+  }
 
   const result = await query(
     `UPDATE businesses SET
        pay_at_visit_commission_owed = pay_at_visit_commission_owed + $1,
-       successful_pay_at_visit_count = successful_pay_at_visit_count + 1
+       successful_pay_at_visit_count = successful_pay_at_visit_count + $3
      WHERE id = $2
      RETURNING trust_tier, successful_pay_at_visit_count`,
-    [amount, businessId]
+    [amount, businessId, hadDispute ? 0 : 1]
   );
   if (!result.rows.length) return;
 

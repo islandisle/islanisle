@@ -2,16 +2,33 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getApprovalQueue, approve, reject, getDisputes, resolveDispute, suspendBusiness, reinstateBusiness,
+  markBusinessTrusted, getAgentDirectory, suspendAgent, reinstateAgent, getAuditLog,
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
 } from '../api/client';
 import { useTheme } from '../theme';
+
+// Section 10.1's role levels: "Moderator — approvals only, vs. Full Admin —
+// approvals + suspensions + disputes + refund overrides." admin.role here
+// is admin_users.role (from the login response), separate from the JWT's
+// generic 'admin' auth claim the backend checks — see
+// backend/src/middleware/auth.js's requireFullAdmin, which is the actual
+// enforcement; hiding these sections is just avoiding a guaranteed 403.
+function useIsModerator() {
+  try {
+    const admin = JSON.parse(localStorage.getItem('atollisle_admin') || 'null');
+    return admin?.role === 'moderator';
+  } catch {
+    return false;
+  }
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [queue, setQueue] = useState({ businesses: [], listings: [], local_verifications: [] });
   const [disputes, setDisputes] = useState([]);
   const [error, setError] = useState('');
+  const isModerator = useIsModerator();
 
   useEffect(() => {
     if (!localStorage.getItem('atollisle_admin_token')) {
@@ -23,7 +40,9 @@ export default function Dashboard() {
 
   function loadAll() {
     getApprovalQueue().then(setQueue).catch((err) => setError(err.message));
-    getDisputes().then((data) => setDisputes(data.disputes)).catch((err) => setError(err.message));
+    if (!isModerator) {
+      getDisputes().then((data) => setDisputes(data.disputes)).catch((err) => setError(err.message));
+    }
   }
 
   function handleLogout() {
@@ -59,15 +78,23 @@ export default function Dashboard() {
         <button className="btn-secondary" onClick={handleLogout}>Log out</button>
       </div>
 
+      {isModerator && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+          Moderator account — approvals only. Disputes, suspensions, payouts, and the audit log require Full Admin.
+        </p>
+      )}
+
       {error && <p className="error-text">{error}</p>}
 
       <AppearanceSection />
 
       <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} />
-      <PayoutsSection />
-      <DisputesSection disputes={disputes} onResolved={loadAll} />
-      <BusinessDirectorySection />
+      {!isModerator && <PayoutsSection />}
+      {!isModerator && <DisputesSection disputes={disputes} onResolved={loadAll} />}
+      <BusinessDirectorySection isModerator={isModerator} />
+      {!isModerator && <AgentDirectorySection />}
       <SupportTicketsSection />
+      {!isModerator && <AuditLogSection />}
     </div>
   );
 }
@@ -262,7 +289,7 @@ function DisputeRow({ dispute, onResolved }) {
 // ID you'd have to already know" box with an actual browsable/searchable
 // directory. Suspend/reinstate and the detail preview both live inline per
 // row now instead of needing a separately-copied id.
-function BusinessDirectorySection() {
+function BusinessDirectorySection({ isModerator }) {
   const [data, setData] = useState({ businesses: [], total: 0, page: 1, limit: 20 });
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -299,6 +326,16 @@ function BusinessDirectorySection() {
   async function handleReinstate(id) {
     try {
       await reinstateBusiness(id, 'Reinstated via admin console');
+      load(data.page);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleMarkTrusted(id) {
+    if (!window.confirm('Mark this business as trusted? This unlocks online payment/escrow ahead of the automatic Pay-at-Visit threshold.')) return;
+    try {
+      await markBusinessTrusted(id, 'Marked trusted via admin console');
       load(data.page);
     } catch (err) {
       setError(err.message);
@@ -347,13 +384,19 @@ function BusinessDirectorySection() {
                 <p style={{ fontSize: 13, color: 'var(--navy)', margin: 0 }}>{b.name} ({b.type})</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
                   Owner {b.owner_name} · {b.location_island || 'no island'} · {b.approval_status} · {b.account_status}
+                  {b.trust_tier === 'new' && ' · New (trust tier)'}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setExpandedId(isExpanded ? null : b.id)}>
                   {isExpanded ? 'Hide details' : 'View details'}
                 </button>
-                {b.account_status === 'active' ? (
+                {!isModerator && b.trust_tier === 'new' && (
+                  <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleMarkTrusted(b.id)}>
+                    Mark trusted
+                  </button>
+                )}
+                {!isModerator && (b.account_status === 'active' ? (
                   <button
                     className="btn-secondary"
                     style={{ padding: '4px 10px', fontSize: 12, background: 'var(--coral)', color: '#fff' }}
@@ -365,7 +408,7 @@ function BusinessDirectorySection() {
                   <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleReinstate(b.id)}>
                     Reinstate
                   </button>
-                )}
+                ))}
               </div>
             </div>
             {isExpanded && <BusinessDetailPreview businessId={b.id} />}
@@ -383,6 +426,178 @@ function BusinessDirectorySection() {
             Next →
           </button>
         </div>
+      )}
+    </section>
+  );
+}
+
+// GET /api/admin/agents — agent equivalent of the business directory above.
+// Full-Admin-only section (suspend/reinstate require it server-side).
+function AgentDirectorySection() {
+  const [data, setData] = useState({ agents: [], total: 0, page: 1, limit: 20 });
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function load(page = 1) {
+    setLoading(true);
+    getAgentDirectory({ search, page })
+      .then(setData)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(1); }, []);
+
+  function handleFilterSubmit(e) {
+    e.preventDefault();
+    load(1);
+  }
+
+  async function handleSuspend(id) {
+    const reason = window.prompt('Reason for suspending (required):');
+    if (!reason) return;
+    try {
+      await suspendAgent(id, reason);
+      load(data.page);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleReinstate(id) {
+    try {
+      await reinstateAgent(id, 'Reinstated via admin console');
+      load(data.page);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(data.total / data.limit));
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Agent directory ({data.total})
+      </p>
+
+      <form onSubmit={handleFilterSubmit} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input
+          className="input-field"
+          placeholder="Search by name"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <button className="btn-secondary" type="submit">Search</button>
+      </form>
+
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && data.agents.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No agents match.</p>
+      )}
+
+      {data.agents.map((a) => (
+        <div key={a.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--navy)', margin: 0 }}>{a.name}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                {a.contact_email} · {a.approval_status} · {a.account_status}
+              </p>
+            </div>
+            {a.account_status === 'active' ? (
+              <button
+                className="btn-secondary"
+                style={{ padding: '4px 10px', fontSize: 12, background: 'var(--coral)', color: '#fff' }}
+                onClick={() => handleSuspend(a.id)}
+              >
+                Suspend
+              </button>
+            ) : (
+              <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleReinstate(a.id)}>
+                Reinstate
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {data.total > data.limit && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={data.page <= 1} onClick={() => load(data.page - 1)}>
+            ← Prev
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Page {data.page} of {totalPages}</span>
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={data.page >= totalPages} onClick={() => load(data.page + 1)}>
+            Next →
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// GET /api/admin/audit-log — Section 10.1: "every admin action... is
+// recorded" was write-only until now.
+function AuditLogSection() {
+  const [data, setData] = useState({ entries: [], total: 0, page: 1, limit: 50 });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  function load(page = 1) {
+    setLoading(true);
+    getAuditLog({ page })
+      .then(setData)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { if (open) load(1); }, [open]);
+
+  const totalPages = Math.max(1, Math.ceil(data.total / data.limit));
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Audit log</p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'View'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          {error && <p className="error-text">{error}</p>}
+          {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+          {!loading && data.entries.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No actions recorded yet.</p>
+          )}
+          {data.entries.map((e) => (
+            <div key={e.id} className="card" style={{ padding: 10, marginBottom: 6 }}>
+              <p style={{ fontSize: 12, color: 'var(--navy)', margin: '0 0 2px' }}>
+                {e.admin_name} — {e.action_type} {e.target_type} {e.target_id}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                {new Date(e.created_at).toLocaleString()} · {e.reason}
+              </p>
+            </div>
+          ))}
+          {data.total > data.limit && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={data.page <= 1} onClick={() => load(data.page - 1)}>
+                ← Prev
+              </button>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Page {data.page} of {totalPages}</span>
+              <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={data.page >= totalPages} onClick={() => load(data.page + 1)}>
+                Next →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
