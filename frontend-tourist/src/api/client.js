@@ -12,7 +12,9 @@ function authHeaders() {
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`);
+    const error = new Error(data.error || `Request failed (${res.status})`);
+    error.status = res.status;
+    throw error;
   }
   return data;
 }
@@ -58,11 +60,11 @@ export async function getArrivalTransfers(destination) {
 
 // --- Bookings (routes/bookings.js) ---
 
-export async function createBooking({ listing_id, slot_start, slot_end, payment_method }) {
+export async function createBooking({ listing_id, slot_start, slot_end, payment_method, promo_code }) {
   const res = await fetch(`${API_BASE}/api/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ listing_id, slot_start, slot_end, payment_method }),
+    body: JSON.stringify({ listing_id, slot_start, slot_end, payment_method, promo_code: promo_code || undefined }),
   });
   return handleResponse(res);
 }
@@ -97,11 +99,11 @@ export async function getMyTrips() {
 
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
-export async function createOrder({ items, fulfillment_method, payment_method }) {
+export async function createOrder({ items, fulfillment_method, payment_method, promo_code }) {
   const res = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ items, fulfillment_method, payment_method }),
+    body: JSON.stringify({ items, fulfillment_method, payment_method, promo_code: promo_code || undefined }),
   });
   return handleResponse(res);
 }
@@ -140,6 +142,22 @@ export async function getMyReviews() {
 
 export async function getBusinessReviews(businessId, page = 1) {
   const res = await fetch(`${API_BASE}/api/reviews/business/${businessId}?page=${page}`);
+  return handleResponse(res);
+}
+
+// --- Waitlist (routes/waitlist.js) ---
+
+export async function joinWaitlist({ listing_id, requested_slot }) {
+  const res = await fetch(`${API_BASE}/api/waitlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ listing_id, requested_slot }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyWaitlist() {
+  const res = await fetch(`${API_BASE}/api/waitlist/mine`, { headers: authHeaders() });
   return handleResponse(res);
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getSettings, updateSettings } from '../api/client';
+import { getSettings, updateSettings, getPromoCodes, createPromoCode, updatePromoCode } from '../api/client';
 import { useTheme } from '../theme';
 
 export default function Settings() {
@@ -133,6 +133,8 @@ export default function Settings() {
         </button>
       </form>
 
+      <PromoCodesSection businessId={business.id} />
+
       <AppearanceSection />
 
       <Link
@@ -143,6 +145,179 @@ export default function Settings() {
         Contact support
       </Link>
     </div>
+  );
+}
+
+// Promo code management — POST/GET/PATCH /api/business/:businessId/promo-codes.
+// Applies at checkout in frontend-tourist's ListingDetail.jsx.
+function PromoCodesSection({ businessId }) {
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function load() {
+    setLoading(true);
+    getPromoCodes(businessId)
+      .then((data) => setCodes(data.promo_codes || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  async function handleEndNow(codeId) {
+    try {
+      await updatePromoCode(businessId, codeId, { valid_to: new Date().toISOString() });
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+          Promo codes
+        </p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Close' : '+ New code'}
+        </button>
+      </div>
+
+      {open && <NewPromoCodeForm businessId={businessId} onCreated={() => { setOpen(false); load(); }} />}
+
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && codes.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No promo codes yet.</p>
+      )}
+
+      {codes.map((c) => {
+        const isExpired = new Date(c.valid_to) <= new Date();
+        const isExhausted = c.usage_limit != null && c.times_used >= c.usage_limit;
+        const isActive = !isExpired && !isExhausted;
+        return (
+          <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 2px' }}>
+                  {c.code}
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                  {c.discount_type === 'percentage' ? `${c.discount}% off` : `$${c.discount} off`}
+                  {' · '}
+                  {c.times_used}{c.usage_limit != null ? `/${c.usage_limit}` : ''} used
+                  {' · '}
+                  {isActive ? 'active' : isExhausted ? 'exhausted' : 'expired'}
+                </p>
+              </div>
+              {isActive && (
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: 12 }}
+                  onClick={() => handleEndNow(c.id)}
+                >
+                  End now
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NewPromoCodeForm({ businessId, onCreated }) {
+  const [code, setCode] = useState('');
+  const [discountType, setDiscountType] = useState('percentage');
+  const [discount, setDiscount] = useState('');
+  const [validTo, setValidTo] = useState('');
+  const [usageLimit, setUsageLimit] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      await createPromoCode(businessId, {
+        code,
+        discount_type: discountType,
+        discount: Number(discount),
+        valid_from: new Date().toISOString(),
+        valid_to: new Date(validTo).toISOString(),
+        usage_limit: usageLimit ? Number(usageLimit) : null,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', marginBottom: 10 }}>
+      <input
+        className="input-field"
+        placeholder="Code (e.g. WELCOME10)"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        style={{ marginBottom: 8, textTransform: 'uppercase' }}
+      />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <select className="input-field" value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
+          <option value="percentage">% off</option>
+          <option value="fixed">$ off</option>
+        </select>
+        <input
+          className="input-field"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder={discountType === 'percentage' ? '10' : '5.00'}
+          value={discount}
+          onChange={(e) => setDiscount(e.target.value)}
+        />
+      </div>
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Expires
+      </label>
+      <input
+        className="input-field"
+        type="datetime-local"
+        value={validTo}
+        onChange={(e) => setValidTo(e.target.value)}
+        style={{ marginBottom: 8 }}
+      />
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Usage limit (optional)
+      </label>
+      <input
+        className="input-field"
+        type="number"
+        min="1"
+        placeholder="Unlimited"
+        value={usageLimit}
+        onChange={(e) => setUsageLimit(e.target.value)}
+        style={{ marginBottom: 8 }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <button
+        className="btn-primary"
+        type="submit"
+        style={{ width: '100%' }}
+        disabled={submitting || !code || !discount || !validTo}
+      >
+        {submitting ? 'Creating…' : 'Create promo code'}
+      </button>
+    </form>
   );
 }
 

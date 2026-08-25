@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder, getBusinessReviews } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist } from '../api/client';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -122,7 +122,9 @@ function Reviews({ businessId }) {
 // Guesthouse / restaurant / excursion / speedboat — date/time slot booking.
 function SlotCheckout({ listing, onSuccess, error, setError }) {
   const [slotStart, setSlotStart] = useState('');
+  const [promoCode, setPromoCode] = useState('');
   const [booking, setBooking] = useState(false);
+  const [slotFull, setSlotFull] = useState(false);
 
   async function handleBook() {
     if (!slotStart) {
@@ -131,12 +133,16 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
     }
     setBooking(true);
     setError('');
+    setSlotFull(false);
     try {
-      const res = await createBooking({ listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit' });
+      const res = await createBooking({
+        listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit', promo_code: promoCode,
+      });
       onSuccess(res);
     } catch (err) {
       // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
       setError(err.message);
+      if (err.status === 409) setSlotFull(true); // capacity conflict — offer the waitlist instead
     } finally {
       setBooking(false);
     }
@@ -151,14 +157,61 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         className="input-field"
         type="datetime-local"
         value={slotStart}
-        onChange={(e) => setSlotStart(e.target.value)}
+        onChange={(e) => { setSlotStart(e.target.value); setSlotFull(false); }}
         style={{ marginBottom: 16 }}
       />
+
+      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        Promo code (optional)
+      </label>
+      <input
+        className="input-field"
+        placeholder="e.g. WELCOME10"
+        value={promoCode}
+        onChange={(e) => setPromoCode(e.target.value)}
+        style={{ marginBottom: 16, textTransform: 'uppercase' }}
+      />
+
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleBook} disabled={booking}>
         {booking ? 'Booking…' : 'Book now'}
       </button>
+
+      {slotFull && <WaitlistButton listingId={listing.id} slotStart={slotStart} />}
     </>
+  );
+}
+
+// Section 12's waitlist table — join when a slot's fully booked, get
+// notified (see backend/src/routes/bookings.js's cancel handler) if it
+// opens back up. Doesn't reserve the slot; still first-come at that point.
+function WaitlistButton({ listingId, slotStart }) {
+  const [status, setStatus] = useState('idle'); // idle | joining | joined | error
+  const [message, setMessage] = useState('');
+
+  async function handleJoin() {
+    setStatus('joining');
+    try {
+      const res = await joinWaitlist({ listing_id: listingId, requested_slot: slotStart });
+      setMessage(res.message || "You're on the waitlist.");
+      setStatus('joined');
+    } catch (err) {
+      setMessage(err.message);
+      setStatus('error');
+    }
+  }
+
+  if (status === 'joined') {
+    return <p style={{ fontSize: 13, color: 'var(--lagoon)', marginTop: 10 }}>{message}</p>;
+  }
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button className="btn-secondary" style={{ width: '100%' }} onClick={handleJoin} disabled={status === 'joining'}>
+        {status === 'joining' ? 'Joining…' : 'Join waitlist for this slot'}
+      </button>
+      {status === 'error' && <p className="error-text">{message}</p>}
+    </div>
   );
 }
 
@@ -173,6 +226,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       ? listing.fulfillment_options[0]
       : ''
   );
+  const [promoCode, setPromoCode] = useState('');
   const [ordering, setOrdering] = useState(false);
 
   const fulfillmentOptions = Array.isArray(listing.fulfillment_options) ? listing.fulfillment_options : [];
@@ -190,6 +244,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         items: [{ listing_id: listing.id, quantity }],
         fulfillment_method: fulfillment || undefined,
         payment_method: 'pay_at_visit',
+        promo_code: promoCode,
       });
       onSuccess(res);
     } catch (err) {
@@ -244,6 +299,17 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         </p>
       )}
 
+      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        Promo code (optional)
+      </label>
+      <input
+        className="input-field"
+        placeholder="e.g. WELCOME10"
+        value={promoCode}
+        onChange={(e) => setPromoCode(e.target.value)}
+        style={{ marginBottom: 16, textTransform: 'uppercase' }}
+      />
+
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={ordering}>
         {ordering ? 'Placing order…' : 'Buy now'}
@@ -272,6 +338,9 @@ function PendingPayment({ result, onDone }) {
         </p>
         <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
           <PriceLine label="Base price" value={result.price_breakdown.base_price} />
+          {result.price_breakdown.promo_discount > 0 && (
+            <PriceLine label="Promo discount" value={-result.price_breakdown.promo_discount} />
+          )}
           <PriceLine label="Total to pay in person" value={result.price_breakdown.total_charged} bold />
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
@@ -289,7 +358,7 @@ function PriceLine({ label, value, bold }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: bold ? 600 : 400, marginBottom: 4 }}>
       <span>{label}</span>
-      <span>${value}</span>
+      <span>{value < 0 ? `-$${Math.abs(value)}` : `$${value}`}</span>
     </div>
   );
 }

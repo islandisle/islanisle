@@ -24,6 +24,7 @@ CREATE TYPE escrow_status AS ENUM ('held', 'released', 'refunded', 'not_applicab
 CREATE TYPE check_in_status AS ENUM ('checked_in', 'pending', 'partially_checked_in');
 CREATE TYPE check_in_method AS ENUM ('qr', 'manual', 'whole_group');
 CREATE TYPE weather_condition_type AS ENUM ('sunny', 'cloudy', 'rainy', 'windy', 'thundery');
+CREATE TYPE promo_discount_type AS ENUM ('percentage', 'fixed'); -- added alongside the promo codes backend below; the original promo_codes table had no way to tell these apart
 CREATE TYPE dispute_status AS ENUM ('open', 'resolved');
 CREATE TYPE admin_role AS ENUM ('admin', 'moderator');
 CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted');
@@ -181,6 +182,8 @@ CREATE TABLE bookings (
     per_member_check_in                JSONB, -- list of {member_id, checked_in: bool}
     room_number                       TEXT, -- set on check-in; drives users.current_stay_room_number
     stripe_payment_intent_id           TEXT,
+    promo_code_id                     UUID, -- FK added after promo_codes table exists; set when a promo code was applied at checkout
+    promo_discount_amount              NUMERIC(12,2) NOT NULL DEFAULT 0, -- deducted from price_charged only; base_price/commissions are computed pre-discount, unchanged
     created_at                         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -217,6 +220,8 @@ CREATE TABLE orders (
     refund_business_credit             NUMERIC(12,2),
     refund_amount                     NUMERIC(12,2),
     stripe_payment_intent_id           TEXT,
+    promo_code_id                     UUID, -- FK added after promo_codes table exists; set when a promo code was applied at checkout
+    promo_discount_amount              NUMERIC(12,2) NOT NULL DEFAULT 0, -- deducted from price_charged only; base_price/commissions are computed pre-discount, unchanged
     created_at                         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -629,12 +634,16 @@ CREATE TABLE promo_codes (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id     UUID NOT NULL REFERENCES businesses(id),
     code           TEXT NOT NULL,
-    discount        NUMERIC(4,2) NOT NULL,
+    discount_type   promo_discount_type NOT NULL DEFAULT 'percentage',
+    discount        NUMERIC(10,2) NOT NULL, -- widened from (4,2): percentage points (0-100) or a fixed currency amount, per discount_type
     valid_from       TIMESTAMPTZ NOT NULL,
     valid_to         TIMESTAMPTZ NOT NULL,
     usage_limit      INTEGER,
+    times_used       INTEGER NOT NULL DEFAULT 0,
     UNIQUE(business_id, code)
 );
+ALTER TABLE bookings ADD CONSTRAINT fk_bookings_promo_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_promo_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id);
 
 CREATE TABLE waitlist (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

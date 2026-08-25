@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview, getMyWaitlist } from '../api/client';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -12,6 +12,7 @@ export default function MyActivity() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
   const [reviewsByTarget, setReviewsByTarget] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,10 +23,12 @@ export default function MyActivity() {
       getMyBookings().catch(() => ({ bookings: [] })),
       getMyOrders().catch(() => ({ orders: [] })),
       getMyReviews().catch(() => ({ reviews: [] })),
+      getMyWaitlist().catch(() => ({ waitlist: [] })),
     ])
-      .then(([bookingsData, ordersData, reviewsData]) => {
+      .then(([bookingsData, ordersData, reviewsData, waitlistData]) => {
         setBookings(bookingsData.bookings || []);
         setOrders(ordersData.orders || []);
+        setWaitlist(waitlistData.waitlist || []);
         const byTarget = {};
         for (const r of reviewsData.reviews || []) {
           if (r.booking_id) byTarget[`booking:${r.booking_id}`] = r;
@@ -99,6 +102,35 @@ export default function MyActivity() {
       {orders.map((o) => (
         <OrderRow key={o.id} order={o} review={reviewsByTarget[`order:${o.id}`]} onReviewed={loadAll} />
       ))}
+
+      {waitlist.length > 0 && (
+        <>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
+            Waitlist
+          </p>
+          {waitlist.map((w) => (
+            <WaitlistRow key={w.id} entry={w} />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+const WAITLIST_STATUS_LABEL = {
+  waiting: 'Waiting for a spot',
+  notified: 'A spot opened — book now!',
+};
+
+function WaitlistRow({ entry }) {
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {entry.title} — {entry.business_name}
+      </p>
+      <p style={{ fontSize: 12, color: entry.status === 'notified' ? 'var(--lagoon)' : 'var(--text-secondary)', margin: 0 }}>
+        {new Date(entry.requested_slot).toLocaleString()} · {WAITLIST_STATUS_LABEL[entry.status] || entry.status}
+      </p>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
+import { applyPromoCode } from '../services/promoCodes.js';
 
 const router = Router();
 
@@ -70,7 +71,7 @@ function getSlotCapacity(businessType, typeSpecificFields) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { listing_id, slot_start, slot_end, payment_method } = req.body;
+    const { listing_id, slot_start, slot_end, payment_method, promo_code } = req.body;
     if (!listing_id || !slot_start) {
       return res.status(400).json({ error: 'listing_id and slot_start are required.' });
     }
@@ -90,7 +91,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 
     const listingResult = await query(
       `SELECT l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
-              b.type AS business_type
+              b.id AS business_id, b.type AS business_type
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
        WHERE l.id = $1`,
@@ -129,24 +130,41 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 
     // Unified commission rule (Section 9): business always 1%; tourist +2%
     // only when paying online. pay_at_visit never applies the tourist fee.
+    // Commissions are computed on the pre-discount basePrice — a promo code
+    // is the business's own marketing spend, it doesn't change what the
+    // platform's cut is calculated from, only what the tourist ends up paying.
     const businessCommission = round2(basePrice * BUSINESS_COMMISSION_RATE);
     const touristCommissionApplicable = !isPayAtVisit && payerType === 'tourist';
     const touristCommission = touristCommissionApplicable ? round2(basePrice * TOURIST_COMMISSION_RATE) : 0;
-    const priceCharged = round2(basePrice + touristCommission);
 
     await client.query('BEGIN');
+
+    // Promo codes (Phase 2): validated and claimed atomically inside this
+    // transaction, so a later rollback (capacity conflict, Stripe error)
+    // also un-claims the use — see services/promoCodes.js.
+    let promoCodeId = null;
+    let promoDiscountAmount = 0;
+    if (promo_code) {
+      ({ promoCodeId, discountAmount: promoDiscountAmount } = await applyPromoCode(client, {
+        businessId: listing.business_id,
+        code: promo_code,
+        basePrice,
+      }));
+    }
+    const priceCharged = round2(basePrice + touristCommission - promoDiscountAmount);
 
     const bookingResult = await client.query(
       `INSERT INTO bookings (
          listing_id, user_id, slot_start, slot_end, base_price, payer_type, payment_method,
          business_commission, tourist_commission_applicable, tourist_commission, price_charged,
-         status, escrow_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         promo_code_id, promo_discount_amount, status, escrow_status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING id, base_price, price_charged, status, escrow_status`,
       [
         listing_id, req.user.id, slot_start, slot_end || null, basePrice, payerType,
         isPayAtVisit ? 'pay_at_visit' : 'online',
         businessCommission, touristCommissionApplicable, touristCommission, priceCharged,
+        promoCodeId, promoDiscountAmount,
         isPayAtVisit ? 'confirmed' : 'pending_payment',
         isPayAtVisit ? 'not_applicable' : 'not_applicable',
       ]
@@ -168,7 +186,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       });
       return res.status(201).json({
         booking,
-        price_breakdown: { base_price: basePrice, tourist_service_fee: 0, total_charged: priceCharged },
+        price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
         capacity_remaining: capacity - existingCount.rows[0].count - 1,
         message: `Booking confirmed. Pay $${priceCharged} in person when you arrive.`,
       });
@@ -194,6 +212,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       price_breakdown: {
         base_price: basePrice,
         tourist_service_fee: touristCommission,
+        promo_discount: promoDiscountAmount,
         total_charged: priceCharged,
       },
       capacity_remaining: capacity - existingCount.rows[0].count - 1,
@@ -202,6 +221,9 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('Booking creation error:', err);
     res.status(500).json({ error: 'Could not create booking.' });
   } finally {
@@ -360,6 +382,26 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
       ? `Your booking was cancelled by the business — you've been refunded in full, no fee.`
       : `Your booking was cancelled. You'll receive $${refundAmount} back.`,
   });
+
+  // Waitlist (Phase 2): this cancellation just freed up listing_id +
+  // slot_start — notify everyone still 'waiting' on that exact slot. The
+  // slot itself isn't reserved for them; they still book normally, this
+  // just tells them it's open again.
+  const waitlisted = await query(
+    `SELECT id, user_id FROM waitlist
+     WHERE listing_id = $1 AND requested_slot = $2 AND status = 'waiting'`,
+    [booking.listing_id, booking.slot_start]
+  );
+  for (const entry of waitlisted.rows) {
+    await query(`UPDATE waitlist SET status = 'notified' WHERE id = $1`, [entry.id]);
+    await notify({
+      recipientType: 'user',
+      recipientId: entry.user_id,
+      type: 'waitlist_spot_open',
+      title: 'A spot just opened up',
+      body: `A slot you were waitlisted for is available again — book it before it's gone.`,
+    });
+  }
 
   res.json({
     status: 'cancelled',

@@ -100,6 +100,31 @@ export async function getBusinessReviews(businessId, page = 1) {
   return handleResponse(res);
 }
 
+// --- Promo codes (routes/businessSettings.js) ---
+
+export async function getPromoCodes(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/promo-codes`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function createPromoCode(businessId, { code, discount_type, discount, valid_from, valid_to, usage_limit }) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/promo-codes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ code, discount_type, discount, valid_from, valid_to, usage_limit }),
+  });
+  return handleResponse(res);
+}
+
+export async function updatePromoCode(businessId, codeId, updates) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/promo-codes/${codeId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(updates),
+  });
+  return handleResponse(res);
+}
+
 // --- Support (routes/support.js) ---
 
 export async function openSupportTicket(businessId, { subject, message }) {

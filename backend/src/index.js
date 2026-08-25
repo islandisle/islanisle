@@ -21,6 +21,7 @@ import reviewRoutes from './routes/reviews.js';
 import notificationRoutes from './routes/notifications.js';
 import supportRoutes from './routes/support.js';
 import weatherRoutes from './routes/weather.js';
+import waitlistRoutes from './routes/waitlist.js';
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

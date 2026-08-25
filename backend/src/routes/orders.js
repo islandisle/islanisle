@@ -25,6 +25,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
+import { applyPromoCode } from '../services/promoCodes.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ function round2(n) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, fulfillment_method, payment_method } = req.body;
+    const { items, fulfillment_method, payment_method, promo_code } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items must be a non-empty array of { listing_id, quantity }.' });
     }
@@ -123,7 +124,6 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const businessCommission = round2(basePrice * BUSINESS_COMMISSION_RATE);
     const touristCommissionApplicable = !isPayAtVisit && payerType === 'tourist';
     const touristCommission = touristCommissionApplicable ? round2(basePrice * TOURIST_COMMISSION_RATE) : 0;
-    const priceCharged = round2(basePrice + touristCommission);
 
     await client.query('BEGIN');
 
@@ -146,17 +146,32 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       }
     }
 
+    // Promo codes (Phase 2): same atomic validate-and-claim as bookings.js
+    // — see services/promoCodes.js. Commissions above stay computed on the
+    // pre-discount basePrice; only price_charged reflects the discount.
+    let promoCodeId = null;
+    let promoDiscountAmount = 0;
+    if (promo_code) {
+      ({ promoCodeId, discountAmount: promoDiscountAmount } = await applyPromoCode(client, {
+        businessId,
+        code: promo_code,
+        basePrice,
+      }));
+    }
+    const priceCharged = round2(basePrice + touristCommission - promoDiscountAmount);
+
     const orderResult = await client.query(
       `INSERT INTO orders (
          business_id, user_id, base_price, payer_type, payment_method,
          business_commission, tourist_commission_applicable, tourist_commission, price_charged,
-         fulfillment_method, status, escrow_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         promo_code_id, promo_discount_amount, fulfillment_method, status, escrow_status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING id, base_price, price_charged, status, escrow_status`,
       [
         businessId, req.user.id, basePrice, payerType,
         isPayAtVisit ? 'pay_at_visit' : 'online',
         businessCommission, touristCommissionApplicable, touristCommission, priceCharged,
+        promoCodeId, promoDiscountAmount,
         fulfillment_method || null,
         isPayAtVisit ? 'confirmed' : 'pending_payment',
         'not_applicable',
@@ -182,7 +197,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       });
       return res.status(201).json({
         order,
-        price_breakdown: { base_price: basePrice, tourist_service_fee: 0, total_charged: priceCharged },
+        price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
         message: `Order confirmed. Pay $${priceCharged} in person.`,
       });
     }
@@ -206,6 +221,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       price_breakdown: {
         base_price: basePrice,
         tourist_service_fee: touristCommission,
+        promo_discount: promoDiscountAmount,
         total_charged: priceCharged,
       },
       client_secret: paymentIntent.client_secret,
@@ -213,6 +229,9 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('Order creation error:', err);
     res.status(500).json({ error: 'Could not create order.' });
   } finally {

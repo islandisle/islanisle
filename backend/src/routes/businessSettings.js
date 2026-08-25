@@ -105,4 +105,92 @@ router.get('/:businessId/staff', authenticate, requireBusinessOwnerOrAdmin, asyn
   res.json({ staff: result.rows });
 });
 
+const VALID_DISCOUNT_TYPES = ['percentage', 'fixed'];
+
+/**
+ * POST /api/business/:businessId/promo-codes
+ * Phase 2 — promo_codes existed in schema.sql with no route. Applied at
+ * checkout via services/promoCodes.js (bookings.js / orders.js).
+ * body: { code, discount_type: 'percentage'|'fixed', discount, valid_from, valid_to, usage_limit? }
+ */
+router.post('/:businessId/promo-codes', authenticate, requireBusinessOwner, async (req, res) => {
+  const { code, discount_type, discount, valid_from, valid_to, usage_limit } = req.body;
+
+  if (!code || !valid_from || !valid_to || discount == null) {
+    return res.status(400).json({ error: 'code, discount, valid_from, and valid_to are required.' });
+  }
+  if (discount_type && !VALID_DISCOUNT_TYPES.includes(discount_type)) {
+    return res.status(400).json({ error: `discount_type must be one of: ${VALID_DISCOUNT_TYPES.join(', ')}` });
+  }
+  if (new Date(valid_from) >= new Date(valid_to)) {
+    return res.status(400).json({ error: 'valid_from must be before valid_to.' });
+  }
+  const discountNum = Number(discount);
+  if (!Number.isFinite(discountNum) || discountNum <= 0) {
+    return res.status(400).json({ error: 'discount must be a positive number.' });
+  }
+  if ((discount_type || 'percentage') === 'percentage' && discountNum > 100) {
+    return res.status(400).json({ error: 'A percentage discount cannot exceed 100.' });
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO promo_codes (business_id, code, discount_type, discount, valid_from, valid_to, usage_limit)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, code, discount_type, discount, valid_from, valid_to, usage_limit, times_used`,
+      [
+        req.params.businessId, code.trim().toUpperCase(), discount_type || 'percentage',
+        discountNum, valid_from, valid_to, usage_limit || null,
+      ]
+    );
+    res.status(201).json({ promo_code: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') { // unique_violation on (business_id, code)
+      return res.status(409).json({ error: 'You already have a promo code with that code.' });
+    }
+    throw err;
+  }
+});
+
+/**
+ * GET /api/business/:businessId/promo-codes
+ * Owner's own list, for the Settings management UI.
+ */
+router.get('/:businessId/promo-codes', authenticate, requireBusinessOwner, async (req, res) => {
+  const result = await query(
+    `SELECT id, code, discount_type, discount, valid_from, valid_to, usage_limit, times_used
+     FROM promo_codes WHERE business_id = $1 ORDER BY valid_to DESC`,
+    [req.params.businessId]
+  );
+  res.json({ promo_codes: result.rows });
+});
+
+/**
+ * PATCH /api/business/:businessId/promo-codes/:codeId
+ * body: any subset of { discount_type, discount, valid_from, valid_to, usage_limit }
+ * — also how a business ends a code early: PATCH valid_to to now().
+ */
+router.patch('/:businessId/promo-codes/:codeId', authenticate, requireBusinessOwner, async (req, res) => {
+  const { discount_type, discount, valid_from, valid_to, usage_limit } = req.body;
+  if (discount_type && !VALID_DISCOUNT_TYPES.includes(discount_type)) {
+    return res.status(400).json({ error: `discount_type must be one of: ${VALID_DISCOUNT_TYPES.join(', ')}` });
+  }
+
+  const result = await query(
+    `UPDATE promo_codes SET
+       discount_type = COALESCE($1, discount_type),
+       discount = COALESCE($2, discount),
+       valid_from = COALESCE($3, valid_from),
+       valid_to = COALESCE($4, valid_to),
+       usage_limit = COALESCE($5, usage_limit)
+     WHERE id = $6 AND business_id = $7
+     RETURNING id, code, discount_type, discount, valid_from, valid_to, usage_limit, times_used`,
+    [discount_type, discount, valid_from, valid_to, usage_limit, req.params.codeId, req.params.businessId]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Promo code not found for this business.' });
+  }
+  res.json({ promo_code: result.rows[0] });
+});
+
 export default router;
