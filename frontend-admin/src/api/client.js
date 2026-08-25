@@ -74,3 +74,74 @@ export async function reinstateBusiness(id, reason) {
   });
   return handleResponse(res);
 }
+
+// --- Business directory (routes/admin.js) ---
+
+export async function getBusinessDirectory({ search, status, page = 1 } = {}) {
+  const params = new URLSearchParams({ page });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  const res = await fetch(`${API_BASE}/api/admin/businesses?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// --- Business/listing/staff detail preview (routes/business.js, businessSettings.js) ---
+// Admin-readable versions of the business's own management endpoints —
+// same routes the business dashboard uses, now also allowed for admin
+// tokens (read-only; approval/suspension still only happen via /api/admin/*).
+
+export async function getBusinessDetail(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/settings`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getBusinessListingsDetail(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/listings`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getBusinessStaff(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/staff`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// --- Payout run (routes/payouts.js) ---
+
+export async function runPayouts() {
+  const res = await fetch(`${API_BASE}/api/payouts/run`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// --- Support tickets (routes/support.js, routes/admin.js) ---
+
+export async function getSupportTickets({ status, page = 1 } = {}) {
+  const params = new URLSearchParams({ page });
+  if (status) params.set('status', status);
+  const res = await fetch(`${API_BASE}/api/admin/support-tickets?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getSupportTicket(id) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function replyToSupportTicket(id, text) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text }),
+  });
+  return handleResponse(res);
+}
+
+export async function closeSupportTicket(id) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}/close`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}

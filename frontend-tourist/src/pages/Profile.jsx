@@ -95,6 +95,14 @@ export default function Profile() {
         My trips
       </Link>
 
+      <Link
+        to="/support"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}
+      >
+        Contact support
+      </Link>
+
       <button
         className="btn-primary"
         style={{ width: '100%', marginBottom: 24 }}

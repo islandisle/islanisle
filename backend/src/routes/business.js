@@ -14,13 +14,30 @@ const router = Router();
 const VALID_BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
 // Verifies the logged-in user owns the business_id in the route — used on
-// every listing-management route below.
+// every listing-management (write) route below.
 async function requireBusinessOwner(req, res, next) {
   const { businessId } = req.params;
   const result = await query('SELECT owner_user_id FROM businesses WHERE id = $1', [businessId]);
   if (!result.rows.length) {
     return res.status(404).json({ error: 'Business not found.' });
   }
+  if (result.rows[0].owner_user_id !== req.user.id) {
+    return res.status(403).json({ error: 'You do not manage this business.' });
+  }
+  next();
+}
+
+// Same as requireBusinessOwner, but also lets an admin token read through
+// (never used on a write route) — Section 10.2's approval queue needs to
+// show a pending listing's full business context before approve/reject,
+// which previously 403'd for every admin token.
+async function requireBusinessOwnerOrAdmin(req, res, next) {
+  const { businessId } = req.params;
+  const result = await query('SELECT owner_user_id FROM businesses WHERE id = $1', [businessId]);
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Business not found.' });
+  }
+  if (req.user.role === 'admin') return next();
   if (result.rows[0].owner_user_id !== req.user.id) {
     return res.status(403).json({ error: 'You do not manage this business.' });
   }
@@ -106,7 +123,7 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
  * GET /api/business/:businessId/listings
  * Business's own listing management view.
  */
-router.get('/:businessId/listings', authenticate, requireBusinessOwner, async (req, res) => {
+router.get('/:businessId/listings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const { businessId } = req.params;
   const result = await query(
     `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, created_at

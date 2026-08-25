@@ -37,6 +37,87 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/businesses?search=&status=&page=&limit=
+ * Directory view — previously the only way to moderate a business was to
+ * already know its id (see frontend-admin's old manual-entry box). search
+ * matches on name; status matches either approval_status or account_status
+ * (their value sets don't overlap, so one param covers both).
+ */
+router.get('/businesses', authenticate, requireRole('admin'), async (req, res) => {
+  const { search, status } = req.query;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+  if (search) {
+    params.push(`%${search}%`);
+    conditions.push(`b.name ILIKE $${params.length}`);
+  }
+  if (status) {
+    params.push(status);
+    conditions.push(`(b.approval_status::text = $${params.length} OR b.account_status::text = $${params.length})`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [rowsResult, countResult] = await Promise.all([
+    query(
+      `SELECT b.id, b.name, b.type, b.approval_status, b.account_status, b.location_island,
+              b.created_at, u.name AS owner_name
+       FROM businesses b
+       JOIN users u ON u.id = b.owner_user_id
+       ${where}
+       ORDER BY b.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
+    ),
+    query(`SELECT COUNT(*)::int AS total FROM businesses b ${where}`, params),
+  ]);
+
+  res.json({ businesses: rowsResult.rows, total: countResult.rows[0].total, page, limit });
+});
+
+/**
+ * GET /api/admin/support-tickets?status=&page=&limit=
+ * Admin-side queue. Individual ticket detail/reply/close are shared with
+ * the submitter's own routes (see routes/support.js) since an admin
+ * responding or closing is the same action a ticket owner can take.
+ */
+router.get('/support-tickets', authenticate, requireRole('admin'), async (req, res) => {
+  const { status } = req.query;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+  if (status) {
+    params.push(status);
+    conditions.push(`t.status = $${params.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [rowsResult, countResult] = await Promise.all([
+    query(
+      `SELECT t.id, t.subject, t.status, t.created_at, t.assigned_admin_id,
+              COALESCE(u.name, biz.name) AS submitted_by,
+              (t.business_id IS NOT NULL) AS is_business
+       FROM support_tickets t
+       LEFT JOIN users u ON u.id = t.user_id
+       LEFT JOIN businesses biz ON biz.id = t.business_id
+       ${where}
+       ORDER BY t.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
+    ),
+    query(`SELECT COUNT(*)::int AS total FROM support_tickets t ${where}`, params),
+  ]);
+
+  res.json({ tickets: rowsResult.rows, total: countResult.rows[0].total, page, limit });
+});
+
+/**
  * GET /api/admin/approval-queue
  * Section 10.2: one queue for pending businesses, listings, and (later) agents.
  */
@@ -45,7 +126,7 @@ router.get('/approval-queue', authenticate, requireRole('admin'), async (req, re
     `SELECT id, name, type, 'business' AS item_type, created_at FROM businesses WHERE approval_status = 'pending'`
   );
   const listings = await query(
-    `SELECT l.id, l.title AS name, b.type, 'listing' AS item_type, l.created_at
+    `SELECT l.id, l.title AS name, b.type, 'listing' AS item_type, l.created_at, b.id AS business_id
      FROM listings l JOIN businesses b ON b.id = l.business_id WHERE l.approval_status = 'pending'`
   );
   const localVerifications = await query(

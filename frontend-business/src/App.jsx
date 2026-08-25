@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Payouts from './pages/Payouts';
 import Notifications from './pages/Notifications';
+import Support from './pages/Support';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/payouts" element={<Payouts />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

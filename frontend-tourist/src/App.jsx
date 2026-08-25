@@ -8,6 +8,7 @@ import MyActivity from './pages/MyActivity';
 import Transfers from './pages/Transfers';
 import Trips from './pages/Trips';
 import Notifications from './pages/Notifications';
+import Support from './pages/Support';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/transfers" element={<Transfers />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/support" element={<Support />} />
       </Routes>
     </BrowserRouter>
   );

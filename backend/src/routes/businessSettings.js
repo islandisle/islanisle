@@ -13,11 +13,22 @@ async function requireBusinessOwner(req, res, next) {
   next();
 }
 
+// Same as requireBusinessOwner, but also lets an admin token read through —
+// see business.js's copy of this for the full rationale. Only used on GET
+// routes (settings, staff), never on the PATCH/POST routes below.
+async function requireBusinessOwnerOrAdmin(req, res, next) {
+  const result = await query('SELECT owner_user_id FROM businesses WHERE id = $1', [req.params.businessId]);
+  if (!result.rows.length) return res.status(404).json({ error: 'Business not found.' });
+  if (req.user.role === 'admin') return next();
+  if (result.rows[0].owner_user_id !== req.user.id) return res.status(403).json({ error: 'You do not manage this business.' });
+  next();
+}
+
 /**
  * GET /api/business/:businessId/settings
  * Profile, pricing defaults, payout details, notification prefs, subscription status.
  */
-router.get('/:businessId/settings', authenticate, requireBusinessOwner, async (req, res) => {
+router.get('/:businessId/settings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const result = await query(
     `SELECT id, name, type, location_island, contact_info, subscription_tier, subscription_expiry,
             payout_bank_details, refund_fee_business_percent, notification_preferences, account_status
@@ -78,6 +89,20 @@ router.post('/:businessId/staff', authenticate, requireBusinessOwner, async (req
 router.post('/:businessId/staff/:staffId/revoke', authenticate, requireBusinessOwner, async (req, res) => {
   await query(`UPDATE staff_accounts SET status = 'revoked' WHERE id = $1 AND business_id = $2`, [req.params.staffId, req.params.businessId]);
   res.json({ status: 'revoked' });
+});
+
+/**
+ * GET /api/business/:businessId/staff
+ * Owner's own staff list, or admin (read-only) from the admin panel —
+ * credentials (password_hash) are never returned.
+ */
+router.get('/:businessId/staff', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
+  const result = await query(
+    `SELECT id, name, login_email, permission_level, status, created_at
+     FROM staff_accounts WHERE business_id = $1 ORDER BY created_at DESC`,
+    [req.params.businessId]
+  );
+  res.json({ staff: result.rows });
 });
 
 export default router;

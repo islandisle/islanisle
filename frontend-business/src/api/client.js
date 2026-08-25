@@ -100,6 +100,36 @@ export async function getBusinessReviews(businessId, page = 1) {
   return handleResponse(res);
 }
 
+// --- Support (routes/support.js) ---
+
+export async function openSupportTicket(businessId, { subject, message }) {
+  const res = await fetch(`${API_BASE}/api/support/tickets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ business_id: businessId, subject, message }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMySupportTickets(businessId) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/mine?business_id=${businessId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getSupportTicket(id) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function replyToSupportTicket(id, text) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text }),
+  });
+  return handleResponse(res);
+}
+
 // --- Notifications (routes/notifications.js) ---
 
 export async function getNotifications(businessId, page = 1) {

@@ -167,6 +167,36 @@ export async function markAllNotificationsRead() {
   return handleResponse(res);
 }
 
+// --- Support (routes/support.js) ---
+
+export async function openSupportTicket({ subject, message }) {
+  const res = await fetch(`${API_BASE}/api/support/tickets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ subject, message }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMySupportTickets() {
+  const res = await fetch(`${API_BASE}/api/support/tickets/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getSupportTicket(id) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function replyToSupportTicket(id, text) {
+  const res = await fetch(`${API_BASE}/api/support/tickets/${id}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text }),
+  });
+  return handleResponse(res);
+}
+
 // --- SOS (routes/sos.js) ---
 
 export async function sendSOS({ latitude, longitude, island }) {

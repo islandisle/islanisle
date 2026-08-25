@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getSettings, updateSettings } from '../api/client';
 
 export default function Settings() {
@@ -131,6 +131,14 @@ export default function Settings() {
           {saving ? 'Saving…' : 'Save settings'}
         </button>
       </form>
+
+      <Link
+        to="/support"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginTop: 16, textDecoration: 'none' }}
+      >
+        Contact support
+      </Link>
     </div>
   );
 }
