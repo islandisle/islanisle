@@ -101,6 +101,11 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
     // Business.trust_tier = 'new'". A new, unverified business can't opt
     // out of it (it's their only payment path — see bookings.js/orders.js's
     // checkout enforcement); a graduated business chooses for itself.
+    // This trust-tier gate is independent of, and left in place under,
+    // config/payments.js's platform-wide ONLINE_PAYMENTS_ENABLED — every
+    // business is effectively Pay-at-Visit-only right now regardless of
+    // what's set here, since 'online' is rejected at checkout no matter
+    // what this flag says.
     const trustResult = await query('SELECT trust_tier FROM businesses WHERE id = $1', [businessId]);
     const isNewBusiness = trustResult.rows[0]?.trust_tier === 'new';
     const effectivePayAtVisitEnabled = isNewBusiness ? true : Boolean(pay_at_visit_enabled);

@@ -14,11 +14,19 @@
 // forced true for its listings — see business.js's listing-creation
 // route), and can't use 'online' until it graduates to 'graduated'. A
 // graduated business can use either, but pay_at_visit still requires the
-// listing to have opted in. The 1% commission on a pay_at_visit booking is
-// accrued (not collected directly — no payment ever flows through the
-// platform for these) when the booking is marked complete, and actually
-// collected in the monthly payout run — see services/payAtVisit.js and
-// services/payoutRun.js.
+// listing to have opted in.
+//
+// The 'online' path itself is currently switched off platform-wide — see
+// config/payments.js's ONLINE_PAYMENTS_ENABLED — since Stripe isn't
+// available as a merchant option in the Maldives yet. Every request is
+// forced onto pay_at_visit regardless of trust tier while that flag is
+// false; the Stripe/PaymentIntent code below stays in place, untouched,
+// for when a supported processor is integrated.
+//
+// The 1% commission on a pay_at_visit booking is accrued (not collected
+// directly — no payment ever flows through the platform for these) when
+// the booking is marked complete, and actually collected in the monthly
+// payout run — see services/payAtVisit.js and services/payoutRun.js.
 //
 // NOT yet implemented (flagged honestly rather than faked):
 //   - Real timed slot-holds for the 'online' path. This does a capacity
@@ -36,6 +44,7 @@ import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
+import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
@@ -116,13 +125,25 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // Pay at Visit enforcement (Section 9 / [PHASE 2]) — see this file's
     // top comment for the trust-tier rule.
     const isNewBusiness = listing.trust_tier === 'new';
-    if (isPayAtVisit && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
-      return res.status(400).json({ error: 'Pay at Visit is not available for this listing.' });
+    if (!isPayAtVisit) {
+      // Online payment is off platform-wide right now (Stripe isn't
+      // available as a merchant option in the Maldives yet) — reject this
+      // before the trust-tier check even runs, so it can't be bypassed by
+      // pointing at a graduated business. See config/payments.js.
+      if (!ONLINE_PAYMENTS_ENABLED) {
+        return res.status(400).json({ error: ONLINE_PAYMENTS_DISABLED_MESSAGE });
+      }
+      if (isNewBusiness) {
+        return res.status(400).json({
+          error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
+        });
+      }
     }
-    if (!isPayAtVisit && isNewBusiness) {
-      return res.status(400).json({
-        error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
-      });
+    // Only enforced while online payment is actually available — with it
+    // globally disabled, Pay at Visit must never be blocked for anyone,
+    // regardless of trust tier or whether the listing itself opted in.
+    if (isPayAtVisit && ONLINE_PAYMENTS_ENABLED && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
+      return res.status(400).json({ error: 'Pay at Visit is not available for this listing.' });
     }
 
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.

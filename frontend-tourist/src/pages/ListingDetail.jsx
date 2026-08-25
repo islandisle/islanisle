@@ -209,6 +209,8 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         style={{ marginBottom: 16, textTransform: 'uppercase' }}
       />
 
+      <PaymentMethodOptions />
+
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleBook} disabled={booking}>
         {booking ? 'Booking…' : 'Book now'}
@@ -437,6 +439,8 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         style={{ marginBottom: 16, textTransform: 'uppercase' }}
       />
 
+      <PaymentMethodOptions />
+
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={ordering}>
         {ordering ? 'Placing order…' : 'Buy now'}
@@ -483,6 +487,57 @@ function PendingPayment({ result, onDone }) {
         </p>
         <button className="btn-primary" onClick={onDone} style={{ width: '100%' }}>
           Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Online payment (Stripe) is switched off platform-wide — see backend's
+// config/payments.js's ONLINE_PAYMENTS_ENABLED — since Stripe isn't
+// available as a merchant option in the Maldives yet. Pay at Visit is the
+// only usable method; this shows the online option as visibly present but
+// disabled rather than hiding it, so it's clear it's coming rather than
+// missing. Shared by both SlotCheckout and ShopCheckout.
+function PaymentMethodOptions() {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p id="payment-method-label" style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        Payment method
+      </p>
+      <div role="group" aria-labelledby="payment-method-label" style={{ display: 'flex', gap: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            padding: '10px 12px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--lagoon)',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 500,
+            textAlign: 'center',
+          }}
+        >
+          Pay at Visit
+        </div>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title="Stripe isn't available as a merchant option in the Maldives yet"
+          style={{
+            flex: 1,
+            padding: '10px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text-muted)',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'not-allowed',
+          }}
+        >
+          Online payment — coming soon
         </button>
       </div>
     </div>

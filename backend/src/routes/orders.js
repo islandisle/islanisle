@@ -5,7 +5,8 @@
 // bookings.js's dual-pricing/commission/Stripe pattern, but decrements
 // stock_count instead of checking a time-slot capacity, and creates
 // order_items (one row per distinct listing in the order) instead of a
-// single booking row.
+// single booking row. Same platform-wide 'online' payment disable as
+// bookings.js — see config/payments.js's ONLINE_PAYMENTS_ENABLED.
 //
 // Cross-island speedboat delivery matching (Section 4.5, [PHASE 2]): when
 // delivery_island differs from the shop's own location_island, the
@@ -31,6 +32,7 @@ import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
+import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
@@ -115,10 +117,19 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // business can use either, but pay_at_visit still requires each
     // listing to have opted in.
     const isNewBusiness = business.trust_tier === 'new';
-    if (!isPayAtVisit && isNewBusiness) {
-      return res.status(400).json({
-        error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
-      });
+    if (!isPayAtVisit) {
+      // Online payment is off platform-wide right now (Stripe isn't
+      // available as a merchant option in the Maldives yet) — reject this
+      // before the trust-tier check even runs, so it can't be bypassed by
+      // pointing at a graduated business. See config/payments.js.
+      if (!ONLINE_PAYMENTS_ENABLED) {
+        return res.status(400).json({ error: ONLINE_PAYMENTS_DISABLED_MESSAGE });
+      }
+      if (isNewBusiness) {
+        return res.status(400).json({
+          error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
+        });
+      }
     }
 
     // Cross-island delivery matching — see this file's top comment.
@@ -155,7 +166,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       if (listing.approval_status !== 'approved') {
         return res.status(400).json({ error: `Item ${item.listing_id} is not currently available.` });
       }
-      if (isPayAtVisit && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
+      // Only enforced while online payment is actually available — with it
+      // globally disabled, Pay at Visit must never be blocked for anyone,
+      // regardless of trust tier or whether the listing itself opted in.
+      if (isPayAtVisit && ONLINE_PAYMENTS_ENABLED && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
         return res.status(400).json({ error: `Pay at Visit is not available for one of the items in your order.` });
       }
       if (listing.stock_count != null && listing.stock_count < quantity) {
