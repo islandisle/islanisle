@@ -250,7 +250,12 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       return res.status(err.statusCode).json({ error: err.message });
     }
     console.error('Order creation error:', err);
-    res.status(500).json({ error: 'Could not create order.' });
+    // See bookings.js's identical catch block for why this is NODE_ENV-gated.
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'production'
+        ? 'Could not create order.'
+        : `Could not create order: ${err.message}`,
+    });
   } finally {
     client.release();
   }

@@ -245,7 +245,17 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       return res.status(err.statusCode).json({ error: err.message });
     }
     console.error('Booking creation error:', err);
-    res.status(500).json({ error: 'Could not create booking.' });
+    // Same NODE_ENV gate as config/db.js's query logging — a generic
+    // "Could not create booking." for every unexpected failure (a schema
+    // drift, a bad env var, a genuine bug) was indistinguishable from an
+    // expected 4xx, which made outages like a stale schema (columns this
+    // route expects but a database created before they existed doesn't
+    // have) look identical to "something's wrong with your request."
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'production'
+        ? 'Could not create booking.'
+        : `Could not create booking: ${err.message}`,
+    });
   } finally {
     client.release();
   }
