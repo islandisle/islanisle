@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { joinGroup } from '../api/client';
+import { useModalA11y } from '../useModalA11y';
 
 // Script Section 2.2: "Tapping it opens a popup with: top half — a live
 // camera scan view; bottom half — their own personal QR code displayed."
@@ -26,6 +27,7 @@ function loadJsQR() {
 }
 
 export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
+  const modalRef = useModalA11y(onClose);
   const [manualCode, setManualCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
@@ -133,7 +135,11 @@ export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
       onClick={onClose}
     >
       <div
+        ref={modalRef}
         className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Scan or show a QR code"
         style={{ width: '100%', maxWidth: 420, borderRadius: '20px 20px 0 0', padding: 20 }}
         onClick={(e) => e.stopPropagation()}
       >

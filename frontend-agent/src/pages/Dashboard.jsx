@@ -4,6 +4,7 @@ import {
   getConnectedBusinesses, connectToBusiness, checkAvailability, createAgentBooking,
   getMyAgentBookings, getMyCommissions, getThread, sendMessage,
 } from '../api/client';
+import { useModalA11y } from '../useModalA11y';
 
 // MVP agent portal — script Section 12's Agent account type. Scoped down
 // per explicit direction: connect to businesses, check availability, book
@@ -309,6 +310,7 @@ function CommissionsSection({ commissions }) {
 // Reuses the generic messages API (backend/src/routes/messages.js) shared
 // with tourist<->business chat — this is just a UI over the same table.
 function ChatPanel({ with: target, onClose }) {
+  const modalRef = useModalA11y(onClose);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -344,10 +346,18 @@ function ChatPanel({ with: target, onClose }) {
       }}
       onClick={onClose}
     >
-      <div className="card" style={{ width: '100%', maxWidth: 480, borderRadius: '20px 20px 0 0', padding: 16, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={modalRef}
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Chat with ${target.label}`}
+        style={{ width: '100%', maxWidth: 480, borderRadius: '20px 20px 0 0', padding: 16, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Chat with {target.label}</p>
-          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onClose}>Close</button>
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onClose} aria-label="Close chat">Close</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', marginBottom: 10 }}>

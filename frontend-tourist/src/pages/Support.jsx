@@ -89,20 +89,22 @@ function NewTicketForm({ onCreated }) {
 
   return (
     <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="support-subject" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Subject
       </label>
       <input
+        id="support-subject"
         className="input-field"
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
         style={{ marginBottom: 10 }}
       />
 
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="support-message" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Message
       </label>
       <textarea
+        id="support-message"
         className="input-field"
         rows={4}
         value={message}

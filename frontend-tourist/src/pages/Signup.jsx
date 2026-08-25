@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signup } from '../api/client';
 
@@ -267,12 +267,14 @@ function StepNav({ onBack, onNext, nextDisabled }) {
 }
 
 function Field({ label, value, onChange, type = 'text' }) {
+  const id = useId();
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor={id} style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         {label}
       </label>
       <input
+        id={id}
         className="input-field"
         type={type}
         value={value}

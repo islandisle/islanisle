@@ -76,10 +76,11 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} style={{ marginTop: 20 }}>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="login-email" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Email
           </label>
           <input
+            id="login-email"
             className="input-field"
             type="email"
             value={contactEmail}
@@ -87,10 +88,11 @@ export default function Login() {
           />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="login-password" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Password
           </label>
           <input
+            id="login-password"
             className="input-field"
             type="password"
             value={password}

@@ -37,22 +37,22 @@ export default function Signup() {
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="signup-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Name
           </label>
-          <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="signup-name" className="input-field" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="signup-email" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Email
           </label>
-          <input className="input-field" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+          <input id="signup-email" className="input-field" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="signup-password" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Password
           </label>
-          <input className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input id="signup-password" className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         {error && <p className="error-text">{error}</p>}
         {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}

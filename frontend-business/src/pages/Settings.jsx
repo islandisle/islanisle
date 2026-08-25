@@ -74,27 +74,29 @@ export default function Settings() {
       </h1>
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="settings-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Business name
         </label>
         <input
+          id="settings-name"
           className="input-field"
           value={name}
           onChange={(e) => setName(e.target.value)}
           style={{ marginBottom: 14 }}
         />
 
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="settings-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Island
         </label>
         <input
+          id="settings-island"
           className="input-field"
           value={locationIsland}
           onChange={(e) => setLocationIsland(e.target.value)}
           style={{ marginBottom: 14 }}
         />
 
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="settings-refund-fee" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Refund fee — your share (%)
         </label>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
@@ -102,6 +104,7 @@ export default function Settings() {
           your side rather than the platform's — on top of the platform's own fixed 5% fee.
         </p>
         <input
+          id="settings-refund-fee"
           className="input-field"
           type="number"
           min="0"
@@ -114,8 +117,9 @@ export default function Settings() {
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 14px' }} />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 14 }}>
+        <label htmlFor="settings-notify-booking" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 14 }}>
           <input
+            id="settings-notify-booking"
             type="checkbox"
             checked={Boolean(notificationPreferences.new_booking)}
             onChange={(e) =>
@@ -284,20 +288,22 @@ function NewPromoCodeForm({ businessId, onCreated }) {
           onChange={(e) => setDiscount(e.target.value)}
         />
       </div>
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="promo-expires" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Expires
       </label>
       <input
+        id="promo-expires"
         className="input-field"
         type="datetime-local"
         value={validTo}
         onChange={(e) => setValidTo(e.target.value)}
         style={{ marginBottom: 8 }}
       />
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="promo-usage-limit" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Usage limit (optional)
       </label>
       <input
+        id="promo-usage-limit"
         className="input-field"
         type="number"
         min="1"
