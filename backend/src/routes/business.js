@@ -13,6 +13,12 @@ const router = Router();
 
 const VALID_BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
+// Section 2.3/4.9: "Free tier: 1 listing. Pro tier ($ subscription, 30-day
+// renewal): up to 10 listings." businesses.subscription_tier already
+// existed but nothing ever checked it against how many listings a business
+// already has.
+const LISTING_LIMIT_BY_TIER = { free: 1, pro: 10 };
+
 // Verifies the logged-in user owns the business_id in the route — used on
 // every listing-management (write) route below.
 async function requireBusinessOwner(req, res, next) {
@@ -106,9 +112,23 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
     // business is effectively Pay-at-Visit-only right now regardless of
     // what's set here, since 'online' is rejected at checkout no matter
     // what this flag says.
-    const trustResult = await query('SELECT trust_tier FROM businesses WHERE id = $1', [businessId]);
+    const trustResult = await query('SELECT trust_tier, subscription_tier FROM businesses WHERE id = $1', [businessId]);
     const isNewBusiness = trustResult.rows[0]?.trust_tier === 'new';
     const effectivePayAtVisitEnabled = isNewBusiness ? true : Boolean(pay_at_visit_enabled);
+
+    // Free/Pro listing cap (Section 2.3/4.9) — checked here rather than at
+    // signup, since it's the actual creation of listing N+1 that should be
+    // blocked, not the business existing.
+    const subscriptionTier = trustResult.rows[0]?.subscription_tier === 'pro' ? 'pro' : 'free';
+    const listingLimit = LISTING_LIMIT_BY_TIER[subscriptionTier];
+    const listingCountResult = await query('SELECT COUNT(*)::int AS count FROM listings WHERE business_id = $1', [businessId]);
+    if (listingCountResult.rows[0].count >= listingLimit) {
+      return res.status(403).json({
+        error: subscriptionTier === 'pro'
+          ? `Your Pro plan allows up to ${listingLimit} listings — remove one to add another.`
+          : `Free tier allows 1 listing — upgrade to Pro for up to 10.`,
+      });
+    }
 
     const result = await query(
       `INSERT INTO listings (

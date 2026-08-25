@@ -5,7 +5,7 @@ import {
   getBusinessBookings, getBusinessOrders, markOrderStatus,
   getArrivals, checkInBooking, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
-  fileDispute,
+  fileDispute, approveReservation, rejectReservation,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 
@@ -94,7 +94,7 @@ export default function Dashboard() {
 
       {business.type === 'guesthouse' && <CheckInSection businessId={business.id} />}
 
-      <IncomingActivity businessId={business.id} />
+      <IncomingActivity businessId={business.id} businessType={business.type} />
 
       {business.type === 'shop' && <ReturnsSection businessId={business.id} />}
 
@@ -237,6 +237,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [freeDelivery, setFreeDelivery] = useState(false);
   const [accessibilityFeatures, setAccessibilityFeatures] = useState([]);
+  const [payAtVisitEnabled, setPayAtVisitEnabled] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -264,6 +265,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     setDeliveryAvailable(false);
     setFreeDelivery(false);
     setAccessibilityFeatures([]);
+    setPayAtVisitEnabled(false);
     setOpen(false);
   }
 
@@ -294,6 +296,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         local_price: Number(localPrice),
         type_specific_fields: processedTypeFields,
         accessibility_features: accessibilityFeatures,
+        pay_at_visit_enabled: payAtVisitEnabled,
       };
 
       if (businessType === 'shop') {
@@ -403,6 +406,20 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         ))}
       </div>
 
+      <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 12px' }} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4 }}>
+        <input
+          type="checkbox"
+          checked={payAtVisitEnabled}
+          onChange={(e) => setPayAtVisitEnabled(e.target.checked)}
+        />
+        Accept Pay at Visit for this listing
+      </label>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Lets a guest reserve without paying online, settling with you in person instead. Forced on
+        automatically while your account is still building trust, regardless of this setting.
+      </p>
+
       {businessType === 'shop' && (
         <>
           <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 12px' }} />
@@ -453,7 +470,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
 // Booking ID you'd have to already know from somewhere else" stand-in.
 // Pulls from the new GET /api/bookings/business/:id and
 // GET /api/orders/business/:id endpoints (owner-only, built alongside this).
-function IncomingActivity({ businessId }) {
+function IncomingActivity({ businessId, businessType }) {
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
@@ -497,37 +514,88 @@ function IncomingActivity({ businessId }) {
     }
   }
 
+  async function handleApproveReservation(id) {
+    try {
+      await approveReservation(id);
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleRejectReservation(id) {
+    const reason = window.prompt('Reason for declining (optional):') || '';
+    try {
+      await rejectReservation(id, reason);
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const pendingApproval = bookings.filter((b) => b.status === 'pending_approval');
   const openBookings = bookings.filter((b) => b.status === 'confirmed');
   const openOrders = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
 
   return (
     <div style={{ marginTop: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+      {pendingApproval.length > 0 && (
+        <>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+            Reservation requests ({pendingApproval.length})
+          </p>
+          {pendingApproval.map((b) => (
+            <div key={b.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+              <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+                {b.title} — {b.customer_name}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+                {new Date(b.slot_start).toLocaleString()} · ${b.price_charged}
+                {b.party_size > 1 && ` · Party of ${b.party_size}`}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleRejectReservation(b.id)}>
+                  Decline
+                </button>
+                <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleApproveReservation(b.id)}>
+                  Accept
+                </button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
         Incoming bookings
       </p>
       {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
       {!loading && openBookings.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Nothing pending right now.</p>
       )}
-      {openBookings.map((b) => (
-        <div key={b.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
-          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
-            {b.title} — {b.customer_name}
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-            {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
-            {b.party_size > 1 && ` · Party of ${b.party_size}`}
-          </p>
-          <button
-            className="btn-primary"
-            style={{ padding: '4px 10px', fontSize: 12 }}
-            onClick={() => handleMarkBookingFulfilled(b.id)}
-          >
-            Mark fulfilled
-          </button>
-          <ReportProblem businessId={businessId} bookingId={b.id} />
-        </div>
-      ))}
+      {businessType === 'speedboat' ? (
+        <DepartureManifest bookings={openBookings} businessId={businessId} onMarkFulfilled={handleMarkBookingFulfilled} />
+      ) : (
+        openBookings.map((b) => (
+          <div key={b.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+              {b.title} — {b.customer_name}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+              {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
+              {b.party_size > 1 && ` · Party of ${b.party_size}`}
+            </p>
+            <button
+              className="btn-primary"
+              style={{ padding: '4px 10px', fontSize: 12 }}
+              onClick={() => handleMarkBookingFulfilled(b.id)}
+            >
+              Mark fulfilled
+            </button>
+            <ReportProblem businessId={businessId} bookingId={b.id} />
+          </div>
+        ))
+      )}
 
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
         Incoming orders
@@ -541,6 +609,46 @@ function IncomingActivity({ businessId }) {
 
       {error && <p className="error-text">{error}</p>}
     </div>
+  );
+}
+
+// Section 4.4's "manage manifest per departure" — groups a speedboat's
+// confirmed bookings by slot_start (one group per departure) instead of the
+// flat list every other business type uses, so an operator can see who's on
+// which specific boat rather than scanning the whole day's list.
+function DepartureManifest({ bookings, businessId, onMarkFulfilled }) {
+  const byDeparture = {};
+  for (const b of bookings) {
+    (byDeparture[b.slot_start] ??= []).push(b);
+  }
+  const departures = Object.keys(byDeparture).sort();
+
+  if (departures.length === 0) return null;
+
+  return (
+    <>
+      {departures.map((slot) => {
+        const passengers = byDeparture[slot];
+        const totalPax = passengers.reduce((sum, p) => sum + (p.party_size || 1), 0);
+        return (
+          <div key={slot} className="card" style={{ padding: 12, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 8px' }}>
+              {new Date(slot).toLocaleString()} · {totalPax} passenger{totalPax === 1 ? '' : 's'}
+            </p>
+            {passengers.map((p) => (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {p.customer_name}{p.party_size > 1 && ` (+${p.party_size - 1})`} · ${p.price_charged}
+                </span>
+                <button className="btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => onMarkFulfilled(p.id)}>
+                  Boarded
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </>
   );
 }
 

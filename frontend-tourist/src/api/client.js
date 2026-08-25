@@ -105,6 +105,14 @@ export async function getListingDetail(id) {
   return handleResponse(res);
 }
 
+// Section 8.4: upcoming/active closures for the listing's business — shown
+// as a banner on ListingDetail.jsx ("closed with the stated reason rather
+// than being hidden").
+export async function getBusinessClosures(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/closures`);
+  return handleResponse(res);
+}
+
 export async function getArrivalTransfers(destination) {
   const res = await fetch(`${API_BASE}/api/islands/arrivals?destination=${encodeURIComponent(destination)}`);
   return handleResponse(res);

@@ -188,6 +188,17 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for booking_status.pending_approval (restaurant accept/reject)...');
+  const pendingApprovalResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_approval'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'booking_status')`
+  );
+  if (!pendingApprovalResult.rows.length) {
+    console.log("Adding 'pending_approval' to booking_status...");
+    await pool.query(`ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'pending_approval'`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

@@ -149,6 +149,18 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       return res.status(400).json({ error: 'This listing is not currently bookable.' });
     }
 
+    // Business closures (Section 8.4): a listing "stays visible but is shown
+    // as closed with the stated reason rather than being hidden" — the
+    // frontend already surfaces this before checkout, this is the
+    // defensive backend check that actually blocks it.
+    const closureResult = await query(
+      `SELECT reason FROM closures WHERE business_id = $1 AND $2::date BETWEEN start_date AND end_date`,
+      [listing.business_id, slot_start]
+    );
+    if (closureResult.rows.length) {
+      return res.status(400).json({ error: `This business is closed on that date: ${closureResult.rows[0].reason}` });
+    }
+
     // Pay at Visit enforcement (Section 9 / [PHASE 2]) — see this file's
     // top comment for the trust-tier rule.
     const isNewBusiness = listing.trust_tier === 'new';
@@ -197,7 +209,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const existingCount = await query(
       `SELECT COUNT(*)::int AS count FROM bookings
        WHERE listing_id = $1 AND slot_start = $2
-         AND (status = 'confirmed'
+         AND (status IN ('confirmed', 'pending_approval')
               OR (status = 'pending_payment' AND created_at > now() - make_interval(mins => $3)))`,
       [listing_id, slot_start, PENDING_PAYMENT_TIMEOUT_MINUTES]
     );
@@ -234,6 +246,11 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     }
     const priceCharged = round2(basePrice + touristCommission - promoDiscountAmount);
 
+    // Restaurant manual accept/reject (Section 4.2): "Accept/reject
+    // reservation requests based on real-time availability" — every other
+    // business type still auto-confirms within capacity, same as before.
+    const requiresApproval = isPayAtVisit && listing.business_type === 'restaurant';
+
     const bookingResult = await client.query(
       `INSERT INTO bookings (
          listing_id, user_id, slot_start, slot_end, base_price, payer_type, payment_method,
@@ -246,8 +263,8 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         isPayAtVisit ? 'pay_at_visit' : 'online',
         businessCommission, touristCommissionApplicable, touristCommission, priceCharged,
         promoCodeId, promoDiscountAmount,
-        isPayAtVisit ? 'confirmed' : 'pending_payment',
-        isPayAtVisit ? 'not_applicable' : 'not_applicable',
+        isPayAtVisit ? (requiresApproval ? 'pending_approval' : 'confirmed') : 'pending_payment',
+        'not_applicable',
       ]
     );
     const booking = bookingResult.rows[0];
@@ -262,9 +279,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     }
 
     // pay_at_visit: no Stripe involved at all — the booking is already
-    // confirmed above, so return immediately. Section 6.5's confirmation
-    // notification, normally sent from the webhook once Stripe confirms a
-    // real charge, is sent here instead since there's no webhook to send it.
+    // confirmed (or, for a restaurant, awaiting approval) above, so return
+    // immediately. Section 6.5's confirmation notification, normally sent
+    // from the webhook once Stripe confirms a real charge, is sent here
+    // instead since there's no webhook to send it.
     if (isPayAtVisit) {
       // Digital receipt (Section 6.3) — the Stripe webhook (payments.js) is
       // the only other place an invoice row is ever created, and it only
@@ -273,19 +291,46 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       // currently the platform's ONLY confirmed booking outcome), this is
       // the only place a Pay at Visit invoice can be written. payment_date
       // is left NULL — no payment has actually happened yet, it happens in
-      // person when the business marks this fulfilled.
+      // person when the business marks this fulfilled. Still written even
+      // for a pending_approval reservation — it's a receipt of the request,
+      // same as the script's "booking_date" isn't the same as "payment_date."
       await client.query(
         `INSERT INTO invoices (
            booking_id, business_id, buyer_user_id, service_description, base_price,
            tourist_commission_line, total_charged, payment_method, booking_date, payment_date, status
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now(), NULL, 'confirmed')`,
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now(), NULL, $9)`,
         [
           booking.id, listing.business_id, req.user.id, listing.title,
           basePrice, touristCommission, priceCharged, 'pay_at_visit',
+          requiresApproval ? 'pending_approval' : 'confirmed',
         ]
       );
 
       await client.query('COMMIT');
+
+      if (requiresApproval) {
+        await notify({
+          recipientType: 'user',
+          recipientId: req.user.id,
+          type: 'reservation_requested',
+          title: 'Reservation request sent',
+          body: `Your table request at ${new Date(slot_start).toLocaleString()} is awaiting the restaurant's confirmation.`,
+        });
+        await notify({
+          recipientType: 'business',
+          recipientId: listing.business_id,
+          type: 'new_booking',
+          title: 'New reservation request',
+          body: `A new table reservation request needs your approval.`,
+        });
+        return res.status(201).json({
+          booking,
+          price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
+          capacity_remaining: capacity - existingCount.rows[0].count - 1,
+          message: `Reservation request sent — awaiting the restaurant's confirmation.`,
+        });
+      }
+
       await notify({
         recipientType: 'user',
         recipientId: req.user.id,
@@ -462,6 +507,74 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
     [req.params.businessId]
   );
   res.json({ bookings: result.rows });
+});
+
+/**
+ * PATCH /api/bookings/:id/approve-reservation
+ * PATCH /api/bookings/:id/reject-reservation
+ * Section 4.2: manual accept/reject for a restaurant reservation sitting in
+ * 'pending_approval'. Owner-only, and only meaningful on that status —
+ * everything else (guesthouse/excursion/speedboat) never reaches it.
+ */
+async function requireOwnedPendingApprovalBooking(req, res) {
+  const result = await query(
+    `SELECT b.id, b.user_id, b.status, l.title, biz.id AS business_id, biz.owner_user_id
+     FROM bookings b
+     JOIN listings l ON l.id = b.listing_id
+     JOIN businesses biz ON biz.id = l.business_id
+     WHERE b.id = $1`,
+    [req.params.id]
+  );
+  if (!result.rows.length) {
+    res.status(404).json({ error: 'Booking not found.' });
+    return null;
+  }
+  const booking = result.rows[0];
+  if (booking.owner_user_id !== req.user.id) {
+    res.status(403).json({ error: 'You do not manage this booking.' });
+    return null;
+  }
+  if (booking.status !== 'pending_approval') {
+    res.status(400).json({ error: 'This reservation is not awaiting approval.' });
+    return null;
+  }
+  return booking;
+}
+
+router.patch('/:id/approve-reservation', authenticate, async (req, res) => {
+  const booking = await requireOwnedPendingApprovalBooking(req, res);
+  if (!booking) return;
+
+  await query(`UPDATE bookings SET status = 'confirmed', updated_at = now() WHERE id = $1`, [booking.id]);
+  await notify({
+    recipientType: 'user',
+    recipientId: booking.user_id,
+    type: 'booking_confirmation',
+    title: 'Reservation confirmed',
+    body: `Your table reservation for ${booking.title} has been confirmed.`,
+  });
+  res.json({ status: 'confirmed' });
+});
+
+router.patch('/:id/reject-reservation', authenticate, async (req, res) => {
+  const booking = await requireOwnedPendingApprovalBooking(req, res);
+  if (!booking) return;
+  const { reason } = req.body;
+
+  await query(
+    `UPDATE bookings SET status = 'cancelled', cancellation_status = 'declined_by_business', updated_at = now() WHERE id = $1`,
+    [booking.id]
+  );
+  await notify({
+    recipientType: 'user',
+    recipientId: booking.user_id,
+    type: 'cancellation',
+    title: 'Reservation declined',
+    body: reason
+      ? `Your table reservation for ${booking.title} couldn't be accommodated: ${reason}`
+      : `Your table reservation for ${booking.title} couldn't be accommodated.`,
+  });
+  res.json({ status: 'cancelled' });
 });
 
 /**

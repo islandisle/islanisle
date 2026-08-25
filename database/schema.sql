@@ -18,7 +18,11 @@ CREATE TYPE business_approval_status AS ENUM ('pending', 'approved', 'rejected')
 CREATE TYPE business_trust_tier AS ENUM ('new', 'graduated');
 CREATE TYPE payer_type AS ENUM ('tourist', 'local', 'business');
 CREATE TYPE payment_method AS ENUM ('online', 'pay_at_visit');
-CREATE TYPE booking_status AS ENUM ('pending_payment', 'confirmed', 'cancelled', 'completed');
+-- 'pending_approval': restaurant reservations only (Section 4.2's "accept/
+-- reject reservation requests") — held against capacity the same as
+-- 'confirmed' while awaiting the business's decision, but not yet a firm
+-- booking. Every other business type skips straight to 'confirmed'.
+CREATE TYPE booking_status AS ENUM ('pending_payment', 'pending_approval', 'confirmed', 'cancelled', 'completed');
 CREATE TYPE order_status AS ENUM ('pending_payment', 'confirmed', 'ready', 'out_for_delivery', 'completed', 'cancelled');
 CREATE TYPE escrow_status AS ENUM ('held', 'released', 'refunded', 'not_applicable');
 CREATE TYPE check_in_status AS ENUM ('checked_in', 'pending', 'partially_checked_in');

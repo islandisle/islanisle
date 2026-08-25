@@ -268,3 +268,77 @@ export async function getMyDisputes() {
   const res = await fetch(`${API_BASE}/api/disputes/mine`, { headers: authHeaders() });
   return handleResponse(res);
 }
+
+// --- Restaurant manual accept/reject (routes/bookings.js) ---
+
+export async function approveReservation(bookingId) {
+  const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/approve-reservation`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function rejectReservation(bookingId, reason) {
+  const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/reject-reservation`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+// --- Staff accounts (routes/businessSettings.js) ---
+
+export async function getStaff(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/staff`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function addStaff(businessId, { name, login_email, temp_password, permission_level }) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/staff`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ name, login_email, temp_password, permission_level }),
+  });
+  return handleResponse(res);
+}
+
+export async function revokeStaff(businessId, staffId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/staff/${staffId}/revoke`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// --- Closures (routes/closures.js) ---
+
+export async function getClosures(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/closures`);
+  return handleResponse(res);
+}
+
+export async function addClosure(businessId, { start_date, end_date, reason }) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/closures`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ start_date, end_date, reason }),
+  });
+  return handleResponse(res);
+}
+
+export async function removeClosure(businessId, closureId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/closures/${closureId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// --- Payout itemization (routes/payouts.js) ---
+
+export async function getPayoutItems(payoutId) {
+  const res = await fetch(`${API_BASE}/api/payouts/${payoutId}/items`, { headers: authHeaders() });
+  return handleResponse(res);
+}

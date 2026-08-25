@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup, getBusinessClosures } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 
 function getCurrentUser() {
@@ -72,6 +72,10 @@ export default function ListingDetail() {
         <p style={{ fontSize: 14, color: 'var(--navy)', marginBottom: 20 }}>{listing.description}</p>
       )}
 
+      <ClosureBanner businessId={listing.business_id} />
+
+      {listing.business_type === 'speedboat' && <LuggageInfo listing={listing} />}
+
       {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
@@ -101,6 +105,56 @@ export default function ListingDetail() {
       )}
 
       <Reviews businessId={listing.business_id} />
+    </div>
+  );
+}
+
+// Section 8.4: "the listing stays visible but is shown as closed with the
+// stated reason rather than being hidden." Only shows current/upcoming
+// closures (the backend already filters to end_date >= today).
+function ClosureBanner({ businessId }) {
+  const [closures, setClosures] = useState([]);
+
+  useEffect(() => {
+    getBusinessClosures(businessId).then((d) => setClosures(d.closures || [])).catch(() => {});
+  }, [businessId]);
+
+  if (!closures.length) return null;
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 20, background: 'var(--coral-light)', border: 'none' }}>
+      {closures.map((c) => (
+        <p key={c.id} style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 4px' }}>
+          Closed {new Date(c.start_date).toLocaleDateString()}–{new Date(c.end_date).toLocaleDateString()}: {c.reason}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// Section 4.4's luggage limits: "shown to the tourist at booking time so
+// there are no surprises at boarding." listing.type_specific_fields was
+// already captured at listing creation but never rendered anywhere.
+function LuggageInfo({ listing }) {
+  const fields = listing.type_specific_fields || {};
+  const hasRoute = fields.origin || fields.destination;
+  const hasLuggage = fields.luggage_bags != null || fields.luggage_weight_kg != null;
+  if (!hasRoute && !hasLuggage) return null;
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 20 }}>
+      {hasRoute && (
+        <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 4px' }}>
+          {fields.origin || '—'} → {fields.destination || '—'}
+          {fields.days_running && ` · ${fields.days_running}`}
+        </p>
+      )}
+      {hasLuggage && (
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+          Luggage allowance: {fields.luggage_bags != null ? `${fields.luggage_bags} bag${fields.luggage_bags === 1 ? '' : 's'}` : 'not specified'}
+          {fields.luggage_weight_kg != null && `, up to ${fields.luggage_weight_kg}kg`}
+        </p>
+      )}
     </div>
   );
 }
@@ -590,11 +644,14 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 // exposed here.
 function PendingPayment({ result, onDone }) {
   const isOrder = Boolean(result.order);
+  // Section 4.2: a restaurant reservation lands in 'pending_approval'
+  // rather than 'confirmed' until the business accepts it.
+  const isPendingApproval = result.booking?.status === 'pending_approval';
   return (
     <div style={{ maxWidth: 420, margin: '60px auto', padding: 20, textAlign: 'center' }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          {isOrder ? 'Order confirmed' : 'Booking confirmed'}
+          {isPendingApproval ? 'Reservation requested' : isOrder ? 'Order confirmed' : 'Booking confirmed'}
         </p>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
           {result.message}

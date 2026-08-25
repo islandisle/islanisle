@@ -26,6 +26,7 @@ import returnRoutes from './routes/returns.js';
 import agentRoutes from './routes/agents.js';
 import messageRoutes from './routes/messages.js';
 import webauthnRoutes from './routes/webauthn.js';
+import closureRoutes from './routes/closures.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -49,6 +50,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/business', businessSettingsRoutes);
+app.use('/api/business', closureRoutes);
 app.use('/api/islands', listingRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/orders', orderRoutes);

@@ -49,4 +49,47 @@ router.get('/mine', authenticate, async (req, res) => {
   res.json({ payouts: result.rows });
 });
 
+/**
+ * GET /api/payouts/:id/items
+ * Section 4.8's Payout History requirement: "the specific bookings/orders
+ * that payout aggregates ... so the business can trace every dollar back to
+ * the transaction it came from." payout_line_items existed with nothing
+ * ever reading it back out.
+ */
+router.get('/:id/items', authenticate, async (req, res) => {
+  const bizResult = await query('SELECT id FROM businesses WHERE owner_user_id = $1', [req.user.id]);
+  if (!bizResult.rows.length) {
+    return res.status(404).json({ error: 'No business found for this account.' });
+  }
+  const payoutResult = await query(
+    'SELECT id FROM payouts WHERE id = $1 AND business_id = $2',
+    [req.params.id, bizResult.rows[0].id]
+  );
+  if (!payoutResult.rows.length) {
+    return res.status(404).json({ error: 'Payout not found for this business.' });
+  }
+
+  const bookingsResult = await query(
+    `SELECT b.id, l.title, b.slot_start AS date, b.base_price, b.business_commission
+     FROM payout_line_items pli
+     JOIN bookings b ON b.id = pli.booking_id
+     JOIN listings l ON l.id = b.listing_id
+     WHERE pli.payout_id = $1`,
+    [req.params.id]
+  );
+  const ordersResult = await query(
+    `SELECT o.id, 'Shop order' AS title, o.created_at AS date, o.base_price, o.business_commission
+     FROM payout_line_items pli
+     JOIN orders o ON o.id = pli.order_id
+     WHERE pli.payout_id = $1`,
+    [req.params.id]
+  );
+  res.json({
+    items: [
+      ...bookingsResult.rows.map((r) => ({ ...r, type: 'booking' })),
+      ...ordersResult.rows.map((r) => ({ ...r, type: 'order' })),
+    ],
+  });
+});
+
 export default router;

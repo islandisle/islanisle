@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getSettings, updateSettings, getPromoCodes, createPromoCode, updatePromoCode } from '../api/client';
+import {
+  getSettings, updateSettings, getPromoCodes, createPromoCode, updatePromoCode,
+  getStaff, addStaff, revokeStaff, getClosures, addClosure, removeClosure,
+} from '../api/client';
 import { useTheme } from '../theme';
 
 export default function Settings() {
@@ -138,6 +141,10 @@ export default function Settings() {
       </form>
 
       <PromoCodesSection businessId={business.id} />
+
+      <StaffSection businessId={business.id} />
+
+      <ClosuresSection businessId={business.id} />
 
       <AppearanceSection />
 
@@ -322,6 +329,243 @@ function NewPromoCodeForm({ businessId, onCreated }) {
         disabled={submitting || !code || !discount || !validTo}
       >
         {submitting ? 'Creating…' : 'Create promo code'}
+      </button>
+    </form>
+  );
+}
+
+// Staff accounts (Section 4.8) — backend CRUD (businessSettings.js) already
+// existed with no frontend. Credentials are shown once, right after
+// creation, since the backend never returns a password hash again.
+function StaffSection({ businessId }) {
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function load() {
+    setLoading(true);
+    getStaff(businessId)
+      .then((data) => setStaff(data.staff || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  async function handleRevoke(staffId) {
+    if (!window.confirm('Revoke this staff account? They will no longer be able to log in.')) return;
+    try {
+      await revokeStaff(businessId, staffId);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Staff accounts</p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Close' : '+ Add staff'}
+        </button>
+      </div>
+
+      {open && <NewStaffForm businessId={businessId} onCreated={() => { setOpen(false); load(); }} />}
+
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && staff.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No staff accounts yet.</p>
+      )}
+
+      {staff.map((s) => (
+        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>{s.name}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+              {s.login_email} · {s.permission_level} · {s.status}
+            </p>
+          </div>
+          {s.status === 'active' && (
+            <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }} onClick={() => handleRevoke(s.id)}>
+              Revoke
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NewStaffForm({ businessId, onCreated }) {
+  const [name, setName] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [created, setCreated] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      await addStaff(businessId, { name, login_email: loginEmail, temp_password: tempPassword, permission_level: 'front_desk' });
+      // The credentials only ever exist here — show them once before
+      // handing off to the list, since there's no way to retrieve them again.
+      setCreated({ loginEmail, tempPassword });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (created) {
+    return (
+      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', marginBottom: 10 }}>
+        <p style={{ fontSize: 13, color: 'var(--lagoon)', marginBottom: 8 }}>
+          Staff account created — share these credentials now, they won't be shown again:
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--navy)', margin: '0 0 2px' }}>Email: {created.loginEmail}</p>
+        <p style={{ fontSize: 12, color: 'var(--navy)', margin: '0 0 10px' }}>Password: {created.tempPassword}</p>
+        <button className="btn-primary" style={{ width: '100%' }} onClick={onCreated}>Done</button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', marginBottom: 10 }}>
+      <label htmlFor="staff-name" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Name</label>
+      <input id="staff-name" className="input-field" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: 8 }} />
+
+      <label htmlFor="staff-email" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Login email</label>
+      <input id="staff-email" className="input-field" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} style={{ marginBottom: 8 }} />
+
+      <label htmlFor="staff-password" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Temporary password</label>
+      <input id="staff-password" className="input-field" type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} style={{ marginBottom: 8 }} />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={submitting || !name || !loginEmail || !tempPassword}>
+        {submitting ? 'Creating…' : 'Create staff account'}
+      </button>
+    </form>
+  );
+}
+
+// Business closures (Section 8.4) — closures table existed with no route or
+// UI. A closure doesn't hide the listing, just blocks new bookings across
+// the date range (bookings.js checks this) and shows the reason to tourists
+// (ListingDetail.jsx's ClosureBanner).
+function ClosuresSection({ businessId }) {
+  const [closures, setClosures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function load() {
+    setLoading(true);
+    getClosures(businessId)
+      .then((data) => setClosures(data.closures || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  async function handleRemove(id) {
+    try {
+      await removeClosure(businessId, id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Closures</p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Close' : '+ Add closure'}
+        </button>
+      </div>
+
+      {open && <NewClosureForm businessId={businessId} onCreated={() => { setOpen(false); load(); }} />}
+
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && closures.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No upcoming closures.</p>
+      )}
+
+      {closures.map((c) => (
+        <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+              {new Date(c.start_date).toLocaleDateString()} – {new Date(c.end_date).toLocaleDateString()}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{c.reason}</p>
+          </div>
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleRemove(c.id)}>
+            End early
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NewClosureForm({ businessId, onCreated }) {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      await addClosure(businessId, { start_date: startDate, end_date: endDate, reason });
+      onCreated();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="closure-start" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Start</label>
+          <input id="closure-start" className="input-field" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="closure-end" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>End</label>
+          <input id="closure-end" className="input-field" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+      </div>
+      <label htmlFor="closure-reason" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Reason</label>
+      <input
+        id="closure-reason"
+        className="input-field"
+        placeholder="e.g. Closed for maintenance"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={{ marginBottom: 8 }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={submitting || !startDate || !endDate || !reason}>
+        {submitting ? 'Saving…' : 'Add closure'}
       </button>
     </form>
   );
