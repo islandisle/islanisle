@@ -128,6 +128,26 @@ async function main() {
   if (await repointForeignKey('orders', 'matched_route_id', 'listings')) changed = true;
   if (await repointForeignKey('package_deliveries', 'route_id', 'listings')) changed = true;
 
+  console.log('Checking for the webauthn_credentials table (biometric login)...');
+  const webauthnTableResult = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = 'webauthn_credentials'`);
+  if (!webauthnTableResult.rows.length) {
+    console.log('Creating webauthn_credentials...');
+    await pool.query(`
+      CREATE TABLE webauthn_credentials (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        credential_id        TEXT NOT NULL UNIQUE,
+        public_key           TEXT NOT NULL,
+        counter              BIGINT NOT NULL DEFAULT 0,
+        device_label          TEXT,
+        created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_used_at            TIMESTAMPTZ
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_webauthn_credentials_user ON webauthn_credentials(user_id)`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

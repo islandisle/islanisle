@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { login } from '../api/client';
+import { startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+import { login, getWebauthnLoginOptions, submitWebauthnLogin } from '../api/client';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -9,9 +10,21 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [webauthnSupported, setWebauthnSupported] = useState(false);
 
   const justSignedUp = location.state?.justSignedUp;
   const signupMessage = location.state?.message;
+
+  useEffect(() => {
+    setWebauthnSupported(browserSupportsWebAuthn());
+  }, []);
+
+  function storeSession(result) {
+    localStorage.setItem('atollisle_token', result.token);
+    localStorage.setItem('atollisle_user', JSON.stringify(result.user));
+    navigate('/');
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -19,13 +32,33 @@ export default function Login() {
     setError('');
     try {
       const result = await login({ contact_email: contactEmail, password });
-      localStorage.setItem('atollisle_token', result.token);
-      localStorage.setItem('atollisle_user', JSON.stringify(result.user));
-      navigate('/');
+      storeSession(result);
     } catch (err) {
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // Biometric login (WebAuthn) — an additional option alongside the
+  // password form above, not a replacement. Requires an email so the
+  // server knows which account's registered devices to offer.
+  async function handleBiometricLogin() {
+    if (!contactEmail.trim()) {
+      setError('Enter your email above first, then tap "Sign in with biometrics".');
+      return;
+    }
+    setBiometricBusy(true);
+    setError('');
+    try {
+      const { options, user_id } = await getWebauthnLoginOptions({ contact_email: contactEmail.trim() });
+      const response = await startAuthentication({ optionsJSON: options });
+      const result = await submitWebauthnLogin(user_id, response);
+      storeSession(result);
+    } catch (err) {
+      setError(err.name === 'NotAllowedError' ? 'Biometric login was cancelled.' : err.message);
+    } finally {
+      setBiometricBusy(false);
     }
   }
 
@@ -69,6 +102,18 @@ export default function Login() {
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+
+      {webauthnSupported && (
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ width: '100%', marginTop: 10 }}
+          onClick={handleBiometricLogin}
+          disabled={biometricBusy}
+        >
+          {biometricBusy ? 'Waiting for fingerprint/face…' : 'Sign in with biometrics'}
+        </button>
+      )}
     </div>
   );
 }

@@ -42,6 +42,51 @@ export async function login({ contact_email, contact_mobile, password }) {
   return handleResponse(res);
 }
 
+// --- Biometric login (routes/webauthn.js) — additional login option
+// alongside the password above, not a replacement ---
+
+export async function getWebauthnRegisterOptions() {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/register-options`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function submitWebauthnRegistration(response, deviceLabel) {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ response, device_label: deviceLabel }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyWebauthnCredentials() {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/credentials/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function removeWebauthnCredential(id) {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/credentials/${id}`, { method: 'DELETE', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getWebauthnLoginOptions({ contact_email, contact_mobile }) {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/login-options`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contact_email, contact_mobile }),
+  });
+  return handleResponse(res);
+}
+
+export async function submitWebauthnLogin(userId, response) {
+  const res = await fetch(`${API_BASE}/api/auth/webauthn/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, response }),
+  });
+  return handleResponse(res);
+}
+
 // --- Islands / listings (routes/listings.js) ---
 
 export async function getIslandListings(island, type) {

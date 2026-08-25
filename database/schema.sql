@@ -68,6 +68,28 @@ CREATE TABLE users (
 CREATE INDEX idx_users_type ON users(type);
 
 -- ---------------------------------------------------------------------------
+-- [PHASE 2] webauthn_credentials — biometric/platform-authenticator login
+-- (fingerprint/face unlock), an additional login option alongside the
+-- password + two_factor_* above, not a replacement. twoFactor.js's own
+-- header comment already flagged biometric auth as "a client-side
+-- (device-level) concern" it deliberately didn't cover — this is that.
+-- One row per registered authenticator (a user can register more than one
+-- device), keyed by the authenticator's own credential_id, not by user —
+-- WebAuthn login looks up the credential first, then the user it belongs to.
+-- ---------------------------------------------------------------------------
+CREATE TABLE webauthn_credentials (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    credential_id        TEXT NOT NULL UNIQUE, -- base64url, from the authenticator
+    public_key           TEXT NOT NULL, -- base64url-encoded COSE public key
+    counter              BIGINT NOT NULL DEFAULT 0, -- signature counter, replay protection
+    device_label          TEXT, -- e.g. "iPhone Face ID" — user-facing, set at registration
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at            TIMESTAMPTZ
+);
+CREATE INDEX idx_webauthn_credentials_user ON webauthn_credentials(user_id);
+
+-- ---------------------------------------------------------------------------
 -- [MVP] businesses — Section 12: Business
 -- ---------------------------------------------------------------------------
 CREATE TABLE businesses (

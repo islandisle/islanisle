@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getMyGroup, removeGroupMember, getCurrentStay } from '../api/client';
+import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+import {
+  getMyGroup, removeGroupMember, getCurrentStay,
+  getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
+} from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
 
@@ -165,6 +169,8 @@ export default function Profile() {
 
       <AppearanceSection />
 
+      <BiometricSection />
+
       <button className="btn-secondary" style={{ width: '100%' }} onClick={handleLogout}>
         Log out
       </button>
@@ -176,6 +182,76 @@ export default function Profile() {
           onJoinSuccess={loadGroup}
         />
       )}
+    </div>
+  );
+}
+
+// Registers this device's fingerprint/face unlock (routes/webauthn.js) as
+// an additional login option — see Login.jsx's "Sign in with biometrics".
+function BiometricSection() {
+  const [credentials, setCredentials] = useState([]);
+  const [supported, setSupported] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [error, setError] = useState('');
+
+  function load() {
+    getMyWebauthnCredentials().then((d) => setCredentials(d.credentials || [])).catch(() => {});
+  }
+
+  useEffect(() => {
+    setSupported(browserSupportsWebAuthn());
+    load();
+  }, []);
+
+  async function handleRegister() {
+    setRegistering(true);
+    setError('');
+    try {
+      const options = await getWebauthnRegisterOptions();
+      const response = await startRegistration({ optionsJSON: options });
+      const label = window.prompt('Name this device (optional):', navigator.platform || 'This device');
+      await submitWebauthnRegistration(response, label || undefined);
+      load();
+    } catch (err) {
+      setError(err.name === 'NotAllowedError' ? 'Cancelled.' : err.message);
+    } finally {
+      setRegistering(false);
+    }
+  }
+
+  async function handleRemove(id) {
+    try {
+      await removeWebauthnCredential(id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!supported) return null;
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Biometric login
+      </p>
+      {credentials.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+          No devices registered yet — enable fingerprint/face unlock so you don't have to type your password next time.
+        </p>
+      )}
+      {credentials.map((c) => (
+        <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 13, color: 'var(--navy)' }}>{c.device_label || 'Unnamed device'}</span>
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleRemove(c.id)}>
+            Remove
+          </button>
+        </div>
+      ))}
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={handleRegister} disabled={registering}>
+        {registering ? 'Waiting for fingerprint/face…' : '+ Register this device'}
+      </button>
     </div>
   );
 }
