@@ -9,6 +9,21 @@ const DEFAULT_ISLAND = 'Maafushi';
 // (CREATE TYPE business_type) since there's no shared-constants file yet.
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
+// Kept in sync manually with database/schema.sql's comment above
+// listings.accessibility_features and frontend-business's
+// ACCESSIBILITY_FEATURES (Dashboard.jsx) — same duplication pattern as
+// BUSINESS_TYPES above (no shared-constants file yet).
+const ACCESSIBILITY_FEATURES = [
+  { key: 'wheelchair_accessible', label: 'Wheelchair accessible' },
+  { key: 'step_free_access', label: 'Step-free access' },
+  { key: 'accessible_bathroom', label: 'Accessible bathroom' },
+  { key: 'elevator_available', label: 'Elevator available' },
+  { key: 'braille_signage', label: 'Braille signage' },
+  { key: 'hearing_loop', label: 'Hearing loop' },
+  { key: 'service_animal_friendly', label: 'Service animal friendly' },
+  { key: 'accessible_parking', label: 'Accessible parking' },
+];
+
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
   if (!raw) return null;
@@ -23,6 +38,8 @@ export default function Home() {
   const [island, setIsland] = useState(DEFAULT_ISLAND);
   const [islandInput, setIslandInput] = useState(DEFAULT_ISLAND);
   const [typeFilter, setTypeFilter] = useState('');
+  const [accessibilityFilter, setAccessibilityFilter] = useState([]);
+  const [showAccessibilityFilters, setShowAccessibilityFilters] = useState(false);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,7 +56,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getIslandListings(island, typeFilter || undefined)
+    getIslandListings(island, typeFilter || undefined, accessibilityFilter)
       .then((data) => {
         if (!cancelled) setListings(data.listings);
       })
@@ -50,7 +67,13 @@ export default function Home() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [island, typeFilter]);
+  }, [island, typeFilter, accessibilityFilter]);
+
+  function toggleAccessibilityFeature(key, checked) {
+    setAccessibilityFilter((prev) =>
+      checked ? [...prev, key] : prev.filter((k) => k !== key)
+    );
+  }
 
   // Section 6.2: the header's line-art and tappable badge are meant to
   // reflect real conditions for the island currently selected, not be
@@ -92,7 +115,7 @@ export default function Home() {
           <button className="btn-secondary" type="submit">Go</button>
         </form>
 
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <FilterPill label="All" active={typeFilter === ''} onClick={() => setTypeFilter('')} />
           {BUSINESS_TYPES.map((t) => (
             <FilterPill
@@ -103,6 +126,49 @@ export default function Home() {
             />
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAccessibilityFilters((v) => !v)}
+          aria-expanded={showAccessibilityFilters}
+          aria-controls="accessibility-filter-panel"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            marginBottom: showAccessibilityFilters ? 8 : 14,
+            fontSize: 13,
+            color: 'var(--lagoon)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          Accessibility filters{accessibilityFilter.length > 0 ? ` (${accessibilityFilter.length})` : ''}
+          <span aria-hidden="true">{showAccessibilityFilters ? '▲' : '▼'}</span>
+        </button>
+
+        {showAccessibilityFilters && (
+          <div
+            id="accessibility-filter-panel"
+            role="group"
+            aria-label="Filter listings by accessibility feature"
+            className="card"
+            style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            {ACCESSIBILITY_FEATURES.map((feature) => (
+              <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={accessibilityFilter.includes(feature.key)}
+                  onChange={(e) => toggleAccessibilityFeature(feature.key, e.target.checked)}
+                />
+                {feature.label}
+              </label>
+            ))}
+          </div>
+        )}
 
         <Link
           to="/transfers"
@@ -454,6 +520,11 @@ function ListingCard({ listing, isLocal }) {
           ${price}
           {isLocal && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}> local price</span>}
         </p>
+        {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+            ♿ {listing.accessibility_features.length} accessibility feature{listing.accessibility_features.length > 1 ? 's' : ''}
+          </p>
+        )}
       </div>
     </Link>
   );

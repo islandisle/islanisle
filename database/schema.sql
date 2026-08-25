@@ -135,6 +135,12 @@ CREATE TABLE listings (
     photos                    TEXT[] DEFAULT '{}',
     approval_status           business_approval_status NOT NULL DEFAULT 'pending',
     pay_at_visit_enabled       BOOLEAN NOT NULL DEFAULT false, -- [PHASE 2]; forced true while Business.trust_tier = 'new'
+    -- accessibility_features: free-standing tags a business self-reports,
+    -- not tied to business_type — any of 'wheelchair_accessible',
+    -- 'step_free_access', 'accessible_bathroom', 'elevator_available',
+    -- 'braille_signage', 'hearing_loop', 'service_animal_friendly',
+    -- 'accessible_parking'. Filterable via GET /:island/listings?accessibility=.
+    accessibility_features     TEXT[] NOT NULL DEFAULT '{}',
     -- shop-specific fields (NULL for non-shop listings)
     stock_count                INTEGER,
     fulfillment_options        fulfillment_method[],
@@ -144,6 +150,7 @@ CREATE TABLE listings (
 );
 CREATE INDEX idx_listings_business ON listings(business_id);
 CREATE INDEX idx_listings_approval ON listings(approval_status);
+CREATE INDEX idx_listings_accessibility ON listings USING GIN (accessibility_features);
 
 -- ---------------------------------------------------------------------------
 -- [MVP] travel_groups + group_members — Section 12: TravelGroup

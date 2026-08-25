@@ -194,21 +194,22 @@ function BookingForm({ businesses, onBooked }) {
     <form onSubmit={handleSubmit} className="card" style={{ padding: 16, marginBottom: 20 }}>
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>Book on behalf of a guest</p>
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Business</label>
-      <select className="input-field" value={businessId} onChange={(e) => { setBusinessId(e.target.value); setListingId(''); setAvailability(null); }} style={{ marginBottom: 10 }}>
+      <label htmlFor="booking-business" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Business</label>
+      <select id="booking-business" className="input-field" value={businessId} onChange={(e) => { setBusinessId(e.target.value); setListingId(''); setAvailability(null); }} style={{ marginBottom: 10 }}>
         <option value="">Select a connected business…</option>
         {businesses.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
       </select>
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Listing</label>
-      <select className="input-field" value={listingId} onChange={(e) => { setListingId(e.target.value); setAvailability(null); }} disabled={!businessId} style={{ marginBottom: 10 }}>
+      <label htmlFor="booking-listing" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Listing</label>
+      <select id="booking-listing" className="input-field" value={listingId} onChange={(e) => { setListingId(e.target.value); setAvailability(null); }} disabled={!businessId} style={{ marginBottom: 10 }}>
         <option value="">Select a listing…</option>
         {listings.map((l) => <option key={l.id} value={l.id}>{l.title} — ${l.tourist_price}</option>)}
       </select>
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Date &amp; time</label>
+      <label htmlFor="booking-slot" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Date &amp; time</label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
+          id="booking-slot"
           className="input-field"
           type="datetime-local"
           value={slotStart}
@@ -227,20 +228,20 @@ function BookingForm({ businesses, onBooked }) {
         </p>
       )}
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="booking-guest-user-id" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Guest — existing account ID (optional)
       </label>
-      <input className="input-field" placeholder="User ID, if they have an account" value={guestUserId} onChange={(e) => setGuestUserId(e.target.value)} style={{ marginBottom: 10 }} />
+      <input id="booking-guest-user-id" className="input-field" placeholder="User ID, if they have an account" value={guestUserId} onChange={(e) => setGuestUserId(e.target.value)} style={{ marginBottom: 10 }} />
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="booking-guest-name" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Guest — name (if no account)
       </label>
-      <input className="input-field" placeholder="Guest name" value={guestName} onChange={(e) => setGuestName(e.target.value)} style={{ marginBottom: 10 }} />
+      <input id="booking-guest-name" className="input-field" placeholder="Guest name" value={guestName} onChange={(e) => setGuestName(e.target.value)} style={{ marginBottom: 10 }} />
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="booking-commission-rate" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Your commission (%)
       </label>
-      <input className="input-field" type="number" min="0" max="100" step="0.5" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} style={{ marginBottom: 10 }} />
+      <input id="booking-commission-rate" className="input-field" type="number" min="0" max="100" step="0.5" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} style={{ marginBottom: 10 }} />
 
       {error && <p className="error-text">{error}</p>}
       {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}

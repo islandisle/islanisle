@@ -89,9 +89,14 @@ export async function submitWebauthnLogin(userId, response) {
 
 // --- Islands / listings (routes/listings.js) ---
 
-export async function getIslandListings(island, type) {
-  const params = type ? `?type=${encodeURIComponent(type)}` : '';
-  const res = await fetch(`${API_BASE}/api/islands/${encodeURIComponent(island)}/listings${params}`);
+export async function getIslandListings(island, type, accessibilityFeatures) {
+  const params = new URLSearchParams();
+  if (type) params.set('type', type);
+  if (accessibilityFeatures && accessibilityFeatures.length > 0) {
+    params.set('accessibility', accessibilityFeatures.join(','));
+  }
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE}/api/islands/${encodeURIComponent(island)}/listings${qs ? `?${qs}` : ''}`);
   return handleResponse(res);
 }
 

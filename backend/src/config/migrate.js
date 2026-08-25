@@ -148,6 +148,14 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for listings.accessibility_features (accessibility filter)...');
+  if (!(await columnExists('listings', 'accessibility_features'))) {
+    console.log('Adding listings.accessibility_features...');
+    await pool.query(`ALTER TABLE listings ADD COLUMN accessibility_features TEXT[] NOT NULL DEFAULT '{}'`);
+    await pool.query(`CREATE INDEX idx_listings_accessibility ON listings USING GIN (accessibility_features)`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

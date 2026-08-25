@@ -12,7 +12,7 @@ import { query } from '../config/db.js';
 const router = Router();
 
 /**
- * GET /api/islands/:island/listings?type=guesthouse
+ * GET /api/islands/:island/listings?type=guesthouse&accessibility=wheelchair_accessible,step_free_access
  * Section 3.2: everything available on the selected island, optionally
  * filtered by business type. No auth required (browse-as-guest, Section 7.4).
  *
@@ -25,20 +25,35 @@ const router = Router();
  * id (business dashboard, admin directory), just never here. Matching
  * case/whitespace-insensitively is a pragmatic fix for that; a real island
  * picker backed by a fixed list would remove the root cause entirely.
+ *
+ * accessibility is a comma-separated list of listings.accessibility_features
+ * tags; a listing must have ALL requested tags to match (Postgres array
+ * containment, `@>`) — a tourist picking "wheelchair accessible" AND
+ * "step-free access" wants both, not either.
  */
 router.get('/:island/listings', async (req, res) => {
   const { island } = req.params;
-  const { type } = req.query;
+  const { type, accessibility } = req.query;
 
   const params = [island];
   let typeFilter = '';
   if (type) {
     params.push(type);
-    typeFilter = 'AND b.type = $2';
+    typeFilter = `AND b.type = $${params.length}`;
+  }
+
+  let accessibilityFilter = '';
+  if (accessibility) {
+    const tags = accessibility.split(',').map((s) => s.trim()).filter(Boolean);
+    if (tags.length > 0) {
+      params.push(tags);
+      accessibilityFilter = `AND l.accessibility_features @> $${params.length}::TEXT[]`;
+    }
   }
 
   const result = await query(
     `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.photos,
+            l.accessibility_features,
             b.id AS business_id, b.name AS business_name, b.type AS business_type,
             b.verified_badge
      FROM listings l
@@ -48,6 +63,7 @@ router.get('/:island/listings', async (req, res) => {
        AND b.approval_status = 'approved'
        AND b.account_status = 'active'
        ${typeFilter}
+       ${accessibilityFilter}
      ORDER BY l.created_at DESC`,
     params
   );

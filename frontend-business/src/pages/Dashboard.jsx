@@ -133,24 +133,24 @@ function CreateBusinessForm({ onCreated }) {
       </p>
 
       <form onSubmit={handleSubmit}>
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="create-business-type" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           What kind of business are you?
         </label>
-        <select className="input-field" value={type} onChange={(e) => setType(e.target.value)} style={{ marginBottom: 14 }}>
+        <select id="create-business-type" className="input-field" value={type} onChange={(e) => setType(e.target.value)} style={{ marginBottom: 14 }}>
           {BUSINESS_TYPES.map((t) => (
             <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
           ))}
         </select>
 
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="create-business-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Business name
         </label>
-        <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: 14 }} />
+        <input id="create-business-name" className="input-field" value={name} onChange={(e) => setName(e.target.value)} style={{ marginBottom: 14 }} />
 
-        <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        <label htmlFor="create-business-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Island
         </label>
-        <input className="input-field" value={locationIsland} onChange={(e) => setLocationIsland(e.target.value)} style={{ marginBottom: 20 }} />
+        <input id="create-business-island" className="input-field" value={locationIsland} onChange={(e) => setLocationIsland(e.target.value)} style={{ marginBottom: 20 }} />
 
         {error && <p className="error-text">{error}</p>}
         <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={submitting}>
@@ -210,6 +210,21 @@ const TYPE_FIELD_CONFIG = {
   ],
 };
 
+// Kept in sync manually with database/schema.sql's comment above
+// listings.accessibility_features — same duplication pattern as
+// BUSINESS_TYPES above (no shared-constants file yet). Self-reported by the
+// business, not verified; a tourist filters on these via Home.jsx.
+const ACCESSIBILITY_FEATURES = [
+  { key: 'wheelchair_accessible', label: 'Wheelchair accessible' },
+  { key: 'step_free_access', label: 'Step-free access' },
+  { key: 'accessible_bathroom', label: 'Accessible bathroom' },
+  { key: 'elevator_available', label: 'Elevator available' },
+  { key: 'braille_signage', label: 'Braille signage' },
+  { key: 'hearing_loop', label: 'Hearing loop' },
+  { key: 'service_animal_friendly', label: 'Service animal friendly' },
+  { key: 'accessible_parking', label: 'Accessible parking' },
+];
+
 function AddListingForm({ businessType, businessId, onCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -220,6 +235,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   const [pickupAvailable, setPickupAvailable] = useState(true);
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [freeDelivery, setFreeDelivery] = useState(false);
+  const [accessibilityFeatures, setAccessibilityFeatures] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -228,6 +244,12 @@ function AddListingForm({ businessType, businessId, onCreated }) {
 
   function setTypeField(key, value) {
     setTypeFields((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleAccessibilityFeature(key, checked) {
+    setAccessibilityFeatures((prev) =>
+      checked ? [...prev, key] : prev.filter((k) => k !== key)
+    );
   }
 
   function resetForm() {
@@ -240,6 +262,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     setPickupAvailable(true);
     setDeliveryAvailable(false);
     setFreeDelivery(false);
+    setAccessibilityFeatures([]);
     setOpen(false);
   }
 
@@ -269,6 +292,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         tourist_price: Number(touristPrice),
         local_price: Number(localPrice),
         type_specific_fields: processedTypeFields,
+        accessibility_features: accessibilityFeatures,
       };
 
       if (businessType === 'shop') {
@@ -346,10 +370,11 @@ function AddListingForm({ businessType, businessId, onCreated }) {
           </p>
           {fieldConfig.map((field) => (
             <div key={field.key} style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+              <label htmlFor={`listing-field-${field.key}`} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
                 {field.label}
               </label>
               <input
+                id={`listing-field-${field.key}`}
                 className="input-field"
                 type={field.type}
                 value={typeFields[field.key] || ''}
@@ -360,6 +385,23 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         </>
       )}
 
+      <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 12px' }} />
+      <p id="listing-accessibility-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+        Accessibility features
+      </p>
+      <div role="group" aria-labelledby="listing-accessibility-label" style={{ marginBottom: 10 }}>
+        {ACCESSIBILITY_FEATURES.map((feature) => (
+          <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
+            <input
+              type="checkbox"
+              checked={accessibilityFeatures.includes(feature.key)}
+              onChange={(e) => toggleAccessibilityFeature(feature.key, e.target.checked)}
+            />
+            {feature.label}
+          </label>
+        ))}
+      </div>
+
       {businessType === 'shop' && (
         <>
           <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 12px' }} />
@@ -367,10 +409,11 @@ function AddListingForm({ businessType, businessId, onCreated }) {
             Inventory &amp; fulfillment
           </p>
           <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+            <label htmlFor="listing-stock-count" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
               Stock count
             </label>
             <input
+              id="listing-stock-count"
               className="input-field"
               type="number"
               value={stockCount}
@@ -744,10 +787,11 @@ function CheckInForm({ arrival, viaQr, onDone, onCancel }) {
         <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>QR code matched — ready to check in.</p>
       )}
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="checkin-room-number" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Room number
       </label>
       <input
+        id="checkin-room-number"
         className="input-field"
         value={roomNumber}
         onChange={(e) => setRoomNumber(e.target.value)}

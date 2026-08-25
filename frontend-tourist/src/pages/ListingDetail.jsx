@@ -12,6 +12,20 @@ function getCurrentUser() {
   }
 }
 
+// Same tag set as Home.jsx's ACCESSIBILITY_FEATURES / frontend-business's
+// Dashboard.jsx — just the human-readable label side, keyed by
+// listing.accessibility_features's raw tag strings.
+const ACCESSIBILITY_FEATURE_LABELS = {
+  wheelchair_accessible: 'Wheelchair accessible',
+  step_free_access: 'Step-free access',
+  accessible_bathroom: 'Accessible bathroom',
+  elevator_available: 'Elevator available',
+  braille_signage: 'Braille signage',
+  hearing_loop: 'Hearing loop',
+  service_animal_friendly: 'Service animal friendly',
+  accessible_parking: 'Accessible parking',
+};
+
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -55,6 +69,19 @@ export default function ListingDetail() {
 
       {listing.description && (
         <p style={{ fontSize: 14, color: 'var(--navy)', marginBottom: 20 }}>{listing.description}</p>
+      )}
+
+      {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
+        <div className="card" style={{ padding: 12, marginBottom: 20 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
+            Accessibility
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {listing.accessibility_features.map((key) => (
+              <li key={key}>{ACCESSIBILITY_FEATURE_LABELS[key] || key}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
@@ -158,10 +185,11 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
 
   return (
     <>
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="slot-datetime" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Date &amp; time
       </label>
       <input
+        id="slot-datetime"
         className="input-field"
         type="datetime-local"
         value={slotStart}
@@ -169,10 +197,11 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         style={{ marginBottom: 16 }}
       />
 
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="slot-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Promo code (optional)
       </label>
       <input
+        id="slot-promo"
         className="input-field"
         placeholder="e.g. WELCOME10"
         value={promoCode}
@@ -297,10 +326,11 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 
   return (
     <>
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="shop-quantity" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Quantity
       </label>
       <input
+        id="shop-quantity"
         className="input-field"
         type="number"
         min="1"
@@ -312,10 +342,11 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 
       {fulfillmentOptions.length > 0 && (
         <>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="shop-fulfillment" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             How would you like it?
           </label>
           <select
+            id="shop-fulfillment"
             className="input-field"
             value={fulfillment}
             onChange={(e) => setFulfillment(e.target.value)}
@@ -338,11 +369,12 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 
       {isDelivery && (
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor="shop-delivery-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
             Delivering to which island?
           </label>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input
+              id="shop-delivery-island"
               className="input-field"
               placeholder="e.g. Maafushi"
               value={deliveryIsland}
@@ -376,10 +408,11 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
               <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>
                 Deliverable via {deliveryCheck.boat_name} — departs {new Date(deliveryCheck.departure).toLocaleString()}.
               </p>
-              <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              <label htmlFor="shop-handover" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 How should it be handed over?
               </label>
               <select
+                id="shop-handover"
                 className="input-field"
                 value={handoverMethod}
                 onChange={(e) => setHandoverMethod(e.target.value)}
@@ -392,10 +425,11 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         </div>
       )}
 
-      <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+      <label htmlFor="shop-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Promo code (optional)
       </label>
       <input
+        id="shop-promo"
         className="input-field"
         placeholder="e.g. WELCOME10"
         value={promoCode}

@@ -400,10 +400,10 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
       onSubmit={handleSubmit}
       style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}
     >
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label id="review-rating-label" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Rating
       </label>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+      <div role="group" aria-labelledby="review-rating-label" style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             type="button"
@@ -417,10 +417,11 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
         ))}
       </div>
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="review-text" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Your review (optional)
       </label>
       <textarea
+        id="review-text"
         className="input-field"
         rows={3}
         value={text}
@@ -503,10 +504,11 @@ function ReportProblem({ bookingId, orderId }) {
       onSubmit={handleSubmit}
       style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}
     >
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="dispute-reason" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         What went wrong?
       </label>
       <select
+        id="dispute-reason"
         className="input-field"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
@@ -517,10 +519,11 @@ function ReportProblem({ bookingId, orderId }) {
         ))}
       </select>
 
-      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+      <label htmlFor="dispute-description" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Details (optional)
       </label>
       <textarea
+        id="dispute-description"
         className="input-field"
         rows={3}
         value={description}
