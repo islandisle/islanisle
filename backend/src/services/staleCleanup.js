@@ -23,7 +23,7 @@ import { pool } from '../config/db.js';
 // abandoned. Not spec-mandated — long enough that a slow checkout or a
 // brief Stripe hiccup doesn't get caught, short enough that stock/slots
 // don't stay wrongly held for long. Tune freely.
-const PENDING_PAYMENT_TIMEOUT_MINUTES = 60;
+export const PENDING_PAYMENT_TIMEOUT_MINUTES = 60;
 
 export async function expireStalePendingPayments() {
   const client = await pool.connect();

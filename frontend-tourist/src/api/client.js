@@ -147,11 +147,18 @@ export async function getMyBookings() {
   return handleResponse(res);
 }
 
-export async function cancelBooking(id, cancelled_by = 'user') {
+export async function getCancelPreview(id) {
+  const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel-preview`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function cancelBooking(id) {
+  // cancelled_by is derived server-side from who's actually calling (the
+  // booking's own tourist, or the owning business) — see bookings.js's
+  // PATCH /:id/cancel — not taken from the client.
   const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ cancelled_by }),
   });
   return handleResponse(res);
 }

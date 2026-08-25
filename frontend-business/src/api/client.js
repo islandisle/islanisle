@@ -250,3 +250,21 @@ export async function checkInBooking(bookingId, { method, room_number, whole_gro
   });
   return handleResponse(res);
 }
+
+// --- Disputes (routes/disputes.js) ---
+
+// business_id is required here (unlike frontend-tourist's own fileDispute)
+// so the backend records raised_by: 'business' — see disputes.js.
+export async function fileDispute(businessId, { booking_id, order_id, reason, description }) {
+  const res = await fetch(`${API_BASE}/api/disputes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ booking_id, order_id, reason, description, business_id: businessId }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyDisputes() {
+  const res = await fetch(`${API_BASE}/api/disputes/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}

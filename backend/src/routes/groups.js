@@ -44,6 +44,7 @@ router.get('/mine', authenticate, async (req, res) => {
       my_role: group.role,
       members: members.rows.map((m) => ({
         id: m.id,
+        user_id: m.user_id || null, // real users.id, for the "book for a subset" member picker (ListingDetail.jsx) — null for placeholders, who have no account to book into
         name: m.user_name || m.placeholder_name,
         is_signed_up: !!m.user_id,
         role: m.role,

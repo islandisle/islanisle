@@ -60,7 +60,7 @@ function round2(n) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method } = req.body;
+    const { items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method, member_ids } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items must be a non-empty array of { listing_id, quantity }.' });
     }
@@ -70,6 +70,27 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     if (handover_method && !['buyer_pickup_at_boat', 'guesthouse_handover'].includes(handover_method)) {
       return res.status(400).json({ error: "handover_method must be 'buyer_pickup_at_boat' or 'guesthouse_handover'." });
     }
+
+    // Group bookings (Section 2.2) — see bookings.js's identical block for
+    // the full rationale; order_members is this table's equivalent of
+    // booking_members.
+    let coveredMemberIds = [];
+    if (Array.isArray(member_ids) && member_ids.length > 0) {
+      const rosterResult = await query(
+        `SELECT DISTINCT tgm2.user_id
+         FROM travel_group_members tgm
+         JOIN travel_group_members tgm2 ON tgm2.travel_group_id = tgm.travel_group_id
+         WHERE tgm.user_id = $1 AND tgm2.user_id = ANY($2::uuid[]) AND tgm2.user_id != $1`,
+        [req.user.id, member_ids]
+      );
+      const validIds = new Set(rosterResult.rows.map((r) => r.user_id));
+      const invalid = member_ids.filter((id) => !validIds.has(id));
+      if (invalid.length) {
+        return res.status(400).json({ error: 'One or more selected members are not in your travel group.' });
+      }
+      coveredMemberIds = [...validIds];
+    }
+
     // Same 'online' vs 'pay_at_visit' split as bookings.js — see that
     // file's top comment for the full rationale.
     const isPayAtVisit = payment_method === 'pay_at_visit';
@@ -262,6 +283,13 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     );
     const order = orderResult.rows[0];
 
+    for (const memberId of coveredMemberIds) {
+      await client.query(
+        `INSERT INTO order_members (order_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [order.id, memberId]
+      );
+    }
+
     for (const item of items) {
       await client.query(
         `INSERT INTO order_items (order_id, listing_id, quantity) VALUES ($1, $2, $3)`,
@@ -441,10 +469,14 @@ router.get('/delivery-check', async (req, res) => {
  */
 router.get('/mine', authenticate, async (req, res) => {
   const ordersResult = await query(
-    `SELECT o.id, o.status, o.price_charged, o.fulfillment_method, o.created_at, biz.name AS business_name
+    `SELECT o.id, o.status, o.price_charged, o.fulfillment_method, o.created_at, biz.name AS business_name,
+            (o.user_id != $1) AS booked_by_someone_else,
+            booker.name AS booked_by_name
      FROM orders o
      JOIN businesses biz ON biz.id = o.business_id
+     JOIN users booker ON booker.id = o.user_id
      WHERE o.user_id = $1
+        OR o.id IN (SELECT order_id FROM order_members WHERE user_id = $1)
      ORDER BY o.created_at DESC`,
     [req.user.id]
   );
@@ -486,7 +518,8 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
 
   const ordersResult = await query(
     `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.fulfillment_method,
-            o.created_at, u.name AS customer_name
+            o.created_at, u.name AS customer_name,
+            1 + (SELECT COUNT(*)::int FROM order_members om WHERE om.order_id = o.id) AS party_size
      FROM orders o
      JOIN users u ON u.id = o.user_id
      WHERE o.business_id = $1

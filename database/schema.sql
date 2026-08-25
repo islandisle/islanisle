@@ -220,6 +220,23 @@ CREATE INDEX idx_bookings_user ON bookings(user_id);
 CREATE INDEX idx_bookings_listing ON bookings(listing_id);
 CREATE INDEX idx_bookings_status ON bookings(status);
 
+-- booking_members / order_members — Section 2.2: "any group member can book
+-- anything... for the whole group or a selected subset. The booking appears
+-- in every included member's app, not just the booker's." One booking/order
+-- row still exists (base_price/capacity/stock consumption is unchanged —
+-- no per-headcount pricing or capacity model exists anywhere in this app),
+-- covering the booker (bookings.user_id / orders.user_id) plus zero or more
+-- fellow travel_group members recorded here so it also surfaces in their
+-- own "my bookings"/"my orders" list.
+CREATE TABLE booking_members (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id      UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id),
+    UNIQUE(booking_id, user_id)
+);
+CREATE INDEX idx_booking_members_user ON booking_members(user_id);
+CREATE INDEX idx_booking_members_booking ON booking_members(booking_id);
+
 -- ---------------------------------------------------------------------------
 -- [MVP] orders — Section 12: Order (shop-specific)
 -- ---------------------------------------------------------------------------
@@ -256,6 +273,17 @@ CREATE TABLE orders (
 );
 CREATE INDEX idx_orders_business ON orders(business_id);
 CREATE INDEX idx_orders_user ON orders(user_id);
+
+-- order_members — same group-booking-visibility purpose as booking_members
+-- above, for shop orders.
+CREATE TABLE order_members (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id        UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id),
+    UNIQUE(order_id, user_id)
+);
+CREATE INDEX idx_order_members_user ON order_members(user_id);
+CREATE INDEX idx_order_members_order ON order_members(order_id);
 
 CREATE TABLE order_items (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

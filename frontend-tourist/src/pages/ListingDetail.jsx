@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup } from '../api/client';
+import { useModalA11y } from '../useModalA11y';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -150,8 +151,14 @@ function Reviews({ businessId }) {
 function SlotCheckout({ listing, onSuccess, error, setError }) {
   const [slotStart, setSlotStart] = useState('');
   const [promoCode, setPromoCode] = useState('');
+  const [memberIds, setMemberIds] = useState([]);
   const [booking, setBooking] = useState(false);
   const [slotFull, setSlotFull] = useState(false);
+  const [showFailurePopup, setShowFailurePopup] = useState(false);
+
+  function toggleMember(userId, checked) {
+    setMemberIds((prev) => (checked ? [...prev, userId] : prev.filter((id) => id !== userId)));
+  }
 
   async function handleBook() {
     if (!slotStart) {
@@ -164,6 +171,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
     try {
       const res = await createBooking({
         listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit', promo_code: promoCode,
+        member_ids: memberIds,
       });
       // Offline (api/client.js's offlineQueue) — queued for auto-retry
       // rather than a real confirmation, so this isn't the same "success"
@@ -176,8 +184,15 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
       }
     } catch (err) {
       // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
+      // A 409 (slot just got taken) gets its own inline waitlist offer
+      // instead of the modal, since "join the waitlist" is a more useful
+      // next step than retrying the exact same slot.
       setError(err.message);
-      if (err.status === 409) setSlotFull(true); // capacity conflict — offer the waitlist instead
+      if (err.status === 409) {
+        setSlotFull(true);
+      } else {
+        setShowFailurePopup(true);
+      }
     } finally {
       setBooking(false);
     }
@@ -196,6 +211,8 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         onChange={(e) => { setSlotStart(e.target.value); setSlotFull(false); }}
         style={{ marginBottom: 16 }}
       />
+
+      <GroupMemberPicker selectedIds={memberIds} onToggle={toggleMember} />
 
       <label htmlFor="slot-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Promo code (optional)
@@ -217,7 +234,104 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
       </button>
 
       {slotFull && <WaitlistButton listingId={listing.id} slotStart={slotStart} />}
+
+      {showFailurePopup && (
+        <CheckoutFailurePopup
+          message={error}
+          onRetry={() => { setShowFailurePopup(false); handleBook(); }}
+          onCancel={() => setShowFailurePopup(false)}
+        />
+      )}
     </>
+  );
+}
+
+// Section 2.2's group booking: "any group member can book anything... for
+// the whole group or a selected subset." One booking/order row still gets
+// created (no per-headcount pricing/capacity model exists anywhere in this
+// app — see schema.sql's comment on booking_members), covering the booker
+// plus whichever OTHER signed-up group members are checked here; each
+// covered member then sees it in their own "My bookings/orders" list
+// (bookings.js/orders.js's GET /mine). Placeholder (not-signed-up) members
+// have no account to surface it in, so they're excluded from the list.
+function GroupMemberPicker({ selectedIds, onToggle }) {
+  const [group, setGroup] = useState(null);
+
+  useEffect(() => {
+    if (!localStorage.getItem('atollisle_token')) return;
+    getMyGroup().then((d) => setGroup(d.group)).catch(() => {});
+  }, []);
+
+  const currentUser = getCurrentUser();
+  const others = (group?.members || []).filter(
+    (m) => m.is_signed_up && m.user_id && m.user_id !== currentUser?.id
+  );
+  if (!others.length) return null;
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p id="group-members-label" style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        Book for your group (optional)
+      </p>
+      <div role="group" aria-labelledby="group-members-label" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {others.map((m) => (
+          <label key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(m.user_id)}
+              onChange={(e) => onToggle(m.user_id, e.target.checked)}
+            />
+            {m.name}
+          </label>
+        ))}
+      </div>
+      {selectedIds.length > 0 && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+          Booking for you + {selectedIds.length} other{selectedIds.length > 1 ? 's' : ''}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Section 9's "Payment failure" popup — offers Try Again (same submission)
+// or Cancel rather than leaving the error as a dead-end inline message.
+// Currently reachable from any non-slot-conflict checkout failure (a
+// rejected Pay at Visit attempt, a backend validation error); it's the same
+// generic checkout-failure surface a declined online card would flow
+// through once online payment is re-enabled (config/payments.js), so no
+// separate payment-specific wiring is needed later.
+function CheckoutFailurePopup({ message, onRetry, onCancel }) {
+  const modalRef = useModalA11y(onCancel);
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,
+      }}
+      onClick={onCancel}
+    >
+      <div
+        ref={modalRef}
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Checkout failed"
+        style={{ width: '100%', maxWidth: 380, padding: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
+          Couldn't complete checkout
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
+          {message || 'Something went wrong. You can try again or cancel.'}
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
+          <button className="btn-primary" style={{ flex: 1 }} onClick={onRetry}>Try Again</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -266,11 +380,17 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       : ''
   );
   const [promoCode, setPromoCode] = useState('');
+  const [memberIds, setMemberIds] = useState([]);
   const [deliveryIsland, setDeliveryIsland] = useState('');
   const [handoverMethod, setHandoverMethod] = useState('buyer_pickup_at_boat');
   const [deliveryCheck, setDeliveryCheck] = useState(null); // null = not checked yet
   const [checkingDelivery, setCheckingDelivery] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const [showFailurePopup, setShowFailurePopup] = useState(false);
+
+  function toggleMember(userId, checked) {
+    setMemberIds((prev) => (checked ? [...prev, userId] : prev.filter((id) => id !== userId)));
+  }
 
   const fulfillmentOptions = Array.isArray(listing.fulfillment_options) ? listing.fulfillment_options : [];
   const outOfStock = listing.stock_count != null && listing.stock_count <= 0;
@@ -309,6 +429,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         promo_code: promoCode,
         delivery_island: isDelivery ? deliveryIsland.trim() : undefined,
         handover_method: isDelivery && deliveryCheck?.cross_island ? handoverMethod : undefined,
+        member_ids: memberIds,
       });
       if (res.queued) {
         window.alert(res.message);
@@ -317,6 +438,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       }
     } catch (err) {
       setError(err.message);
+      setShowFailurePopup(true);
     } finally {
       setOrdering(false);
     }
@@ -427,6 +549,8 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         </div>
       )}
 
+      <GroupMemberPicker selectedIds={memberIds} onToggle={toggleMember} />
+
       <label htmlFor="shop-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Promo code (optional)
       </label>
@@ -445,6 +569,14 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={ordering}>
         {ordering ? 'Placing order…' : 'Buy now'}
       </button>
+
+      {showFailurePopup && (
+        <CheckoutFailurePopup
+          message={error}
+          onRetry={() => { setShowFailurePopup(false); handleOrder(); }}
+          onCancel={() => setShowFailurePopup(false)}
+        />
+      )}
     </>
   );
 }

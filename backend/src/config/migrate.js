@@ -156,6 +156,38 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for booking_members / order_members (group bookings)...');
+  const bookingMembersResult = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = 'booking_members'`);
+  if (!bookingMembersResult.rows.length) {
+    console.log('Creating booking_members...');
+    await pool.query(`
+      CREATE TABLE booking_members (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        booking_id      UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        user_id         UUID NOT NULL REFERENCES users(id),
+        UNIQUE(booking_id, user_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_booking_members_user ON booking_members(user_id)`);
+    await pool.query(`CREATE INDEX idx_booking_members_booking ON booking_members(booking_id)`);
+    changed = true;
+  }
+  const orderMembersResult = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = 'order_members'`);
+  if (!orderMembersResult.rows.length) {
+    console.log('Creating order_members...');
+    await pool.query(`
+      CREATE TABLE order_members (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        order_id        UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        user_id         UUID NOT NULL REFERENCES users(id),
+        UNIQUE(order_id, user_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_order_members_user ON order_members(user_id)`);
+    await pool.query(`CREATE INDEX idx_order_members_order ON order_members(order_id)`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

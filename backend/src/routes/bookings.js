@@ -28,16 +28,19 @@
 // the booking is marked complete, and actually collected in the monthly
 // payout run — see services/payAtVisit.js and services/payoutRun.js.
 //
+// Slot-hold on conflict (Section 9): a 'pending_payment' booking now counts
+// against capacity for as long as services/staleCleanup.js's
+// PENDING_PAYMENT_TIMEOUT_MINUTES window still has it eligible to be
+// expired — the same window the cleanup job itself uses to release it. This
+// makes them the same real hold, not two independently-tuned numbers that
+// could drift apart. A capacity check bounded by that window self-corrects
+// even between the cleanup job's hourly runs, rather than a hold silently
+// outliving its own expiry until the next cron tick clears it.
+//
 // NOT yet implemented (flagged honestly rather than faked):
-//   - Real timed slot-holds for the 'online' path. This does a capacity
-//     check against already-confirmed bookings, but the script's "held for
-//     a few minutes while paying, then auto-releases" behavior needs a
-//     scheduled job or a TTL store (Redis), which isn't part of this stack
-//     yet. A still-pending-payment booking does NOT count against capacity
-//     yet (though it does now auto-expire — see services/staleCleanup.js).
-//     Not an issue for pay_at_visit, which confirms immediately.
 //   - Shop purchases. Shops are stock-based (product + quantity), not
-//     slot-based (date/time) — see orders.js instead.
+//     slot-based (date/time) — see orders.js instead, which already holds
+//     stock_count for real, immediately at order creation.
 
 import { Router } from 'express';
 import { query, pool } from '../config/db.js';
@@ -48,6 +51,7 @@ import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../co
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
+import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
 
 const router = Router();
 
@@ -88,9 +92,32 @@ function getSlotCapacity(businessType, typeSpecificFields) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { listing_id, slot_start, slot_end, payment_method, promo_code } = req.body;
+    const { listing_id, slot_start, slot_end, payment_method, promo_code, member_ids } = req.body;
     if (!listing_id || !slot_start) {
       return res.status(400).json({ error: 'listing_id and slot_start are required.' });
+    }
+
+    // Group bookings (Section 2.2): member_ids is an optional array of
+    // OTHER travel-group members' users.id (not the caller's own — they're
+    // covered by bookings.user_id already) to also cover with this one
+    // booking. Every id must actually share a travel_group with the caller
+    // — same roster-lookup shape checkin.js already uses — so a tourist
+    // can't add an arbitrary stranger's account to their booking.
+    let coveredMemberIds = [];
+    if (Array.isArray(member_ids) && member_ids.length > 0) {
+      const rosterResult = await query(
+        `SELECT DISTINCT tgm2.user_id
+         FROM travel_group_members tgm
+         JOIN travel_group_members tgm2 ON tgm2.travel_group_id = tgm.travel_group_id
+         WHERE tgm.user_id = $1 AND tgm2.user_id = ANY($2::uuid[]) AND tgm2.user_id != $1`,
+        [req.user.id, member_ids]
+      );
+      const validIds = new Set(rosterResult.rows.map((r) => r.user_id));
+      const invalid = member_ids.filter((id) => !validIds.has(id));
+      if (invalid.length) {
+        return res.status(400).json({ error: 'One or more selected members are not in your travel group.' });
+      }
+      coveredMemberIds = [...validIds];
     }
     // payment_method: 'online' (Stripe, default) or 'pay_at_visit' (schema's
     // payment_method enum already supports this — settle with the business
@@ -160,17 +187,19 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.
     const basePrice = payerType === 'tourist' ? listing.tourist_price : listing.local_price;
 
-    // Capacity-aware conflict check: count CONFIRMED bookings already on
-    // this exact slot and compare against the listing's capacity for its
-    // business type (table_capacity / capacity_per_slot / seat_capacity, or
-    // 1 for guesthouse/anything else — see CAPACITY_FIELD_BY_TYPE above).
-    // Only 'confirmed' bookings count, matching the previous behavior and
-    // the documented pending-payment limitation above.
+    // Capacity-aware conflict check: count CONFIRMED bookings, plus any
+    // still-within-hold-window PENDING_PAYMENT booking (the slot-hold — see
+    // this file's top comment), already on this exact slot, and compare
+    // against the listing's capacity for its business type (table_capacity /
+    // capacity_per_slot / seat_capacity, or 1 for guesthouse/anything else —
+    // see CAPACITY_FIELD_BY_TYPE above).
     const capacity = getSlotCapacity(listing.business_type, listing.type_specific_fields);
     const existingCount = await query(
       `SELECT COUNT(*)::int AS count FROM bookings
-       WHERE listing_id = $1 AND slot_start = $2 AND status = 'confirmed'`,
-      [listing_id, slot_start]
+       WHERE listing_id = $1 AND slot_start = $2
+         AND (status = 'confirmed'
+              OR (status = 'pending_payment' AND created_at > now() - make_interval(mins => $3)))`,
+      [listing_id, slot_start, PENDING_PAYMENT_TIMEOUT_MINUTES]
     );
     if (existingCount.rows[0].count >= capacity) {
       return res.status(409).json({
@@ -222,6 +251,15 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       ]
     );
     const booking = bookingResult.rows[0];
+
+    // Group bookings: fan the booking out to every covered member so it
+    // surfaces in their own GET /mine too (see that route below).
+    for (const memberId of coveredMemberIds) {
+      await client.query(
+        `INSERT INTO booking_members (booking_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [booking.id, memberId]
+      );
+    }
 
     // pay_at_visit: no Stripe involved at all — the booking is already
     // confirmed above, so return immediately. Section 6.5's confirmation
@@ -318,11 +356,15 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 router.get('/mine', authenticate, async (req, res) => {
   const result = await query(
     `SELECT b.id, b.slot_start, b.status, b.price_charged, b.check_in_status, b.room_number,
-            l.title, biz.name AS business_name, biz.type AS business_type
+            l.title, biz.name AS business_name, biz.type AS business_type,
+            (b.user_id != $1) AS booked_by_someone_else,
+            booker.name AS booked_by_name
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN businesses biz ON biz.id = l.business_id
+     JOIN users booker ON booker.id = b.user_id
      WHERE b.user_id = $1
+        OR b.id IN (SELECT booking_id FROM booking_members WHERE user_id = $1)
      ORDER BY b.slot_start DESC`,
     [req.user.id]
   );
@@ -332,6 +374,65 @@ router.get('/mine', authenticate, async (req, res) => {
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
+
+// Section 7.1's refund math, shared by the cancel-preview endpoint (below)
+// and the actual cancel route, so the popup a tourist confirms against and
+// the numbers that actually get applied can never drift apart.
+function computeRefund({ priceCharged, paymentMethod, refundFeeBusinessPercent, isOperatorFault }) {
+  const grossRefundAmount = priceCharged; // Phase 1: full policy amount; partial-window % is a later refinement
+  if (isOperatorFault || paymentMethod !== 'online') {
+    return { grossRefundAmount, refundAppFee: 0, refundBusinessCredit: 0, refundAmount: grossRefundAmount };
+  }
+  const refundAppFee = round2(grossRefundAmount * 0.05); // fixed platform 5%
+  const refundBusinessCredit = round2(grossRefundAmount * (refundFeeBusinessPercent / 100));
+  const refundAmount = round2(grossRefundAmount - refundAppFee - refundBusinessCredit);
+  return { grossRefundAmount, refundAppFee, refundBusinessCredit, refundAmount };
+}
+
+/**
+ * GET /api/bookings/:id/cancel-preview
+ * Section 7.1's cancellation confirmation popup: "You'll receive $X back —
+ * $Y total was withheld" needs to be computed and shown BEFORE the tourist
+ * confirms, using the exact same math the actual cancel below applies —
+ * see computeRefund. Always previews as a user-initiated (not
+ * operator-fault) cancellation, since this is the tourist's own
+ * "Cancel booking" button — an operator-cancelled booking is refunded in
+ * full automatically and never reaches this confirm-first flow at all.
+ */
+router.get('/:id/cancel-preview', authenticate, async (req, res) => {
+  const bookingResult = await query(
+    `SELECT b.price_charged, b.payment_method, b.status, b.user_id, biz.refund_fee_business_percent
+     FROM bookings b
+     JOIN listings l ON l.id = b.listing_id
+     JOIN businesses biz ON biz.id = l.business_id
+     WHERE b.id = $1`,
+    [req.params.id]
+  );
+  if (!bookingResult.rows.length) {
+    return res.status(404).json({ error: 'Booking not found.' });
+  }
+  const booking = bookingResult.rows[0];
+  if (booking.user_id !== req.user.id) {
+    return res.status(403).json({ error: 'This is not your booking.' });
+  }
+  if (booking.status === 'cancelled') {
+    return res.status(400).json({ error: 'Booking is already cancelled.' });
+  }
+
+  const refund = computeRefund({
+    priceCharged: booking.price_charged,
+    paymentMethod: booking.payment_method,
+    refundFeeBusinessPercent: booking.refund_fee_business_percent,
+    isOperatorFault: false,
+  });
+  res.json({
+    gross_refund_amount: refund.grossRefundAmount,
+    refund_app_fee: refund.refundAppFee,
+    refund_business_credit: refund.refundBusinessCredit,
+    refund_amount: refund.refundAmount,
+    fee_applicable: booking.payment_method === 'online',
+  });
+});
 
 /**
  * GET /api/bookings/business/:businessId
@@ -351,7 +452,8 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
 
   const result = await query(
     `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type,
-            l.title, u.name AS customer_name
+            l.title, u.name AS customer_name,
+            1 + (SELECT COUNT(*)::int FROM booking_members bm WHERE bm.booking_id = b.id) AS party_size
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN users u ON u.id = b.user_id
@@ -429,10 +531,9 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
  */
 router.patch('/:id/cancel', authenticate, async (req, res) => {
   const { id } = req.params;
-  const { cancelled_by } = req.body; // 'user' | 'business'
 
   const bookingResult = await query(
-    `SELECT b.*, biz.refund_fee_business_percent, biz.id AS business_id
+    `SELECT b.*, biz.refund_fee_business_percent, biz.id AS business_id, biz.owner_user_id
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN businesses biz ON biz.id = l.business_id
@@ -444,23 +545,29 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
   }
   const booking = bookingResult.rows[0];
 
+  // Ownership check — previously missing entirely, meaning any logged-in
+  // account that knew a booking id could cancel it, and could pick its own
+  // refund treatment via the (client-supplied, now removed) cancelled_by
+  // field. cancelled_by is derived from who's actually calling instead:
+  // the booking's own tourist, or the business that owns the listing.
+  const isOwnBooking = booking.user_id === req.user.id;
+  const isBusinessOwner = booking.owner_user_id === req.user.id;
+  if (!isOwnBooking && !isBusinessOwner) {
+    return res.status(403).json({ error: 'You cannot cancel this booking.' });
+  }
+
   if (booking.status === 'cancelled') {
     return res.status(400).json({ error: 'Booking is already cancelled.' });
   }
 
   // Section 7.1: operator-fault cancellation = full refund, no fee at all.
-  const isOperatorFault = cancelled_by === 'business';
-  const grossRefundAmount = booking.price_charged; // Phase 1: full policy amount; partial-window % is a later refinement
-
-  let refundAppFee = 0;
-  let refundBusinessCredit = 0;
-  let refundAmount = grossRefundAmount;
-
-  if (!isOperatorFault && booking.payment_method === 'online') {
-    refundAppFee = round2(grossRefundAmount * 0.05); // fixed platform 5%
-    refundBusinessCredit = round2(grossRefundAmount * (booking.refund_fee_business_percent / 100));
-    refundAmount = round2(grossRefundAmount - refundAppFee - refundBusinessCredit);
-  }
+  const isOperatorFault = isBusinessOwner;
+  const { grossRefundAmount, refundAppFee, refundBusinessCredit, refundAmount } = computeRefund({
+    priceCharged: booking.price_charged,
+    paymentMethod: booking.payment_method,
+    refundFeeBusinessPercent: booking.refund_fee_business_percent,
+    isOperatorFault,
+  });
 
   await query(
     `UPDATE bookings SET

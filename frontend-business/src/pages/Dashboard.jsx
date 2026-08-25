@@ -5,6 +5,7 @@ import {
   getBusinessBookings, getBusinessOrders, markOrderStatus,
   getArrivals, checkInBooking, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
+  fileDispute,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 
@@ -515,6 +516,7 @@ function IncomingActivity({ businessId }) {
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
             {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
+            {b.party_size > 1 && ` · Party of ${b.party_size}`}
           </p>
           <button
             className="btn-primary"
@@ -523,6 +525,7 @@ function IncomingActivity({ businessId }) {
           >
             Mark fulfilled
           </button>
+          <ReportProblem businessId={businessId} bookingId={b.id} />
         </div>
       ))}
 
@@ -533,7 +536,7 @@ function IncomingActivity({ businessId }) {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending right now.</p>
       )}
       {openOrders.map((o) => (
-        <OrderRow key={o.id} order={o} onAdvance={handleAdvanceOrder} />
+        <OrderRow key={o.id} order={o} businessId={businessId} onAdvance={handleAdvanceOrder} />
       ))}
 
       {error && <p className="error-text">{error}</p>}
@@ -554,7 +557,7 @@ const ORDER_STATUS_LABEL = {
   completed: 'Completed',
 };
 
-function OrderRow({ order, onAdvance }) {
+function OrderRow({ order, businessId, onAdvance }) {
   const nextStatus = NEXT_ORDER_STATUS[order.status];
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
 
@@ -566,6 +569,7 @@ function OrderRow({ order, onAdvance }) {
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
         ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
+        {order.party_size > 1 && ` · Party of ${order.party_size}`}
       </p>
       {nextStatus && (
         <button
@@ -576,7 +580,99 @@ function OrderRow({ order, onAdvance }) {
           Mark {ORDER_STATUS_LABEL[nextStatus].toLowerCase()}
         </button>
       )}
+      <ReportProblem businessId={businessId} orderId={order.id} />
     </div>
+  );
+}
+
+const BUSINESS_DISPUTE_REASONS = [
+  { value: 'guest_no_show', label: 'Guest was a no-show' },
+  { value: 'payment_dispute', label: 'Payment dispute' },
+  { value: 'abusive_behavior', label: 'Abusive behavior' },
+  { value: 'other', label: 'Other' },
+];
+
+// Section 7.1 "Report a problem" — mirrors frontend-tourist's MyActivity.jsx
+// version, but files as the business (raised_by: 'business' — see
+// disputes.js) rather than as the owner's own user account.
+function ReportProblem({ businessId, bookingId, orderId }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState(BUSINESS_DISPUTE_REASONS[0].value);
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fileDispute(businessId, { booking_id: bookingId, order_id: orderId, reason, description });
+      setSuccess(res.message || "We've received your report. You'll hear back once it's reviewed.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (success) {
+    return <p style={{ fontSize: 12, color: 'var(--lagoon)', marginTop: 8 }}>{success}</p>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)', marginTop: 8 }}
+        onClick={() => setOpen(true)}
+      >
+        Report a problem
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+      <label htmlFor={`biz-dispute-reason-${bookingId || orderId}`} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        What went wrong?
+      </label>
+      <select
+        id={`biz-dispute-reason-${bookingId || orderId}`}
+        className="input-field"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={{ fontSize: 13, marginBottom: 8 }}
+      >
+        {BUSINESS_DISPUTE_REASONS.map((r) => (
+          <option key={r.value} value={r.value}>{r.label}</option>
+        ))}
+      </select>
+
+      <label htmlFor={`biz-dispute-desc-${bookingId || orderId}`} style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Details (optional)
+      </label>
+      <textarea
+        id={`biz-dispute-desc-${bookingId || orderId}`}
+        className="input-field"
+        rows={3}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        style={{ fontSize: 13, marginBottom: 8, resize: 'vertical' }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen(false)} disabled={submitting}>
+          Cancel
+        </button>
+        <button type="submit" className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit report'}
+        </button>
+      </div>
+    </form>
   );
 }
 

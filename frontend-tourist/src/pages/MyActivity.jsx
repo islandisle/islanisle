@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn } from '../api/client';
+import { useModalA11y } from '../useModalA11y';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -55,15 +56,24 @@ export default function MyActivity() {
     loadAll();
   }, []);
 
-  async function handleCancel(id) {
-    if (!window.confirm('Cancel this booking? Refund amount depends on the business\u2019s cancellation policy.')) {
-      return;
-    }
+  const [cancelTargetId, setCancelTargetId] = useState(null);
+
+  // Section 7.1's cancellation confirmation popup replaces the old generic
+  // window.confirm() \u2014 opening it here doesn't cancel anything yet, it just
+  // shows CancelConfirmPopup, which fetches the real computed refund numbers
+  // before the tourist commits.
+  function handleCancel(id) {
+    setCancelTargetId(id);
+  }
+
+  async function confirmCancel(id) {
     try {
-      await cancelBooking(id, 'user');
+      await cancelBooking(id);
       loadAll();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setCancelTargetId(null);
     }
   }
 
@@ -127,6 +137,98 @@ export default function MyActivity() {
           ))}
         </>
       )}
+
+      {cancelTargetId && (
+        <CancelConfirmPopup
+          bookingId={cancelTargetId}
+          onConfirm={() => confirmCancel(cancelTargetId)}
+          onClose={() => setCancelTargetId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Section 7.1's cancellation confirmation popup: fetches the exact refund
+// math (bookings.js's GET /:id/cancel-preview, the same computeRefund() the
+// actual cancel applies) so the tourist sees real numbers before
+// committing, instead of the old generic window.confirm().
+function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
+  const modalRef = useModalA11y(onClose);
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    getCancelPreview(bookingId).then(setPreview).catch((err) => setError(err.message));
+  }, [bookingId]);
+
+  async function handleConfirm() {
+    setConfirming(true);
+    await onConfirm();
+  }
+
+  const withheld = preview ? Math.round((preview.gross_refund_amount - preview.refund_amount) * 100) / 100 : 0;
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        ref={modalRef}
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirm cancellation"
+        style={{ width: '100%', maxWidth: 380, padding: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
+          Cancel this booking?
+        </p>
+
+        {error && <p className="error-text">{error}</p>}
+        {!preview && !error && (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Calculating your refund…</p>
+        )}
+
+        {preview && (
+          <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span>Amount paid</span>
+              <span>${preview.gross_refund_amount}</span>
+            </div>
+            {withheld > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: 'var(--coral)' }}>
+                <span>Refund charge withheld</span>
+                <span>-${withheld}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, paddingTop: 6, marginTop: 4, borderTop: '1px solid var(--border)' }}>
+              <span>You'll receive back</span>
+              <span>${preview.refund_amount}</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={confirming}>
+            Go Back
+          </button>
+          <button
+            className="btn-primary"
+            style={{ flex: 1, background: 'var(--coral)' }}
+            onClick={handleConfirm}
+            disabled={confirming || !preview}
+          >
+            {confirming ? 'Cancelling…' : 'Confirm Cancellation'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -157,7 +259,10 @@ const BOOKING_STATUS_LABEL = {
 };
 
 function BookingRow({ booking, onCancel, review, onReviewed }) {
-  const canCancel = booking.status === 'confirmed';
+  // A booking made by another travel-group member for you (Section 2.2)
+  // shows up here too (bookings.js's GET /mine), but only the actual
+  // booker can cancel it — the backend enforces this too (PATCH /:id/cancel).
+  const canCancel = booking.status === 'confirmed' && !booking.booked_by_someone_else;
   const isGuesthouse = booking.business_type === 'guesthouse';
   const isCheckedIn = booking.check_in_status === 'checked_in';
   const canCheckIn = isGuesthouse && booking.status === 'confirmed' && !isCheckedIn;
@@ -167,6 +272,11 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {booking.title} — {booking.business_name}
       </p>
+      {booking.booked_by_someone_else && (
+        <p style={{ fontSize: 11, color: 'var(--lagoon)', margin: '0 0 4px' }}>
+          Booked by {booking.booked_by_name} for your group
+        </p>
+      )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
         {new Date(booking.slot_start).toLocaleString()} · ${booking.price_charged} ·{' '}
         {BOOKING_STATUS_LABEL[booking.status] || booking.status}
@@ -246,6 +356,11 @@ function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {itemsSummary} — {order.business_name}
       </p>
+      {order.booked_by_someone_else && (
+        <p style={{ fontSize: 11, color: 'var(--lagoon)', margin: '0 0 4px' }}>
+          Ordered by {order.booked_by_name} for your group
+        </p>
+      )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
         ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
