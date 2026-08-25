@@ -35,7 +35,7 @@ import { stripe } from '../config/stripe.js';
 import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
-import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
+import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { findFastestDelivery } from '../services/deliveryMatch.js';
 
 const router = Router();
@@ -74,7 +74,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // file's top comment for the full rationale.
     const isPayAtVisit = payment_method === 'pay_at_visit';
 
-    const userResult = await query('SELECT type FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await query('SELECT type, pay_at_visit_eligible FROM users WHERE id = $1', [req.user.id]);
     if (!userResult.rows.length) {
       return res.status(404).json({ error: 'User not found.' });
     }
@@ -82,7 +82,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 
     const listingIds = items.map((i) => i.listing_id);
     const listingsResult = await query(
-      `SELECT l.id, l.tourist_price, l.local_price, l.approval_status, l.stock_count,
+      `SELECT l.id, l.title, l.tourist_price, l.local_price, l.approval_status, l.stock_count,
               l.fulfillment_options, l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type,
               b.approval_status AS business_approval_status, b.account_status, b.trust_tier, b.location_island
        FROM listings l
@@ -130,6 +130,17 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
           error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
         });
       }
+    }
+
+    // Pay at Visit eligibility (Section 9 / [PHASE 2]) — see
+    // services/payAtVisit.js's isPayAtVisitEligible for the full rationale,
+    // including why a user's very first-ever booking/order is exempted.
+    if (isPayAtVisit && !(await isPayAtVisitEligible(req.user.id, userResult.rows[0].pay_at_visit_eligible))) {
+      return res.status(403).json({
+        error: payerType === 'tourist'
+          ? "Pay at Visit isn't available on this account yet — it unlocks after your first guesthouse or hotel check-in."
+          : "Pay at Visit isn't available on this account yet — it unlocks once your Local ID verification is approved.",
+      });
     }
 
     // Cross-island delivery matching — see this file's top comment.
@@ -301,6 +312,26 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       : null;
 
     if (isPayAtVisit) {
+      // Digital receipt (Section 6.3) — same rationale as bookings.js's
+      // pay_at_visit branch: the Stripe webhook (payments.js) is the only
+      // other place an invoice row is ever created, and it never fires for
+      // this path. service_description lists every item, the same way the
+      // webhook's own order-invoice branch does. payment_date stays NULL —
+      // payment happens later, in person, when the shop marks this fulfilled.
+      const itemsDescription = items
+        .map((item) => `${item.quantity}x ${listingsById[item.listing_id].title}`)
+        .join(', ');
+      await client.query(
+        `INSERT INTO invoices (
+           order_id, business_id, buyer_user_id, service_description, base_price,
+           tourist_commission_line, total_charged, payment_method, booking_date, payment_date, status
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now(), NULL, 'confirmed')`,
+        [
+          order.id, businessId, req.user.id, itemsDescription || 'Shop order',
+          basePrice, touristCommission, priceCharged, 'pay_at_visit',
+        ]
+      );
+
       await client.query('COMMIT');
       await notify({
         recipientType: 'user',

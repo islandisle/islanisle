@@ -250,6 +250,17 @@ router.post('/:bookingId', authenticate, async (req, res) => {
       [booking.business_id, trimmedRoomNumber, checkedInUserIds]
     );
 
+    // Pay at Visit eligibility (Section 9 / [PHASE 2]) — "Tourists: only
+    // become eligible after they've checked in to at least one guesthouse
+    // or hotel anywhere in the Maldives... a one-time trust gate, not
+    // something re-checked per booking." Locals earn eligibility through ID
+    // verification instead (admin.js), not check-in — see
+    // services/payAtVisit.js's isPayAtVisitEligible for how this is read.
+    await query(
+      `UPDATE users SET pay_at_visit_eligible = true WHERE id = ANY($1::uuid[]) AND type = 'tourist'`,
+      [checkedInUserIds]
+    );
+
     // Trip/itinerary linkage — one trip per (real) checked-in user, since
     // trips.user_id is per-user, not per-group. Each gets their own trip
     // found-or-created and a stay added to it for this island/date window.

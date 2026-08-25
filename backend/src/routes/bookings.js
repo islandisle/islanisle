@@ -47,7 +47,7 @@ import { stripe } from '../config/stripe.js';
 import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
-import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
+import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 
 const router = Router();
 
@@ -100,14 +100,14 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // waiting on a Stripe webhook that will never fire for it.
     const isPayAtVisit = payment_method === 'pay_at_visit';
 
-    const userResult = await query('SELECT type FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await query('SELECT type, pay_at_visit_eligible FROM users WHERE id = $1', [req.user.id]);
     if (!userResult.rows.length) {
       return res.status(404).json({ error: 'User not found.' });
     }
     const payerType = userResult.rows[0].type; // 'tourist' | 'local'
 
     const listingResult = await query(
-      `SELECT l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
+      `SELECT l.title, l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
               l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type, b.trust_tier
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
@@ -144,6 +144,17 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // regardless of trust tier or whether the listing itself opted in.
     if (isPayAtVisit && ONLINE_PAYMENTS_ENABLED && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
       return res.status(400).json({ error: 'Pay at Visit is not available for this listing.' });
+    }
+
+    // Pay at Visit eligibility (Section 9 / [PHASE 2]) — see
+    // services/payAtVisit.js's isPayAtVisitEligible for the full rationale,
+    // including why a user's very first-ever booking/order is exempted.
+    if (isPayAtVisit && !(await isPayAtVisitEligible(req.user.id, userResult.rows[0].pay_at_visit_eligible))) {
+      return res.status(403).json({
+        error: payerType === 'tourist'
+          ? "Pay at Visit isn't available on this account yet — it unlocks after your first guesthouse or hotel check-in."
+          : "Pay at Visit isn't available on this account yet — it unlocks once your Local ID verification is approved.",
+      });
     }
 
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.
@@ -217,6 +228,25 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // notification, normally sent from the webhook once Stripe confirms a
     // real charge, is sent here instead since there's no webhook to send it.
     if (isPayAtVisit) {
+      // Digital receipt (Section 6.3) — the Stripe webhook (payments.js) is
+      // the only other place an invoice row is ever created, and it only
+      // ever fires for the 'online' path. Since that path never applies to
+      // a pay_at_visit booking (and, with ONLINE_PAYMENTS_ENABLED off, is
+      // currently the platform's ONLY confirmed booking outcome), this is
+      // the only place a Pay at Visit invoice can be written. payment_date
+      // is left NULL — no payment has actually happened yet, it happens in
+      // person when the business marks this fulfilled.
+      await client.query(
+        `INSERT INTO invoices (
+           booking_id, business_id, buyer_user_id, service_description, base_price,
+           tourist_commission_line, total_charged, payment_method, booking_date, payment_date, status
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now(), NULL, 'confirmed')`,
+        [
+          booking.id, listing.business_id, req.user.id, listing.title,
+          basePrice, touristCommission, priceCharged, 'pay_at_visit',
+        ]
+      );
+
       await client.query('COMMIT');
       await notify({
         recipientType: 'user',

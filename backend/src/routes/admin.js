@@ -159,7 +159,14 @@ router.post('/approve', authenticate, requireRole('admin'), async (req, res) => 
   };
 
   if (target_type === 'local_verification') {
-    await query(`UPDATE users SET local_verification_status = 'verified' WHERE id = $1`, [target_id]);
+    // Pay at Visit eligibility (Section 9 / [PHASE 2]): a verified Local's
+    // ID review is a stronger trust signal than a tourist's simple check-in
+    // gate, so verification itself is what unlocks it — see
+    // services/payAtVisit.js's isPayAtVisitEligible.
+    await query(
+      `UPDATE users SET local_verification_status = 'verified', pay_at_visit_eligible = true WHERE id = $1`,
+      [target_id]
+    );
   } else if (tableMap[target_type]) {
     const { table, column } = tableMap[target_type];
     await query(`UPDATE ${table} SET ${column} = 'approved' WHERE id = $1`, [target_id]);
