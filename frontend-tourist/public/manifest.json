@@ -1,0 +1,12 @@
+{
+  "name": "Atoll Isle",
+  "short_name": "Atoll Isle",
+  "description": "Book stays, tables, excursions, transfers, and shop deliveries across the Maldives — works offline for viewing what you've already loaded.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf6ee",
+  "theme_color": "#0e7c66",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

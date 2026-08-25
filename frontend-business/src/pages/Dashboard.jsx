@@ -435,7 +435,8 @@ function IncomingActivity({ businessId }) {
 
   async function handleMarkBookingFulfilled(id) {
     try {
-      await markBookingFulfilled(id);
+      const res = await markBookingFulfilled(id);
+      if (res.queued) window.alert(res.message);
       loadAll();
     } catch (err) {
       setError(err.message);
@@ -444,7 +445,8 @@ function IncomingActivity({ businessId }) {
 
   async function handleAdvanceOrder(id, nextStatus) {
     try {
-      await markOrderStatus(id, nextStatus);
+      const res = await markOrderStatus(id, nextStatus);
+      if (res.queued) window.alert(res.message);
       loadAll();
     } catch (err) {
       setError(err.message);

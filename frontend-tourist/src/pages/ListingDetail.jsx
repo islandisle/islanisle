@@ -138,7 +138,15 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
       const res = await createBooking({
         listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit', promo_code: promoCode,
       });
-      onSuccess(res);
+      // Offline (api/client.js's offlineQueue) — queued for auto-retry
+      // rather than a real confirmation, so this isn't the same "success"
+      // PendingPayment expects (no price_breakdown yet).
+      if (res.queued) {
+        setError('');
+        window.alert(res.message);
+      } else {
+        onSuccess(res);
+      }
     } catch (err) {
       // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
       setError(err.message);
@@ -271,7 +279,11 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         delivery_island: isDelivery ? deliveryIsland.trim() : undefined,
         handover_method: isDelivery && deliveryCheck?.cross_island ? handoverMethod : undefined,
       });
-      onSuccess(res);
+      if (res.queued) {
+        window.alert(res.message);
+      } else {
+        onSuccess(res);
+      }
     } catch (err) {
       setError(err.message);
     } finally {

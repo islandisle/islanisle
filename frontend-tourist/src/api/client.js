@@ -2,6 +2,8 @@
 // backend/src/routes/. Field names match exactly what those routes expect
 // and return, so there's no translation layer to get out of sync.
 
+import { isNetworkError, queueRequest } from '../offlineQueue';
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
 function authHeaders() {
@@ -60,13 +62,34 @@ export async function getArrivalTransfers(destination) {
 
 // --- Bookings (routes/bookings.js) ---
 
-export async function createBooking({ listing_id, slot_start, slot_end, payment_method, promo_code }) {
+// The actual network call — also used directly as the retry handler for
+// offlineQueue.js's auto-retry (see main.jsx), so a queued booking is
+// resubmitted through the exact same path as a normal one.
+export async function createBookingRaw(payload) {
   const res = await fetch(`${API_BASE}/api/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ listing_id, slot_start, slot_end, payment_method, promo_code: promo_code || undefined }),
+    body: JSON.stringify({ ...payload, promo_code: payload.promo_code || undefined }),
   });
   return handleResponse(res);
+}
+
+// Offline-aware wrapper: if the request never reached the server at all
+// (no signal — the common case at sea/on a remote island, not a rejected
+// request), it's queued for automatic retry instead of just failing. The
+// caller gets back { queued: true } instead of a thrown error so the UI
+// can show "we'll submit this once you're back online" rather than a
+// generic failure.
+export async function createBooking(payload) {
+  try {
+    return await createBookingRaw(payload);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      const entry = queueRequest('booking', payload);
+      return { queued: true, queuedId: entry.id, message: "You're offline — this booking will be submitted automatically once you're back online." };
+    }
+    throw err;
+  }
 }
 
 export async function getMyBookings() {
@@ -99,16 +122,31 @@ export async function getMyTrips() {
 
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
-export async function createOrder({ items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method }) {
+export async function createOrderRaw(payload) {
   const res = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
-      items, fulfillment_method, payment_method, promo_code: promo_code || undefined,
-      delivery_island: delivery_island || undefined, handover_method: handover_method || undefined,
+      ...payload,
+      promo_code: payload.promo_code || undefined,
+      delivery_island: payload.delivery_island || undefined,
+      handover_method: payload.handover_method || undefined,
     }),
   });
   return handleResponse(res);
+}
+
+// See createBooking's identical wrapper above for why this exists.
+export async function createOrder(payload) {
+  try {
+    return await createOrderRaw(payload);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      const entry = queueRequest('order', payload);
+      return { queued: true, queuedId: entry.id, message: "You're offline — this order will be submitted automatically once you're back online." };
+    }
+    throw err;
+  }
 }
 
 export async function getMyOrders() {

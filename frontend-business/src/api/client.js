@@ -1,3 +1,5 @@
+import { isNetworkError, queueRequest } from '../offlineQueue';
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
 function authHeaders() {
@@ -64,12 +66,27 @@ export async function getPayouts() {
   return handleResponse(res);
 }
 
-export async function markBookingFulfilled(bookingId) {
+export async function markBookingFulfilledRaw(bookingId) {
   const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/complete`, {
     method: 'PATCH',
     headers: authHeaders(),
   });
   return handleResponse(res);
+}
+
+// Offline-aware wrapper — see offlineQueue.js. If the front desk marks a
+// booking fulfilled with no signal, it's queued and retried automatically
+// once connectivity returns instead of just failing.
+export async function markBookingFulfilled(bookingId) {
+  try {
+    return await markBookingFulfilledRaw(bookingId);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      queueRequest('markBookingFulfilled', bookingId);
+      return { queued: true, message: "You're offline — this will be marked fulfilled automatically once you're back online." };
+    }
+    throw err;
+  }
 }
 
 // --- Incoming bookings & orders (routes/bookings.js, routes/orders.js) ---
@@ -84,13 +101,26 @@ export async function getBusinessOrders(businessId) {
   return handleResponse(res);
 }
 
-export async function markOrderStatus(orderId, status) {
+export async function markOrderStatusRaw(orderId, status) {
   const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ status }),
   });
   return handleResponse(res);
+}
+
+// See markBookingFulfilled's identical wrapper above for why this exists.
+export async function markOrderStatus(orderId, status) {
+  try {
+    return await markOrderStatusRaw(orderId, status);
+  } catch (err) {
+    if (isNetworkError(err)) {
+      queueRequest('markOrderStatus', { orderId, status });
+      return { queued: true, message: "You're offline — this status update will be sent automatically once you're back online." };
+    }
+    throw err;
+  }
 }
 
 // --- Returns / exchanges (routes/returns.js) ---
