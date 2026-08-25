@@ -143,6 +143,13 @@ export async function getBusinessReviews(businessId, page = 1) {
   return handleResponse(res);
 }
 
+// --- Weather (routes/weather.js) ---
+
+export async function getWeather(atoll) {
+  const res = await fetch(`${API_BASE}/api/weather/${encodeURIComponent(atoll)}`);
+  return handleResponse(res);
+}
+
 // --- Notifications (routes/notifications.js) ---
 
 export async function getNotifications(page = 1) {

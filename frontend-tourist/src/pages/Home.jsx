@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications, getWeather } from '../api/client';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -26,6 +26,7 @@ export default function Home() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [weather, setWeather] = useState(null);
 
   // Section 3.4 Pricing Visibility: a Local account should see local_price
   // everywhere prices are shown, not tourist_price. The backend has always
@@ -51,6 +52,18 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [island, typeFilter]);
 
+  // Section 6.2: the header's line-art and tappable badge are meant to
+  // reflect real conditions for the island currently selected, not be
+  // purely decorative.
+  useEffect(() => {
+    let cancelled = false;
+    setWeather(null);
+    getWeather(island)
+      .then((data) => { if (!cancelled) setWeather(data.weather); })
+      .catch(() => {}); // decorative — a failed fetch just means no badge/live icon, not an error banner
+    return () => { cancelled = true; };
+  }, [island]);
+
   function handleIslandSubmit(e) {
     e.preventDefault();
     const trimmed = islandInput.trim();
@@ -59,7 +72,7 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
-      <Header island={island} />
+      <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>
         {/* Section 3.2 "Choosing a Stay Island": a plain text switcher, not
@@ -244,35 +257,21 @@ function FilterPill({ label, active, onClick }) {
   );
 }
 
-function Header({ island }) {
+function Header({ island, weather }) {
   return (
     <div style={{ background: 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
-      {/* Sunny-state line-art behind the logo, per Section 6.2 / 11 —
-          swap this SVG based on real weather data once the Section 6.2
-          weather feed is wired up (Phase 2). */}
-      <svg
-        viewBox="0 0 100 100"
-        style={{
-          position: 'absolute', top: -18, left: -18, width: 100, height: 100,
-          opacity: 0.4, animation: 'rays-rotate 40s linear infinite',
-          WebkitMaskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
-          maskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
-        }}
-        aria-hidden="true"
-      >
-        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round">
-          <circle cx="50" cy="50" r="14" fill="none" />
-          <line x1="50" y1="24" x2="50" y2="14" />
-          <line x1="24" y1="50" x2="14" y2="50" />
-          <line x1="32" y1="32" x2="24" y2="24" />
-          <line x1="68" y1="32" x2="76" y2="24" />
-        </g>
-      </svg>
+      {/* Line-art behind the logo, per Section 6.2 / 11 — now driven by
+          weather.condition_type from GET /api/weather/:atoll instead of
+          always showing the sunny state. Defaults to sunny while loading. */}
+      <WeatherIcon condition={weather?.condition_type} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
         <div>
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
-          <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>Staying on {island}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>Staying on {island}</p>
+            {weather && <WeatherBadge weather={weather} />}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <NotificationBell />
@@ -282,6 +281,102 @@ function Header({ island }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// The tap-to-toggle badge from the original Visualizer mockups (see
+// theme.css's header comment) — shows temperature by default, taps to
+// show wind speed instead.
+function WeatherBadge({ weather }) {
+  const [showWind, setShowWind] = useState(false);
+
+  return (
+    <button
+      onClick={() => setShowWind((v) => !v)}
+      style={{
+        border: 'none',
+        background: 'rgba(255,255,255,0.15)',
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 500,
+        padding: '2px 8px',
+        borderRadius: 'var(--radius-pill)',
+        cursor: 'pointer',
+      }}
+      aria-label="Toggle between temperature and wind speed"
+    >
+      {showWind ? `${weather.wind_speed} km/h wind` : `${weather.temperature}°C`}
+    </button>
+  );
+}
+
+const WEATHER_ANIMATION = {
+  sunny: 'rays-rotate 40s linear infinite',
+  cloudy: 'cloud-drift 6s ease-in-out infinite',
+  rainy: undefined,
+  windy: undefined,
+  thundery: undefined,
+};
+
+// Decorative line-art matching the existing sunny icon's minimalist white-
+// stroke style — one variant per weather_condition_type. Defaults to sunny
+// (the original always-on state) until real weather has loaded.
+function WeatherIcon({ condition }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      style={{
+        position: 'absolute', top: -18, left: -18, width: 100, height: 100,
+        opacity: 0.4, animation: WEATHER_ANIMATION[condition] || WEATHER_ANIMATION.sunny,
+        WebkitMaskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
+        maskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
+      }}
+      aria-hidden="true"
+    >
+      {(condition === 'cloudy' || condition === 'rainy' || condition === 'thundery') && (
+        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" fill="none">
+          <circle cx="40" cy="40" r="9" />
+          <circle cx="52" cy="35" r="11" />
+          <circle cx="63" cy="41" r="8" />
+          <line x1="29" y1="50" x2="72" y2="50" />
+        </g>
+      )}
+
+      {condition === 'rainy' && (
+        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="38" y1="58" x2="34" y2="70" style={{ animation: 'rain-fall 1.2s linear infinite' }} />
+          <line x1="50" y1="58" x2="46" y2="70" style={{ animation: 'rain-fall 1.2s linear infinite 0.3s' }} />
+          <line x1="62" y1="58" x2="58" y2="70" style={{ animation: 'rain-fall 1.2s linear infinite 0.6s' }} />
+        </g>
+      )}
+
+      {condition === 'thundery' && (
+        <polygon
+          points="54,52 44,68 51,68 46,84 63,62 54,62"
+          fill="#ffffff"
+          stroke="none"
+          style={{ animation: 'lightning-flash 2.5s ease-in-out infinite' }}
+        />
+      )}
+
+      {condition === 'windy' && (
+        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" fill="none">
+          <path d="M20 38 h35 a6 6 0 1 0 -6-6" style={{ animation: 'wind-flow 2.4s ease-in-out infinite' }} />
+          <path d="M20 54 h48 a6 6 0 1 1 -6 6" style={{ animation: 'wind-flow 2.4s ease-in-out infinite 0.4s' }} />
+          <path d="M20 70 h30" style={{ animation: 'wind-flow 2.4s ease-in-out infinite 0.8s' }} />
+        </g>
+      )}
+
+      {(!condition || condition === 'sunny') && (
+        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round">
+          <circle cx="50" cy="50" r="14" fill="none" />
+          <line x1="50" y1="24" x2="50" y2="14" />
+          <line x1="24" y1="50" x2="14" y2="50" />
+          <line x1="32" y1="32" x2="24" y2="24" />
+          <line x1="68" y1="32" x2="76" y2="24" />
+        </g>
+      )}
+    </svg>
   );
 }
 

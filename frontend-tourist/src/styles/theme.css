@@ -108,6 +108,29 @@ body {
   100% { transform: scale(2.2); opacity: 0; }
 }
 
+/* Weather line-art (Home.jsx's WeatherIcon) — one motion per condition,
+   alongside sun-pulse/rays-rotate/wave-ripple above. */
+@keyframes cloud-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+@keyframes rain-fall {
+  0% { transform: translateY(0); opacity: 0.9; }
+  100% { transform: translateY(10px); opacity: 0; }
+}
+
+@keyframes wind-flow {
+  0% { transform: translateX(-6px); opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { transform: translateX(6px); opacity: 0.5; }
+}
+
+@keyframes lightning-flash {
+  0%, 90%, 100% { opacity: 0.4; }
+  92%, 96% { opacity: 1; }
+}
+
 .btn-primary {
   background: var(--lagoon);
   color: white;
