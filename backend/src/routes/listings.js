@@ -15,6 +15,16 @@ const router = Router();
  * GET /api/islands/:island/listings?type=guesthouse
  * Section 3.2: everything available on the selected island, optionally
  * filtered by business type. No auth required (browse-as-guest, Section 7.4).
+ *
+ * businesses.location_island is free text (a plain <input>, not a picker —
+ * see business.js's signup route and frontend-business's CreateBusinessForm),
+ * so an exact match here silently dropped any business whose owner typed a
+ * different case or stray whitespace than whatever the tourist side sends
+ * (e.g. Home.jsx's DEFAULT_ISLAND = 'Maafushi') — the listing was otherwise
+ * fully approved/active and correctly showed up anywhere it's looked up by
+ * id (business dashboard, admin directory), just never here. Matching
+ * case/whitespace-insensitively is a pragmatic fix for that; a real island
+ * picker backed by a fixed list would remove the root cause entirely.
  */
 router.get('/:island/listings', async (req, res) => {
   const { island } = req.params;
@@ -33,7 +43,7 @@ router.get('/:island/listings', async (req, res) => {
             b.verified_badge
      FROM listings l
      JOIN businesses b ON b.id = l.business_id
-     WHERE b.location_island = $1
+     WHERE LOWER(TRIM(b.location_island)) = LOWER(TRIM($1))
        AND l.approval_status = 'approved'
        AND b.approval_status = 'approved'
        AND b.account_status = 'active'
