@@ -17,6 +17,7 @@ import sosRoutes from './routes/sos.js';
 import groupRoutes from './routes/groups.js';
 import checkinRoutes from './routes/checkin.js';
 import tripRoutes from './routes/trips.js';
+import reviewRoutes from './routes/reviews.js';
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ app.use('/api/sos', sosRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/trips', tripRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

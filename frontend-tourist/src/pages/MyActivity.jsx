@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { getMyBookings, getMyOrders, cancelBooking, fileDispute } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview } from '../api/client';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -12,6 +12,7 @@ export default function MyActivity() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [reviewsByTarget, setReviewsByTarget] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -20,10 +21,17 @@ export default function MyActivity() {
     Promise.all([
       getMyBookings().catch(() => ({ bookings: [] })),
       getMyOrders().catch(() => ({ orders: [] })),
+      getMyReviews().catch(() => ({ reviews: [] })),
     ])
-      .then(([bookingsData, ordersData]) => {
+      .then(([bookingsData, ordersData, reviewsData]) => {
         setBookings(bookingsData.bookings || []);
         setOrders(ordersData.orders || []);
+        const byTarget = {};
+        for (const r of reviewsData.reviews || []) {
+          if (r.booking_id) byTarget[`booking:${r.booking_id}`] = r;
+          if (r.order_id) byTarget[`order:${r.order_id}`] = r;
+        }
+        setReviewsByTarget(byTarget);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -71,7 +79,13 @@ export default function MyActivity() {
         </p>
       )}
       {bookings.map((b) => (
-        <BookingRow key={b.id} booking={b} onCancel={handleCancel} />
+        <BookingRow
+          key={b.id}
+          booking={b}
+          onCancel={handleCancel}
+          review={reviewsByTarget[`booking:${b.id}`]}
+          onReviewed={loadAll}
+        />
       ))}
 
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
@@ -83,7 +97,7 @@ export default function MyActivity() {
         </p>
       )}
       {orders.map((o) => (
-        <OrderRow key={o.id} order={o} />
+        <OrderRow key={o.id} order={o} review={reviewsByTarget[`order:${o.id}`]} onReviewed={loadAll} />
       ))}
     </div>
   );
@@ -96,7 +110,7 @@ const BOOKING_STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-function BookingRow({ booking, onCancel }) {
+function BookingRow({ booking, onCancel, review, onReviewed }) {
   const canCancel = booking.status === 'confirmed';
   const isGuesthouse = booking.business_type === 'guesthouse';
   const isCheckedIn = booking.check_in_status === 'checked_in';
@@ -125,6 +139,9 @@ function BookingRow({ booking, onCancel }) {
         )}
       </div>
       {canCheckIn && <CheckInQR bookingId={booking.id} />}
+      {booking.status === 'completed' && (
+        <ReviewPrompt bookingId={booking.id} review={review} onReviewed={onReviewed} />
+      )}
       <ReportProblem bookingId={booking.id} />
     </div>
   );
@@ -176,7 +193,7 @@ const ORDER_STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-function OrderRow({ order }) {
+function OrderRow({ order, review, onReviewed }) {
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
@@ -187,8 +204,111 @@ function OrderRow({ order }) {
         ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
       </p>
+      {order.status === 'completed' && (
+        <ReviewPrompt orderId={order.id} review={review} onReviewed={onReviewed} />
+      )}
       <ReportProblem orderId={order.id} />
     </div>
+  );
+}
+
+// "Leave a review" — POST /api/reviews. One review per completed
+// booking/order, enforced backend-side; here we just reflect whether one
+// already exists (passed down as `review`) instead of re-showing the form.
+function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [text, setText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  if (review) {
+    return (
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+          Your review: {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+          {review.text && ` — ${review.text}`}
+        </p>
+      </div>
+    );
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      await submitReview({ booking_id: bookingId, order_id: orderId, rating, text });
+      onReviewed();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
+        onClick={() => setOpen(true)}
+      >
+        Leave a review
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}
+    >
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Rating
+      </label>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            type="button"
+            key={n}
+            onClick={() => setRating(n)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}
+            aria-label={`${n} star${n > 1 ? 's' : ''}`}
+          >
+            {n <= rating ? '★' : '☆'}
+          </button>
+        ))}
+      </div>
+
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Your review (optional)
+      </label>
+      <textarea
+        className="input-field"
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        style={{ fontSize: 13, marginBottom: 8, resize: 'vertical' }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12 }}
+          onClick={() => setOpen(false)}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button type="submit" className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
+    </form>
   );
 }
 

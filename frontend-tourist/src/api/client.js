@@ -122,6 +122,27 @@ export async function fileDispute({ booking_id, order_id, reason, description })
   return handleResponse(res);
 }
 
+// --- Reviews (routes/reviews.js) ---
+
+export async function submitReview({ booking_id, order_id, rating, text }) {
+  const res = await fetch(`${API_BASE}/api/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ booking_id, order_id, rating, text }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyReviews() {
+  const res = await fetch(`${API_BASE}/api/reviews/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getBusinessReviews(businessId, page = 1) {
+  const res = await fetch(`${API_BASE}/api/reviews/business/${businessId}?page=${page}`);
+  return handleResponse(res);
+}
+
 // --- SOS (routes/sos.js) ---
 
 export async function sendSOS({ latitude, longitude, island }) {

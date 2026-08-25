@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
-  getArrivals, checkInBooking,
+  getArrivals, checkInBooking, getBusinessReviews,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 
@@ -92,6 +92,8 @@ export default function Dashboard() {
       {business.type === 'guesthouse' && <CheckInSection businessId={business.id} />}
 
       <IncomingActivity businessId={business.id} />
+
+      <ReviewsSection businessId={business.id} />
     </div>
   );
 }
@@ -779,6 +781,46 @@ function CheckInForm({ arrival, viaQr, onDone, onCancel }) {
         </button>
       </div>
     </form>
+  );
+}
+
+// GET /api/reviews/business/:businessId — public endpoint, reused here so
+// the owner can see their own average rating and recent reviews.
+function ReviewsSection({ businessId }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getBusinessReviews(businessId)
+      .then(setData)
+      .catch((err) => setError(err.message));
+  }, [businessId]);
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Reviews
+        {data && data.total > 0 && (
+          <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>
+            {' '}· {data.average_rating.toFixed(1)} ★ ({data.total})
+          </span>
+        )}
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      {data && data.total === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No reviews yet.</p>
+      )}
+      {data && data.reviews.map((r) => (
+        <div key={r.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} — {r.reviewer_name}
+          </p>
+          {r.text && (
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.text}</p>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

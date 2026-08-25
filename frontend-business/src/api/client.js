@@ -93,6 +93,13 @@ export async function markOrderStatus(orderId, status) {
   return handleResponse(res);
 }
 
+// --- Reviews (routes/reviews.js) ---
+
+export async function getBusinessReviews(businessId, page = 1) {
+  const res = await fetch(`${API_BASE}/api/reviews/business/${businessId}?page=${page}`);
+  return handleResponse(res);
+}
+
 // --- Guesthouse check-in (routes/checkin.js) ---
 
 export async function getArrivals(businessId) {

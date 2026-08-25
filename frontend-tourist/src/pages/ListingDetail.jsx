@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews } from '../api/client';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -71,6 +71,50 @@ export default function ListingDetail() {
       ) : (
         <SlotCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
       )}
+
+      <Reviews businessId={listing.business_id} />
+    </div>
+  );
+}
+
+// GET /api/reviews/business/:businessId — public, no auth required. Shown
+// on the listing page since a listing's reviews are really the business's
+// reviews (reviews.business_id, not listing_id — see schema.sql).
+function Reviews({ businessId }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getBusinessReviews(businessId)
+      .then(setData)
+      .catch((err) => setError(err.message));
+  }, [businessId]);
+
+  if (error || !data) return null;
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+        Reviews
+        {data.total > 0 && (
+          <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>
+            {' '}· {data.average_rating.toFixed(1)} ★ ({data.total})
+          </span>
+        )}
+      </p>
+      {data.total === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No reviews yet.</p>
+      )}
+      {data.reviews.map((r) => (
+        <div key={r.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} — {r.reviewer_name}
+          </p>
+          {r.text && (
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.text}</p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
