@@ -79,6 +79,7 @@ function ApprovalQueueSection({ queue, onApprove, onReject }) {
     ...queue.businesses.map((b) => ({ ...b, item_type: 'business', label: `${b.name} (${b.type})`, business_id: b.id })),
     ...queue.listings.map((l) => ({ ...l, item_type: 'listing', label: `${l.name} (${l.type})` })),
     ...queue.local_verifications.map((u) => ({ ...u, item_type: 'local_verification', label: `${u.name} — Local ID verification` })),
+    ...(queue.agents || []).map((a) => ({ ...a, item_type: 'agent', label: `${a.name} — Agent account` })),
   ];
 
   return (

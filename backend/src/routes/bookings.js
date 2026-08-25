@@ -347,6 +347,25 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
     await accruePayAtVisitCommission(booking.business_id, booking.business_commission);
   }
 
+  // Agent bookings (Section 12 / [PHASE 2]): if an agent made this booking
+  // on a guest's behalf (routes/agents.js), completion is what releases
+  // their commission — same "accrue on completion" shape as Pay at Visit
+  // dues above, just into agent_commissions instead of
+  // pay_at_visit_commission_owed.
+  const agentBookingResult = await query(
+    `SELECT id, agent_id, commission_amount FROM agent_bookings WHERE resulting_booking_id = $1`,
+    [id]
+  );
+  if (agentBookingResult.rows.length) {
+    const agentBooking = agentBookingResult.rows[0];
+    await query(
+      `INSERT INTO agent_commissions (agent_id, agent_booking_id, amount, schedule_date, status)
+       VALUES ($1, $2, $3, CURRENT_DATE, 'held_in_escrow')`,
+      [agentBooking.agent_id, agentBooking.id, agentBooking.commission_amount]
+    );
+    await query(`UPDATE agent_bookings SET status = 'completed' WHERE id = $1`, [agentBooking.id]);
+  }
+
   res.json({ booking: result.rows[0], message: 'Marked fulfilled — eligible for the next payout run.' });
 });
 

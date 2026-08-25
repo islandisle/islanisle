@@ -133,11 +133,15 @@ router.get('/approval-queue', authenticate, requireRole('admin'), async (req, re
     `SELECT id, name, 'local_verification' AS item_type, created_at FROM users
      WHERE type = 'local' AND local_verification_status = 'pending'`
   );
+  const agents = await query(
+    `SELECT id, name, 'agent' AS item_type, created_at FROM agents WHERE approval_status = 'pending'`
+  );
 
   res.json({
     businesses: businesses.rows,
     listings: listings.rows,
     local_verifications: localVerifications.rows,
+    agents: agents.rows,
   });
 });
 
@@ -151,6 +155,7 @@ router.post('/approve', authenticate, requireRole('admin'), async (req, res) => 
   const tableMap = {
     business: { table: 'businesses', column: 'approval_status' },
     listing: { table: 'listings', column: 'approval_status' },
+    agent: { table: 'agents', column: 'approval_status' },
   };
 
   if (target_type === 'local_verification') {
@@ -180,6 +185,7 @@ router.post('/reject', authenticate, requireRole('admin'), async (req, res) => {
   const tableMap = {
     business: { table: 'businesses', column: 'approval_status' },
     listing: { table: 'listings', column: 'approval_status' },
+    agent: { table: 'agents', column: 'approval_status' },
   };
   const t = tableMap[target_type];
   if (!t) {

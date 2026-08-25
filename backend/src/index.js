@@ -23,6 +23,8 @@ import supportRoutes from './routes/support.js';
 import weatherRoutes from './routes/weather.js';
 import waitlistRoutes from './routes/waitlist.js';
 import returnRoutes from './routes/returns.js';
+import agentRoutes from './routes/agents.js';
+import messageRoutes from './routes/messages.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -64,6 +66,8 @@ app.use('/api/support', supportRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/returns', returnRoutes);
+app.use('/api/agents', agentRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.
