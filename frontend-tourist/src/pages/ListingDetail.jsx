@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery } from '../api/client';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -227,14 +227,37 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       : ''
   );
   const [promoCode, setPromoCode] = useState('');
+  const [deliveryIsland, setDeliveryIsland] = useState('');
+  const [handoverMethod, setHandoverMethod] = useState('buyer_pickup_at_boat');
+  const [deliveryCheck, setDeliveryCheck] = useState(null); // null = not checked yet
+  const [checkingDelivery, setCheckingDelivery] = useState(false);
   const [ordering, setOrdering] = useState(false);
 
   const fulfillmentOptions = Array.isArray(listing.fulfillment_options) ? listing.fulfillment_options : [];
   const outOfStock = listing.stock_count != null && listing.stock_count <= 0;
+  const isDelivery = fulfillment === 'delivery';
+
+  async function handleCheckDelivery() {
+    if (!deliveryIsland.trim()) return;
+    setCheckingDelivery(true);
+    setDeliveryCheck(null);
+    try {
+      const res = await checkDelivery(listing.id, deliveryIsland.trim());
+      setDeliveryCheck(res);
+    } catch (err) {
+      setDeliveryCheck({ available: false, error: err.message });
+    } finally {
+      setCheckingDelivery(false);
+    }
+  }
 
   async function handleOrder() {
     if (quantity < 1) {
       setError('Quantity must be at least 1.');
+      return;
+    }
+    if (isDelivery && deliveryIsland.trim() && deliveryCheck?.cross_island && !deliveryCheck?.available) {
+      setError('Delivery to that island is not currently possible — no speedboat route is listed yet.');
       return;
     }
     setOrdering(true);
@@ -245,6 +268,8 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         fulfillment_method: fulfillment || undefined,
         payment_method: 'pay_at_visit',
         promo_code: promoCode,
+        delivery_island: isDelivery ? deliveryIsland.trim() : undefined,
+        handover_method: isDelivery && deliveryCheck?.cross_island ? handoverMethod : undefined,
       });
       onSuccess(res);
     } catch (err) {
@@ -299,6 +324,62 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         </p>
       )}
 
+      {isDelivery && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+            Delivering to which island?
+          </label>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              className="input-field"
+              placeholder="e.g. Maafushi"
+              value={deliveryIsland}
+              onChange={(e) => { setDeliveryIsland(e.target.value); setDeliveryCheck(null); }}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleCheckDelivery}
+              disabled={!deliveryIsland.trim() || checkingDelivery}
+            >
+              {checkingDelivery ? 'Checking…' : 'Check'}
+            </button>
+          </div>
+
+          {deliveryCheck?.error && <p className="error-text">{deliveryCheck.error}</p>}
+
+          {deliveryCheck && !deliveryCheck.error && !deliveryCheck.cross_island && (
+            <p style={{ fontSize: 12, color: 'var(--lagoon)' }}>Same-island delivery — no boat transfer needed.</p>
+          )}
+
+          {deliveryCheck && !deliveryCheck.error && deliveryCheck.cross_island && !deliveryCheck.available && (
+            <p style={{ fontSize: 12, color: 'var(--coral)' }}>
+              No speedboat delivery is currently listed from {deliveryCheck.shop_island} to {deliveryCheck.delivery_island}.
+            </p>
+          )}
+
+          {deliveryCheck && !deliveryCheck.error && deliveryCheck.cross_island && deliveryCheck.available && (
+            <>
+              <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>
+                Deliverable via {deliveryCheck.boat_name} — departs {new Date(deliveryCheck.departure).toLocaleString()}.
+              </p>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                How should it be handed over?
+              </label>
+              <select
+                className="input-field"
+                value={handoverMethod}
+                onChange={(e) => setHandoverMethod(e.target.value)}
+              >
+                <option value="buyer_pickup_at_boat">I'll pick it up at the boat</option>
+                <option value="guesthouse_handover">Deliver to my guesthouse (requires active check-in)</option>
+              </select>
+            </>
+          )}
+        </div>
+      )}
+
       <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
         Promo code (optional)
       </label>
@@ -343,6 +424,14 @@ function PendingPayment({ result, onDone }) {
           )}
           <PriceLine label="Total to pay in person" value={result.price_breakdown.total_charged} bold />
         </div>
+        {result.delivery && (
+          <p style={{ fontSize: 13, color: 'var(--navy)', marginBottom: 16 }}>
+            Delivery via {result.delivery.boat_name}, departing {new Date(result.delivery.departure).toLocaleString()}.{' '}
+            {result.delivery.handover_method === 'guesthouse_handover'
+              ? "It'll be handed to your guesthouse."
+              : "Pick it up at the boat."}
+          </p>
+        )}
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
           You'll find this in "My bookings &amp; orders" on your profile.
         </p>

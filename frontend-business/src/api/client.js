@@ -93,6 +93,32 @@ export async function markOrderStatus(orderId, status) {
   return handleResponse(res);
 }
 
+// --- Returns / exchanges (routes/returns.js) ---
+
+export async function getBusinessReturns(businessId) {
+  const res = await fetch(`${API_BASE}/api/returns/business/${businessId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function approveReturn(returnId) {
+  const res = await fetch(`${API_BASE}/api/returns/${returnId}/approve`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function rejectReturn(returnId, reason) {
+  const res = await fetch(`${API_BASE}/api/returns/${returnId}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
+export async function processReturn(returnId) {
+  const res = await fetch(`${API_BASE}/api/returns/${returnId}/process`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Reviews (routes/reviews.js) ---
 
 export async function getBusinessReviews(businessId, page = 1) {

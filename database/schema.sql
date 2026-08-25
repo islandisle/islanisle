@@ -208,7 +208,7 @@ CREATE TABLE orders (
     price_charged                   NUMERIC(12,2) NOT NULL,
     fulfillment_method               fulfillment_method,
     delivery_island                  TEXT, -- [PHASE 2]
-    matched_route_id                 UUID, -- FK added after routes table exists [PHASE 2]
+    matched_route_id                 UUID REFERENCES listings(id), -- [PHASE 2]; points at the matched speedboat LISTING (listings already exists above), not the unused `routes` table — see the note above CREATE TABLE routes for why
     delivery_fee                    NUMERIC(12,2) NOT NULL DEFAULT 0,
     handover_method                  handover_method, -- [PHASE 2]
     status                          order_status NOT NULL DEFAULT 'pending_payment',
@@ -442,6 +442,18 @@ CREATE TABLE weather_conditions (
 -- ---------------------------------------------------------------------------
 -- [PHASE 2] routes, group_bookings, package_deliveries, returns — speedboat &
 -- guesthouse-arranged transfers, shop cross-island delivery
+--
+-- `routes` below is unpopulated and unused — per README's "Known
+-- architectural gap", Phase 1 speedboat schedules actually live as generic
+-- `listings` rows (business_type = 'speedboat') with origin/destination/
+-- departure_times in type_specific_fields, same as the tourist-facing
+-- GET /api/islands/transfers route already queries. Cross-island shop
+-- delivery matching (services/deliveryMatch.js) matches against that real
+-- data, so package_deliveries.route_id and orders.matched_route_id
+-- reference `listings(id)`, not `routes(id)`, despite the column names.
+-- group_bookings.route_id below still points at the empty `routes` table
+-- since guesthouse-arranged group transfers are a separate, still-unbuilt
+-- feature this pass didn't touch.
 -- ---------------------------------------------------------------------------
 CREATE TABLE routes (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -454,8 +466,6 @@ CREATE TABLE routes (
     local_price         NUMERIC(12,2) NOT NULL,
     luggage_allowance    JSONB -- {bags: n, weight_kg: n}
 );
-
-ALTER TABLE orders ADD CONSTRAINT fk_orders_matched_route FOREIGN KEY (matched_route_id) REFERENCES routes(id);
 
 CREATE TABLE group_bookings (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -480,7 +490,7 @@ CREATE TABLE group_booking_guests (
 CREATE TABLE package_deliveries (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id                UUID NOT NULL REFERENCES orders(id),
-    route_id                UUID NOT NULL REFERENCES routes(id),
+    route_id                UUID NOT NULL REFERENCES listings(id), -- the matched speedboat listing — see the note above CREATE TABLE routes
     departure_datetime        TIMESTAMPTZ NOT NULL,
     boat_business_id          UUID NOT NULL REFERENCES businesses(id),
     handover_method           handover_method NOT NULL,

@@ -4,6 +4,7 @@ import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
   getArrivals, checkInBooking, getBusinessReviews, getNotifications,
+  getBusinessReturns, approveReturn, rejectReturn, processReturn,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 
@@ -93,6 +94,8 @@ export default function Dashboard() {
       {business.type === 'guesthouse' && <CheckInSection businessId={business.id} />}
 
       <IncomingActivity businessId={business.id} />
+
+      {business.type === 'shop' && <ReturnsSection businessId={business.id} />}
 
       <ReviewsSection businessId={business.id} />
     </div>
@@ -826,6 +829,116 @@ function NotificationBellButton({ businessId, onClick }) {
         </span>
       )}
     </button>
+  );
+}
+
+// Returns/exchanges queue (routes/returns.js) — shop businesses only.
+function ReturnsSection({ businessId }) {
+  const [returns, setReturns] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function load() {
+    setLoading(true);
+    getBusinessReturns(businessId)
+      .then((data) => setReturns(data.returns || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  const open = returns.filter((r) => r.status === 'requested' || r.status === 'approved');
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Returns &amp; exchanges
+      </p>
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && open.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending.</p>
+      )}
+      {open.map((r) => (
+        <ReturnRow key={r.id} ret={r} onChanged={load} />
+      ))}
+    </div>
+  );
+}
+
+function ReturnRow({ ret, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleApprove() {
+    setBusy(true);
+    setError('');
+    try {
+      await approveReturn(ret.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    const reason = window.prompt('Reason for declining (required):');
+    if (!reason) return;
+    setBusy(true);
+    setError('');
+    try {
+      await rejectReturn(ret.id, reason);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleProcess() {
+    setBusy(true);
+    setError('');
+    try {
+      await processReturn(ret.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {ret.type === 'exchange' ? 'Exchange' : 'Return'} — {ret.customer_name}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+        {ret.reason}
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {ret.status === 'requested' && (
+          <>
+            <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleReject} disabled={busy}>
+              Decline
+            </button>
+            <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleApprove} disabled={busy}>
+              Approve
+            </button>
+          </>
+        )}
+        {ret.status === 'approved' && (
+          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleProcess} disabled={busy}>
+            {ret.type === 'exchange' ? 'Mark exchange complete' : 'Process refund'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

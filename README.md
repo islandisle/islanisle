@@ -80,12 +80,16 @@ reach Neon/Stripe. That end-to-end test needs your machine.
 
 ## Known architectural gap — read before Phase 2 transfer features
 
-Phase 2 tables (`group_bookings`, `package_deliveries`, `b2b_requests`)
-reference a dedicated `routes` table, but Phase 1 speedboat listings are
-generic `listings` rows with `type_specific_fields` JSONB instead —
-**nothing syncs the two**. Fix this (sync logic, or refactor speedboat
-booking to use `routes` directly) before building guesthouse-arranged
-transfers or cross-island delivery matching.
+Phase 2 tables (`group_bookings`, `b2b_requests`) reference a dedicated
+`routes` table, but Phase 1 speedboat listings are generic `listings` rows
+with `type_specific_fields` JSONB instead — **nothing syncs the two**.
+Cross-island shop delivery matching (`backend/src/services/deliveryMatch.js`,
+`package_deliveries`) resolved this for itself by matching against
+`listings` directly and pointing `orders.matched_route_id` /
+`package_deliveries.route_id` at `listings(id)` instead of the empty
+`routes` table. `group_bookings` (guesthouse-arranged transfers) still
+needs the same fix — either sync logic, or refactor to use `listings`
+the same way — before it can be built.
 
 ## What's genuinely not here yet
 

@@ -99,17 +99,43 @@ export async function getMyTrips() {
 
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
-export async function createOrder({ items, fulfillment_method, payment_method, promo_code }) {
+export async function createOrder({ items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method }) {
   const res = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ items, fulfillment_method, payment_method, promo_code: promo_code || undefined }),
+    body: JSON.stringify({
+      items, fulfillment_method, payment_method, promo_code: promo_code || undefined,
+      delivery_island: delivery_island || undefined, handover_method: handover_method || undefined,
+    }),
   });
   return handleResponse(res);
 }
 
 export async function getMyOrders() {
   const res = await fetch(`${API_BASE}/api/orders/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// Cross-island delivery preview for the product/purchase screen.
+export async function checkDelivery(listingId, deliveryIsland) {
+  const params = new URLSearchParams({ listing_id: listingId, delivery_island: deliveryIsland });
+  const res = await fetch(`${API_BASE}/api/orders/delivery-check?${params}`);
+  return handleResponse(res);
+}
+
+// --- Returns / exchanges (routes/returns.js) ---
+
+export async function requestReturn({ order_id, type, reason }) {
+  const res = await fetch(`${API_BASE}/api/returns`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ order_id, type, reason }),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyReturns() {
+  const res = await fetch(`${API_BASE}/api/returns/mine`, { headers: authHeaders() });
   return handleResponse(res);
 }
 

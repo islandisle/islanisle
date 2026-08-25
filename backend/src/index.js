@@ -22,6 +22,7 @@ import notificationRoutes from './routes/notifications.js';
 import supportRoutes from './routes/support.js';
 import weatherRoutes from './routes/weather.js';
 import waitlistRoutes from './routes/waitlist.js';
+import returnRoutes from './routes/returns.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -62,19 +63,20 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/waitlist', waitlistRoutes);
+app.use('/api/returns', returnRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.
 //
 // Known architectural gap (flagged honestly, not silently left broken):
-//  Phase 2 tables (routes, group_bookings, package_deliveries, b2b_requests)
-//  reference a dedicated `routes` table for speedboat schedules, but Phase 1
-//  speedboat listings are stored as generic `listings` rows with
-//  type_specific_fields instead. Nothing syncs the two yet. Before building
-//  any Phase 2 feature that needs routes.id (guesthouse-arranged transfers,
-//  cross-island shop delivery), either add sync logic when a speedboat
-//  listing is created, or refactor speedboat booking to use `routes`
-//  directly. See README.
+//  Phase 2 tables (routes, group_bookings, b2b_requests) reference a
+//  dedicated `routes` table for speedboat schedules, but Phase 1 speedboat
+//  listings are stored as generic `listings` rows with type_specific_fields
+//  instead, and nothing syncs the two. Cross-island shop delivery matching
+//  (orders.js, services/deliveryMatch.js) resolved this for itself by
+//  matching against `listings` directly rather than the empty `routes`
+//  table — group_bookings (guesthouse-arranged transfers) still needs the
+//  same fix before it can be built.
 
 app.use((err, req, res, next) => {
   console.error(err);

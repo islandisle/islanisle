@@ -7,17 +7,24 @@
 // order_items (one row per distinct listing in the order) instead of a
 // single booking row.
 //
+// Cross-island speedboat delivery matching (Section 4.5, [PHASE 2]): when
+// delivery_island differs from the shop's own location_island, the
+// fastest matching approved speedboat listing (real Phase 1 schedule data
+// — see services/deliveryMatch.js) is looked up and, if found, recorded
+// on the order plus a package_deliveries row. handover_method chooses
+// between the buyer picking up at the boat, or — using the check-in data
+// already on the buyer's account (users.current_stay_business_id /
+// current_stay_room_number) — a guesthouse handover, which notifies that
+// guesthouse of an arriving package tied to the guest's room.
+//
 // NOT yet implemented (flagged honestly rather than faked):
-//   - Cross-island speedboat delivery matching (Section 4.5's route-matching
-//     logic). fulfillment_method is accepted and stored, but delivery_island,
-//     matched_route_id, delivery_fee, and handover_method are all marked
-//     [PHASE 2] in the schema and aren't computed here — this route only
-//     supports pickup/delivery as a flat choice, not real route-matched
-//     delivery scheduling.
 //   - Per-item fulfillment consistency. If an order mixes listings with
 //     different fulfillment_options, this only checks the requested
 //     fulfillment_method against each item's own options — it doesn't
 //     reconcile conflicting options across a multi-item order beyond that.
+//   - delivery_fee is always 0 for a matched cross-island delivery — no
+//     pricing rule for it was specified; the column is populated (ready
+//     for one) rather than left silently at its default for a different reason.
 
 import { Router } from 'express';
 import { query, pool } from '../config/db.js';
@@ -27,6 +34,7 @@ import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
+import { findFastestDelivery } from '../services/deliveryMatch.js';
 
 const router = Router();
 
@@ -50,12 +58,15 @@ function round2(n) {
 router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, fulfillment_method, payment_method, promo_code } = req.body;
+    const { items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items must be a non-empty array of { listing_id, quantity }.' });
     }
     if (fulfillment_method && !['pickup', 'delivery'].includes(fulfillment_method)) {
       return res.status(400).json({ error: "fulfillment_method must be 'pickup' or 'delivery'." });
+    }
+    if (handover_method && !['buyer_pickup_at_boat', 'guesthouse_handover'].includes(handover_method)) {
+      return res.status(400).json({ error: "handover_method must be 'buyer_pickup_at_boat' or 'guesthouse_handover'." });
     }
     // Same 'online' vs 'pay_at_visit' split as bookings.js — see that
     // file's top comment for the full rationale.
@@ -71,7 +82,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const listingsResult = await query(
       `SELECT l.id, l.tourist_price, l.local_price, l.approval_status, l.stock_count,
               l.fulfillment_options, l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type,
-              b.approval_status AS business_approval_status, b.account_status, b.trust_tier
+              b.approval_status AS business_approval_status, b.account_status, b.trust_tier, b.location_island
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
        WHERE l.id = ANY($1::uuid[])`,
@@ -108,6 +119,30 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       return res.status(400).json({
         error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
       });
+    }
+
+    // Cross-island delivery matching — see this file's top comment.
+    let deliveryMatch = null;
+    let currentStay = null;
+    if (fulfillment_method === 'delivery' && delivery_island && business.location_island) {
+      deliveryMatch = await findFastestDelivery(business.location_island, delivery_island);
+      if (!deliveryMatch) {
+        return res.status(400).json({
+          error: `No speedboat delivery is currently listed from ${business.location_island} to ${delivery_island}.`,
+        });
+      }
+      if (handover_method === 'guesthouse_handover') {
+        const stayResult = await query(
+          'SELECT current_stay_business_id, current_stay_room_number FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        currentStay = stayResult.rows[0];
+        if (!currentStay?.current_stay_business_id || !currentStay?.current_stay_room_number) {
+          return res.status(400).json({
+            error: 'Guesthouse handover requires an active check-in — check in at your guesthouse first, or choose boat pickup instead.',
+          });
+        }
+      }
     }
 
     let basePrice = 0;
@@ -181,8 +216,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       `INSERT INTO orders (
          business_id, user_id, base_price, payer_type, payment_method,
          business_commission, tourist_commission_applicable, tourist_commission, price_charged,
-         promo_code_id, promo_discount_amount, fulfillment_method, status, escrow_status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         promo_code_id, promo_discount_amount, fulfillment_method,
+         delivery_island, matched_route_id, delivery_fee, handover_method,
+         status, escrow_status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING id, base_price, price_charged, status, escrow_status`,
       [
         businessId, req.user.id, basePrice, payerType,
@@ -190,6 +227,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         businessCommission, touristCommissionApplicable, touristCommission, priceCharged,
         promoCodeId, promoDiscountAmount,
         fulfillment_method || null,
+        deliveryMatch ? delivery_island : null,
+        deliveryMatch ? deliveryMatch.listing_id : null,
+        0, // delivery_fee — see this file's top comment
+        deliveryMatch ? (handover_method || 'buyer_pickup_at_boat') : null,
         isPayAtVisit ? 'confirmed' : 'pending_payment',
         'not_applicable',
       ]
@@ -203,6 +244,48 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       );
     }
 
+    let packageDelivery = null;
+    if (deliveryMatch) {
+      const resolvedHandover = handover_method || 'buyer_pickup_at_boat';
+      const packageDeliveryResult = await client.query(
+        `INSERT INTO package_deliveries (
+           order_id, route_id, departure_datetime, boat_business_id,
+           handover_method, guesthouse_business_id, room_number, notified_status
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')
+         RETURNING id, departure_datetime`,
+        [
+          order.id, deliveryMatch.listing_id, deliveryMatch.departure, deliveryMatch.business_id,
+          resolvedHandover,
+          resolvedHandover === 'guesthouse_handover' ? currentStay.current_stay_business_id : null,
+          resolvedHandover === 'guesthouse_handover' ? currentStay.current_stay_room_number : null,
+        ]
+      );
+      packageDelivery = packageDeliveryResult.rows[0];
+    }
+
+    // Guesthouse handover: notify the guesthouse of an arriving package
+    // tied to the guest's room — sent once, after commit, from whichever
+    // branch below actually finalizes the order.
+    async function notifyGuesthouseIfNeeded() {
+      if (!packageDelivery || handover_method !== 'guesthouse_handover') return;
+      await notify({
+        recipientType: 'business',
+        recipientId: currentStay.current_stay_business_id,
+        type: 'package_delivery',
+        title: 'Package arriving for a guest',
+        body: `A shop order for Room ${currentStay.current_stay_room_number} is arriving by speedboat (${deliveryMatch.boat_name}) on ${new Date(deliveryMatch.departure).toLocaleString()}.`,
+      });
+    }
+
+    const deliveryInfo = packageDelivery
+      ? {
+          delivery_island,
+          departure: packageDelivery.departure_datetime,
+          boat_name: deliveryMatch.boat_name,
+          handover_method: handover_method || 'buyer_pickup_at_boat',
+        }
+      : null;
+
     if (isPayAtVisit) {
       await client.query('COMMIT');
       await notify({
@@ -212,9 +295,11 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         title: 'Order confirmed',
         body: `Your order is confirmed — pay $${priceCharged} in person.`,
       });
+      await notifyGuesthouseIfNeeded();
       return res.status(201).json({
         order,
         price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
+        delivery: deliveryInfo,
         message: `Order confirmed. Pay $${priceCharged} in person.`,
       });
     }
@@ -232,6 +317,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     );
 
     await client.query('COMMIT');
+    // Guesthouse handover notification is deliberately not sent here — this
+    // order isn't confirmed until payments.js's webhook fires, and
+    // frontend-tourist doesn't exercise this 'online' path today anyway
+    // (checkout always sends pay_at_visit; see ListingDetail.jsx).
 
     res.status(201).json({
       order: { ...order, status: 'pending_payment' },
@@ -241,6 +330,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         promo_discount: promoDiscountAmount,
         total_charged: priceCharged,
       },
+      delivery: deliveryInfo,
       client_secret: paymentIntent.client_secret,
       message: 'Order created — confirm payment on the client to finalize it.',
     });
@@ -259,6 +349,46 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+/**
+ * GET /api/orders/delivery-check?listing_id=&delivery_island=
+ * Public — the product/purchase screen calls this before checkout to show
+ * whether cross-island delivery is possible, and if so when the matching
+ * speedboat departs and its name. No auth required, same "browse as guest"
+ * posture as listings.js.
+ */
+router.get('/delivery-check', async (req, res) => {
+  const { listing_id, delivery_island } = req.query;
+  if (!listing_id || !delivery_island) {
+    return res.status(400).json({ error: 'listing_id and delivery_island are required.' });
+  }
+
+  const listingResult = await query(
+    `SELECT b.location_island AS shop_island FROM listings l JOIN businesses b ON b.id = l.business_id WHERE l.id = $1`,
+    [listing_id]
+  );
+  if (!listingResult.rows.length) {
+    return res.status(404).json({ error: 'Listing not found.' });
+  }
+  const shopIsland = listingResult.rows[0].shop_island;
+
+  if (!shopIsland || shopIsland.trim().toLowerCase() === delivery_island.trim().toLowerCase()) {
+    return res.json({ available: true, cross_island: false, shop_island: shopIsland, delivery_island });
+  }
+
+  const match = await findFastestDelivery(shopIsland, delivery_island);
+  if (!match) {
+    return res.json({ available: false, cross_island: true, shop_island: shopIsland, delivery_island });
+  }
+  res.json({
+    available: true,
+    cross_island: true,
+    shop_island: shopIsland,
+    delivery_island,
+    departure: match.departure,
+    boat_name: match.boat_name,
+  });
 });
 
 /**

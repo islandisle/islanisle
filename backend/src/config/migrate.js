@@ -44,6 +44,33 @@ async function constraintExists(constraintName) {
   return result.rows.length > 0;
 }
 
+// Finds the FK on table.column (whatever it's named) and, if it references
+// a different table than targetTable, drops and recreates it pointing at
+// targetTable — used below to repoint orders.matched_route_id and
+// package_deliveries.route_id from the unused `routes` table to `listings`
+// (see schema.sql's comment above CREATE TABLE routes for why).
+async function repointForeignKey(table, column, targetTable) {
+  const result = await pool.query(
+    `SELECT tc.constraint_name, ccu.table_name AS referenced_table
+     FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+     JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
+     WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1 AND kcu.column_name = $2`,
+    [table, column]
+  );
+  if (!result.rows.length) {
+    console.log(`  No FK found on ${table}.${column} to repoint — leaving it alone.`);
+    return false;
+  }
+  const { constraint_name: constraintName, referenced_table: referencedTable } = result.rows[0];
+  if (referencedTable === targetTable) return false;
+
+  console.log(`Repointing ${table}.${column}'s FK from ${referencedTable} to ${targetTable}...`);
+  await pool.query(`ALTER TABLE ${table} DROP CONSTRAINT ${constraintName}`);
+  await pool.query(`ALTER TABLE ${table} ADD CONSTRAINT ${constraintName} FOREIGN KEY (${column}) REFERENCES ${targetTable}(id)`);
+  return true;
+}
+
 async function main() {
   console.log('Checking for the promo-codes/waitlist schema catch-up (commit da550d3)...');
   let changed = false;
@@ -91,6 +118,15 @@ async function main() {
     await pool.query(`ALTER TABLE orders ADD CONSTRAINT fk_orders_promo_code FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id)`);
     changed = true;
   }
+
+  console.log('Checking for the shop marketplace batch catch-up (returns + cross-island delivery matching)...');
+
+  // orders.matched_route_id / package_deliveries.route_id were originally
+  // FK'd to the unused `routes` table; both now need to point at `listings`
+  // (real speedboat schedules — see schema.sql's note above CREATE TABLE
+  // routes). Only needed if this database still has the original FK.
+  if (await repointForeignKey('orders', 'matched_route_id', 'listings')) changed = true;
+  if (await repointForeignKey('package_deliveries', 'route_id', 'listings')) changed = true;
 
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();

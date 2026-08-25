@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview, getMyWaitlist } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn } from '../api/client';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -14,6 +14,7 @@ export default function MyActivity() {
   const [orders, setOrders] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
   const [reviewsByTarget, setReviewsByTarget] = useState({});
+  const [returnsByOrder, setReturnsByOrder] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,8 +25,9 @@ export default function MyActivity() {
       getMyOrders().catch(() => ({ orders: [] })),
       getMyReviews().catch(() => ({ reviews: [] })),
       getMyWaitlist().catch(() => ({ waitlist: [] })),
+      getMyReturns().catch(() => ({ returns: [] })),
     ])
-      .then(([bookingsData, ordersData, reviewsData, waitlistData]) => {
+      .then(([bookingsData, ordersData, reviewsData, waitlistData, returnsData]) => {
         setBookings(bookingsData.bookings || []);
         setOrders(ordersData.orders || []);
         setWaitlist(waitlistData.waitlist || []);
@@ -35,6 +37,11 @@ export default function MyActivity() {
           if (r.order_id) byTarget[`order:${r.order_id}`] = r;
         }
         setReviewsByTarget(byTarget);
+        const byOrder = {};
+        for (const r of returnsData.returns || []) {
+          byOrder[r.order_id] = r;
+        }
+        setReturnsByOrder(byOrder);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -100,7 +107,14 @@ export default function MyActivity() {
         </p>
       )}
       {orders.map((o) => (
-        <OrderRow key={o.id} order={o} review={reviewsByTarget[`order:${o.id}`]} onReviewed={loadAll} />
+        <OrderRow
+          key={o.id}
+          order={o}
+          review={reviewsByTarget[`order:${o.id}`]}
+          onReviewed={loadAll}
+          existingReturn={returnsByOrder[o.id]}
+          onReturned={loadAll}
+        />
       ))}
 
       {waitlist.length > 0 && (
@@ -225,7 +239,7 @@ const ORDER_STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-function OrderRow({ order, review, onReviewed }) {
+function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
@@ -239,8 +253,98 @@ function OrderRow({ order, review, onReviewed }) {
       {order.status === 'completed' && (
         <ReviewPrompt orderId={order.id} review={review} onReviewed={onReviewed} />
       )}
+      {order.status === 'completed' && (
+        <ReturnPrompt orderId={order.id} existingReturn={existingReturn} onReturned={onReturned} />
+      )}
       <ReportProblem orderId={order.id} />
     </div>
+  );
+}
+
+const RETURN_STATUS_LABEL = {
+  requested: 'Requested — waiting on the business',
+  approved: 'Approved — awaiting processing',
+  declined: 'Declined',
+  completed: 'Completed',
+};
+
+// POST /api/returns — request a return or exchange on a completed order,
+// within the backend's 14-day window. Business approves/rejects/processes
+// from frontend-business's Dashboard.
+function ReturnPrompt({ orderId, existingReturn, onReturned }) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState('return');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  if (existingReturn) {
+    return (
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+        {existingReturn.type === 'exchange' ? 'Exchange' : 'Return'}: {RETURN_STATUS_LABEL[existingReturn.status] || existingReturn.status}
+        {existingReturn.status === 'completed' && existingReturn.refund_amount > 0 && ` — $${existingReturn.refund_amount} refunded`}
+      </p>
+    );
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!reason.trim()) {
+      setError('Please describe why.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await requestReturn({ order_id: orderId, type, reason: reason.trim() });
+      onReturned();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
+        onClick={() => setOpen(true)}
+      >
+        Request return / exchange
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input type="radio" checked={type === 'return'} onChange={() => setType('return')} /> Return
+        </label>
+        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input type="radio" checked={type === 'exchange'} onChange={() => setType('exchange')} /> Exchange
+        </label>
+      </div>
+      <textarea
+        className="input-field"
+        rows={2}
+        placeholder="Why are you requesting this?"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        style={{ marginBottom: 8, resize: 'vertical' }}
+      />
+      {error && <p className="error-text">{error}</p>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen(false)} disabled={submitting}>
+          Cancel
+        </button>
+        <button type="submit" className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit request'}
+        </button>
+      </div>
+    </form>
   );
 }
 
