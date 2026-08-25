@@ -143,6 +143,30 @@ export async function getBusinessReviews(businessId, page = 1) {
   return handleResponse(res);
 }
 
+// --- Notifications (routes/notifications.js) ---
+
+export async function getNotifications(page = 1) {
+  const res = await fetch(`${API_BASE}/api/notifications?page=${page}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function markNotificationRead(id) {
+  const res = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function markAllNotificationsRead() {
+  const res = await fetch(`${API_BASE}/api/notifications/read-all`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({}),
+  });
+  return handleResponse(res);
+}
+
 // --- SOS (routes/sos.js) ---
 
 export async function sendSOS({ latitude, longitude, island }) {

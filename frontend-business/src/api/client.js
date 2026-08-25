@@ -100,6 +100,30 @@ export async function getBusinessReviews(businessId, page = 1) {
   return handleResponse(res);
 }
 
+// --- Notifications (routes/notifications.js) ---
+
+export async function getNotifications(businessId, page = 1) {
+  const res = await fetch(`${API_BASE}/api/notifications?business_id=${businessId}&page=${page}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function markNotificationRead(id) {
+  const res = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function markAllNotificationsRead(businessId) {
+  const res = await fetch(`${API_BASE}/api/notifications/read-all`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ business_id: businessId }),
+  });
+  return handleResponse(res);
+}
+
 // --- Guesthouse check-in (routes/checkin.js) ---
 
 export async function getArrivals(businessId) {

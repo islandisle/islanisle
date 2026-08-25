@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
-  getArrivals, checkInBooking, getBusinessReviews,
+  getArrivals, checkInBooking, getBusinessReviews, getNotifications,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 
@@ -46,6 +46,7 @@ export default function Dashboard() {
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+        <NotificationBellButton businessId={business.id} onClick={() => navigate('/notifications')} />
         <button
           className="btn-secondary"
           style={{ padding: '4px 12px', fontSize: 12 }}
@@ -781,6 +782,50 @@ function CheckInForm({ arrival, viaQr, onDone, onCancel }) {
         </button>
       </div>
     </form>
+  );
+}
+
+// GET /api/notifications?business_id= — polled once on mount just for its
+// unread_count, same call the Notifications page itself uses for the list.
+function NotificationBellButton({ businessId, onClick }) {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    getNotifications(businessId)
+      .then((data) => setUnreadCount(data.unread_count || 0))
+      .catch(() => {});
+  }, [businessId]);
+
+  return (
+    <button
+      className="btn-secondary"
+      onClick={onClick}
+      style={{ position: 'relative', padding: '4px 12px', fontSize: 12 }}
+    >
+      Notifications
+      {unreadCount > 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            minWidth: 16,
+            height: 16,
+            padding: '0 3px',
+            borderRadius: 8,
+            background: 'var(--coral)',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </button>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications } from '../api/client';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -274,11 +274,72 @@ function Header({ island }) {
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
           <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>Staying on {island}</p>
         </div>
-        <Link to="/profile" style={{ color: '#fff', fontSize: 13, textDecoration: 'none', background: 'rgba(255,255,255,0.15)', padding: '6px 10px', borderRadius: 20 }}>
-          Profile
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NotificationBell />
+          <Link to="/profile" style={{ color: '#fff', fontSize: 13, textDecoration: 'none', background: 'rgba(255,255,255,0.15)', padding: '6px 10px', borderRadius: 20 }}>
+            Profile
+          </Link>
+        </div>
       </div>
     </div>
+  );
+}
+
+// GET /api/notifications — polled once on mount just for its unread_count,
+// same call the Notifications page itself uses for the full list.
+function NotificationBell() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!localStorage.getItem('atollisle_token')) return;
+    getNotifications()
+      .then((data) => setUnreadCount(data.unread_count || 0))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <Link
+      to="/notifications"
+      aria-label="Notifications"
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.15)',
+        textDecoration: 'none',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+      {unreadCount > 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -2,
+            minWidth: 16,
+            height: 16,
+            padding: '0 3px',
+            borderRadius: 8,
+            background: 'var(--coral)',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </Link>
   );
 }
 
