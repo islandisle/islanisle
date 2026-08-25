@@ -26,6 +26,7 @@ import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
+import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
 
 const router = Router();
 
@@ -69,8 +70,8 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const listingIds = items.map((i) => i.listing_id);
     const listingsResult = await query(
       `SELECT l.id, l.tourist_price, l.local_price, l.approval_status, l.stock_count,
-              l.fulfillment_options, b.id AS business_id, b.type AS business_type,
-              b.approval_status AS business_approval_status, b.account_status
+              l.fulfillment_options, l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type,
+              b.approval_status AS business_approval_status, b.account_status, b.trust_tier
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
        WHERE l.id = ANY($1::uuid[])`,
@@ -96,6 +97,19 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       return res.status(400).json({ error: 'This shop is not currently available.' });
     }
 
+    // Pay at Visit enforcement (Section 9 / [PHASE 2]): a 'new', unverified
+    // business can ONLY take Pay at Visit — its listings have
+    // pay_at_visit_enabled forced true (see business.js's listing-creation
+    // route) — and can't use 'online' until it graduates. A graduated
+    // business can use either, but pay_at_visit still requires each
+    // listing to have opted in.
+    const isNewBusiness = business.trust_tier === 'new';
+    if (!isPayAtVisit && isNewBusiness) {
+      return res.status(400).json({
+        error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
+      });
+    }
+
     let basePrice = 0;
     for (const item of items) {
       const quantity = Number(item.quantity);
@@ -105,6 +119,9 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       const listing = listingsById[item.listing_id];
       if (listing.approval_status !== 'approved') {
         return res.status(400).json({ error: `Item ${item.listing_id} is not currently available.` });
+      }
+      if (isPayAtVisit && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
+        return res.status(400).json({ error: `Pay at Visit is not available for one of the items in your order.` });
       }
       if (listing.stock_count != null && listing.stock_count < quantity) {
         return res.status(409).json({ error: `Only ${listing.stock_count} left of an item in your order.` });
@@ -334,7 +351,8 @@ router.patch('/:id/status', authenticate, async (req, res) => {
   }
 
   const ownerCheck = await query(
-    `SELECT o.id FROM orders o
+    `SELECT o.id, o.payment_method, o.business_commission, o.business_id
+     FROM orders o
      JOIN businesses biz ON biz.id = o.business_id
      WHERE o.id = $1 AND biz.owner_user_id = $2 AND o.status NOT IN ('cancelled', 'completed')`,
     [id, req.user.id]
@@ -342,13 +360,27 @@ router.patch('/:id/status', authenticate, async (req, res) => {
   if (!ownerCheck.rows.length) {
     return res.status(404).json({ error: 'Open order not found for a business you own.' });
   }
+  const order = ownerCheck.rows[0];
+  const isPayAtVisit = order.payment_method === 'pay_at_visit';
 
-  const escrowClause = status === 'completed' ? `, escrow_status = 'released'` : '';
-  const result = await query(
-    `UPDATE orders SET status = $1${escrowClause}, updated_at = now()
-     WHERE id = $2 RETURNING id, status, escrow_status`,
-    [status, id]
-  );
+  // pay_at_visit never had funds held in escrow (see bookings.js's
+  // /complete for the same reasoning) — stays 'not_applicable'; its
+  // commission is accrued below instead.
+  const result = status === 'completed'
+    ? await query(
+        `UPDATE orders SET status = $1, escrow_status = $2, updated_at = now()
+         WHERE id = $3 RETURNING id, status, escrow_status`,
+        [status, isPayAtVisit ? 'not_applicable' : 'released', id]
+      )
+    : await query(
+        `UPDATE orders SET status = $1, updated_at = now()
+         WHERE id = $2 RETURNING id, status, escrow_status`,
+        [status, id]
+      );
+
+  if (status === 'completed' && isPayAtVisit) {
+    await accruePayAtVisitCommission(order.business_id, order.business_commission);
+  }
 
   res.json({ order: result.rows[0], message: `Order marked ${status}.` });
 });

@@ -22,6 +22,7 @@ import notificationRoutes from './routes/notifications.js';
 import supportRoutes from './routes/support.js';
 import weatherRoutes from './routes/weather.js';
 import waitlistRoutes from './routes/waitlist.js';
+import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
 
@@ -82,4 +83,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Atoll Isle API listening on port ${PORT}`);
+  startScheduledJobs();
 });

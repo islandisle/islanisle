@@ -9,18 +9,25 @@
 // payment processor involved, booking is confirmed immediately, no 2%
 // online fee applies).
 //
+// Pay at Visit (Section 9 / [PHASE 2]) is gated by trust tier: a 'new',
+// unverified business can ONLY take Pay at Visit (pay_at_visit_enabled is
+// forced true for its listings — see business.js's listing-creation
+// route), and can't use 'online' until it graduates to 'graduated'. A
+// graduated business can use either, but pay_at_visit still requires the
+// listing to have opted in. The 1% commission on a pay_at_visit booking is
+// accrued (not collected directly — no payment ever flows through the
+// platform for these) when the booking is marked complete, and actually
+// collected in the monthly payout run — see services/payAtVisit.js and
+// services/payoutRun.js.
+//
 // NOT yet implemented (flagged honestly rather than faked):
 //   - Real timed slot-holds for the 'online' path. This does a capacity
 //     check against already-confirmed bookings, but the script's "held for
 //     a few minutes while paying, then auto-releases" behavior needs a
 //     scheduled job or a TTL store (Redis), which isn't part of this stack
 //     yet. A still-pending-payment booking does NOT count against capacity
-//     yet. Not an issue for pay_at_visit, which confirms immediately.
-//   - Collecting the business's 1% commission on pay_at_visit bookings.
-//     business_commission is still calculated and stored for payout
-//     reconciliation, but since no payment ever flows through the platform
-//     for these bookings, there's no separate invoicing mechanism yet to
-//     actually collect it from the business afterward.
+//     yet (though it does now auto-expire — see services/staleCleanup.js).
+//     Not an issue for pay_at_visit, which confirms immediately.
 //   - Shop purchases. Shops are stock-based (product + quantity), not
 //     slot-based (date/time) — see orders.js instead.
 
@@ -31,6 +38,7 @@ import { requireDocumentOnFile } from '../middleware/documentGate.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
+import { accruePayAtVisitCommission } from '../services/payAtVisit.js';
 
 const router = Router();
 
@@ -91,7 +99,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 
     const listingResult = await query(
       `SELECT l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
-              b.id AS business_id, b.type AS business_type
+              l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type, b.trust_tier
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
        WHERE l.id = $1`,
@@ -103,6 +111,18 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const listing = listingResult.rows[0];
     if (listing.approval_status !== 'approved') {
       return res.status(400).json({ error: 'This listing is not currently bookable.' });
+    }
+
+    // Pay at Visit enforcement (Section 9 / [PHASE 2]) — see this file's
+    // top comment for the trust-tier rule.
+    const isNewBusiness = listing.trust_tier === 'new';
+    if (isPayAtVisit && !(listing.pay_at_visit_enabled === true || isNewBusiness)) {
+      return res.status(400).json({ error: 'Pay at Visit is not available for this listing.' });
+    }
+    if (!isPayAtVisit && isNewBusiness) {
+      return res.status(400).json({
+        error: 'This business is still building trust — only Pay at Visit is available until it graduates.',
+      });
     }
 
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.
@@ -291,7 +311,8 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
   const { id } = req.params;
 
   const ownerCheck = await query(
-    `SELECT b.id FROM bookings b
+    `SELECT b.id, b.payment_method, b.business_commission, biz.id AS business_id
+     FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN businesses biz ON biz.id = l.business_id
      WHERE b.id = $1 AND biz.owner_user_id = $2 AND b.status = 'confirmed'`,
@@ -300,12 +321,21 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
   if (!ownerCheck.rows.length) {
     return res.status(404).json({ error: 'Confirmed booking not found for a business you own.' });
   }
+  const booking = ownerCheck.rows[0];
+  const isPayAtVisit = booking.payment_method === 'pay_at_visit';
 
+  // pay_at_visit never had funds held in escrow, so there's nothing to
+  // mark 'released' — stays 'not_applicable'. Its commission is accrued
+  // below instead of being deducted from an escrow balance.
   const result = await query(
-    `UPDATE bookings SET status = 'completed', escrow_status = 'released', updated_at = now()
-     WHERE id = $1 RETURNING id, status, escrow_status`,
-    [id]
+    `UPDATE bookings SET status = 'completed', escrow_status = $1, updated_at = now()
+     WHERE id = $2 RETURNING id, status, escrow_status`,
+    [isPayAtVisit ? 'not_applicable' : 'released', id]
   );
+
+  if (isPayAtVisit) {
+    await accruePayAtVisitCommission(booking.business_id, booking.business_commission);
+  }
 
   res.json({ booking: result.rows[0], message: 'Marked fulfilled — eligible for the next payout run.' });
 });

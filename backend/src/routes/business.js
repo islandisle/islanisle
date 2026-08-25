@@ -90,22 +90,31 @@ router.post('/signup', authenticate, async (req, res) => {
 router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (req, res) => {
   try {
     const { businessId } = req.params;
-    const { title, description, tourist_price, local_price, type_specific_fields, photos, stock_count, fulfillment_options, free_delivery } = req.body;
+    const { title, description, tourist_price, local_price, type_specific_fields, photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled } = req.body;
 
     if (!title || tourist_price == null || local_price == null) {
       return res.status(400).json({ error: 'title, tourist_price, and local_price are required.' });
     }
 
+    // Pay at Visit enforcement (Section 9 / [PHASE 2]) — schema's own
+    // comment on pay_at_visit_enabled: "forced true while
+    // Business.trust_tier = 'new'". A new, unverified business can't opt
+    // out of it (it's their only payment path — see bookings.js/orders.js's
+    // checkout enforcement); a graduated business chooses for itself.
+    const trustResult = await query('SELECT trust_tier FROM businesses WHERE id = $1', [businessId]);
+    const isNewBusiness = trustResult.rows[0]?.trust_tier === 'new';
+    const effectivePayAtVisitEnabled = isNewBusiness ? true : Boolean(pay_at_visit_enabled);
+
     const result = await query(
       `INSERT INTO listings (
          business_id, title, description, type_specific_fields, tourist_price, local_price,
-         photos, stock_count, fulfillment_options, free_delivery
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       RETURNING id, title, tourist_price, local_price, approval_status`,
+         photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       RETURNING id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled`,
       [
         businessId, title, description || null, JSON.stringify(type_specific_fields || {}),
         tourist_price, local_price, photos || [], stock_count || null,
-        fulfillment_options || null, free_delivery || false,
+        fulfillment_options || null, free_delivery || false, effectivePayAtVisitEnabled,
       ]
     );
 
