@@ -8,7 +8,7 @@ import Support from './pages/Support';
 
 export default function App() {
   return (
-    <BrowserRouter basename="/atollisle-business/">
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />

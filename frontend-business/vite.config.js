@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Separate GitHub Pages deployment from the tourist app — matches the
-// script's "separate business portal" architecture. Adjust base path to
-// match wherever this actually deploys (e.g. a separate repo, or a
-// subpath of the same one).
+// Deploys at its own domain/repo root, separate from the tourist app —
+// matches the script's "separate business portal" architecture.
+// App.jsx's <BrowserRouter> has no basename, so this must stay '/' (or
+// the two need to change together) — e.g. if this instead deploys to a
+// subpath of the same repo, set both this and the basename to match it.
 export default defineConfig({
   plugins: [react()],
   base: '/',

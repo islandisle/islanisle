@@ -12,7 +12,7 @@ import Support from './pages/Support';
 
 export default function App() {
   return (
-    <BrowserRouter basename="/atollisle/">
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
