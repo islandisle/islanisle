@@ -3,24 +3,73 @@
   Established and iterated on earlier in this conversation via the
   Visualizer mockups (header, weather line-art, tap-to-toggle badge).
   This is the same palette and motion language, now as real CSS.
+
+  Dark mode is a variant of this same palette, not a generic inversion —
+  the lagoon teal / coral sunset identity stays recognizable, only the
+  neutrals (page/card surfaces, body text, borders) flip. System
+  preference (prefers-color-scheme) is respected by default; src/theme.js
+  sets data-theme="light"|"dark" on <html> to let a manual choice (Settings/
+  Profile page) override it. The dark values are declared twice on purpose
+  — once for the no-override system-preference case, once for the explicit
+  attribute — so an explicit choice always wins in both directions; see
+  https://web.dev/patterns/theming/theme-switch for the pattern.
 */
 
 :root {
   --lagoon: #0e7c66;
-  --lagoon-light: #e4f3ee;
+  --lagoon-light: #e4f3ee; /* text-on-brand mint — always light, used against surfaces (header, camera placeholders) that don't themselves flip */
+  --lagoon-tint: #e4f3ee; /* soft accent-card background — flips dark below */
   --sand: #faf6ee;
   --coral: #ff6c4a;
-  --coral-light: #ffeae3;
-  --navy: #0b2e3d;
+  --coral-light: #ffeae3; /* accent-card background — flips dark below */
+  --navy: #0b2e3d; /* primary text color — flips light below */
+  --ink: #0b2e3d; /* fixed "Deep Reef Navy" brand fill (buttons, camera/scan placeholders) — deliberately constant across themes */
   --text-secondary: #5b7570;
   --text-muted: #8fa39d;
   --border: #e2e8e5;
+  --surface: #ffffff; /* card / secondary-button surface — flips dark below */
+
+  color-scheme: light dark;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-pill: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --lagoon: #22b696;
+    --lagoon-tint: #123a33;
+    --sand: #0a1f27;
+    --coral: #ff8a6b;
+    --coral-light: #3a2018;
+    --navy: #eef5f2;
+    --text-secondary: #a9c2bb;
+    --text-muted: #6f8983;
+    --border: #1e3941;
+    --surface: #122d37;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --lagoon: #22b696;
+  --lagoon-tint: #123a33;
+  --sand: #0a1f27;
+  --coral: #ff8a6b;
+  --coral-light: #3a2018;
+  --navy: #eef5f2;
+  --text-secondary: #a9c2bb;
+  --text-muted: #6f8983;
+  --border: #1e3941;
+  --surface: #122d37;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -32,6 +81,7 @@ body {
   background: var(--sand);
   color: var(--navy);
   font-family: var(--font-sans);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 /* Reduced-motion respected everywhere, per script Section 11's motion design rule. */
@@ -80,7 +130,7 @@ body {
 }
 
 .btn-secondary {
-  background: white;
+  background: var(--surface);
   color: var(--navy);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -91,7 +141,7 @@ body {
 }
 
 .card {
-  background: white;
+  background: var(--surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -104,6 +154,8 @@ body {
   padding: 12px 14px;
   font-size: 15px;
   font-family: var(--font-sans);
+  background: var(--surface);
+  color: var(--navy);
 }
 
 .input-field:focus {

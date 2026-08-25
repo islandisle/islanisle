@@ -122,7 +122,7 @@ function StayItem({ stay, isLast }) {
       <div
         style={{
           position: 'absolute', left: -18, top: 4, width: 10, height: 10, borderRadius: '50%',
-          background: 'var(--lagoon)', border: '2px solid #fff', boxShadow: '0 0 0 1px var(--border)',
+          background: 'var(--lagoon)', border: '2px solid var(--surface)', boxShadow: '0 0 0 1px var(--border)',
         }}
       />
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>

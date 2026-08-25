@@ -200,7 +200,7 @@ function SOSButton({ island }) {
             left: 16,
             maxWidth: 448,
             margin: '0 auto',
-            background: '#fff',
+            background: 'var(--surface)',
             border: '1px solid var(--coral)',
             borderRadius: 'var(--radius-md)',
             padding: 14,
@@ -234,7 +234,7 @@ function FilterPill({ label, active, onClick }) {
         borderRadius: 20,
         fontSize: 12,
         border: active ? 'none' : '1px solid var(--border)',
-        background: active ? 'var(--lagoon)' : '#fff',
+        background: active ? 'var(--lagoon)' : 'var(--surface)',
         color: active ? '#fff' : 'var(--text-secondary)',
         cursor: 'pointer',
       }}

@@ -36,7 +36,7 @@ export default function Login() {
       </h1>
 
       {justSignedUp && (
-        <p style={{ fontSize: 13, color: 'var(--lagoon)', background: 'var(--lagoon-light)', padding: 10, borderRadius: 8, marginTop: 12 }}>
+        <p style={{ fontSize: 13, color: 'var(--lagoon)', background: 'var(--lagoon-tint)', padding: 10, borderRadius: 8, marginTop: 12 }}>
           {signupMessage || 'Account created — log in to continue.'}
         </p>
       )}

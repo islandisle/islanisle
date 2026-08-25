@@ -5,6 +5,7 @@ import {
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
 } from '../api/client';
+import { useTheme } from '../theme';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -59,6 +60,8 @@ export default function Dashboard() {
       </div>
 
       {error && <p className="error-text">{error}</p>}
+
+      <AppearanceSection />
 
       <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} />
       <PayoutsSection />
@@ -602,5 +605,49 @@ function SupportTicketRow({ ticket, expanded, onToggle, onChanged }) {
         </div>
       )}
     </div>
+  );
+}
+
+const THEME_OPTIONS = [
+  { value: null, label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+// Manual override for the system-preference dark mode set up in
+// src/theme.js / styles/theme.css. "System" clears the override and goes
+// back to following prefers-color-scheme. No dedicated Settings/Profile
+// page exists in the admin console, so this lives on the dashboard itself.
+function AppearanceSection() {
+  const { override, setOverride } = useTheme();
+
+  return (
+    <section className="card" style={{ padding: 16, marginBottom: 28 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Appearance
+      </p>
+      <div style={{ display: 'flex', gap: 6, maxWidth: 320 }}>
+        {THEME_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            type="button"
+            onClick={() => setOverride(opt.value)}
+            style={{
+              flex: 1,
+              padding: '8px 0',
+              borderRadius: 'var(--radius-sm)',
+              border: override === opt.value ? 'none' : '1px solid var(--border)',
+              background: override === opt.value ? 'var(--lagoon)' : 'var(--surface)',
+              color: override === opt.value ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

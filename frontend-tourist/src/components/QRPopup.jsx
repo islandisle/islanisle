@@ -145,7 +145,7 @@ export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
 
           <div
             style={{
-              background: 'var(--navy)', borderRadius: 12, height: 200,
+              background: 'var(--ink)', borderRadius: 12, height: 200,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'var(--lagoon-light)', fontSize: 12, textAlign: 'center',
               padding: 16, position: 'relative', overflow: 'hidden',

@@ -879,7 +879,7 @@ function ModePill({ label, active, onClick }) {
         borderRadius: 20,
         fontSize: 12,
         border: active ? 'none' : '1px solid var(--border)',
-        background: active ? 'var(--lagoon)' : '#fff',
+        background: active ? 'var(--lagoon)' : 'var(--surface)',
         color: active ? '#fff' : 'var(--text-secondary)',
         cursor: 'pointer',
       }}

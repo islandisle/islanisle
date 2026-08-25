@@ -106,7 +106,7 @@ export default function Notifications() {
             marginBottom: 8,
             border: 'none',
             cursor: n.read ? 'default' : 'pointer',
-            background: n.read ? '#fff' : 'var(--sand)',
+            background: n.read ? 'var(--surface)' : 'var(--sand)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>

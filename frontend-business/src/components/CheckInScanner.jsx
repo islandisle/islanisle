@@ -97,7 +97,7 @@ export default function CheckInScanner({ onScan }) {
   return (
     <div
       style={{
-        background: 'var(--navy)', borderRadius: 12, height: 180,
+        background: 'var(--ink)', borderRadius: 12, height: 180,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'var(--lagoon-light)', fontSize: 12, textAlign: 'center',
         padding: 16, position: 'relative', overflow: 'hidden', marginBottom: 8,

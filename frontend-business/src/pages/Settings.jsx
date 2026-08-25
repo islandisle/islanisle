@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getSettings, updateSettings } from '../api/client';
+import { useTheme } from '../theme';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -132,13 +133,58 @@ export default function Settings() {
         </button>
       </form>
 
+      <AppearanceSection />
+
       <Link
         to="/support"
         className="btn-secondary"
-        style={{ display: 'block', textAlign: 'center', width: '100%', marginTop: 16, textDecoration: 'none' }}
+        style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}
       >
         Contact support
       </Link>
+    </div>
+  );
+}
+
+const THEME_OPTIONS = [
+  { value: null, label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+// Manual override for the system-preference dark mode set up in
+// src/theme.js / styles/theme.css. "System" clears the override and goes
+// back to following prefers-color-scheme.
+function AppearanceSection() {
+  const { override, setOverride } = useTheme();
+
+  return (
+    <div className="card" style={{ padding: 16, marginTop: 16, marginBottom: 16 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Appearance
+      </p>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {THEME_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            type="button"
+            onClick={() => setOverride(opt.value)}
+            style={{
+              flex: 1,
+              padding: '8px 0',
+              borderRadius: 'var(--radius-sm)',
+              border: override === opt.value ? 'none' : '1px solid var(--border)',
+              background: override === opt.value ? 'var(--lagoon)' : 'var(--surface)',
+              color: override === opt.value ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

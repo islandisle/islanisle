@@ -147,7 +147,7 @@ function TypeStep({ onSelect }) {
         <button className="btn-primary" style={{ flex: 1 }} onClick={() => onSelect('tourist')}>
           Tourist
         </button>
-        <button className="btn-primary" style={{ flex: 1, background: 'var(--navy)' }} onClick={() => onSelect('local')}>
+        <button className="btn-primary" style={{ flex: 1, background: 'var(--ink)' }} onClick={() => onSelect('local')}>
           Local
         </button>
       </div>
