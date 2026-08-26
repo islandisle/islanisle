@@ -46,6 +46,7 @@ import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { findFastestDelivery } from '../services/deliveryMatch.js';
 import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
+import { reportUnpaidPayAtVisit } from '../services/payAtVisitIncidents.js';
 
 const router = Router();
 
@@ -537,7 +538,7 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
   }
 
   const ordersResult = await query(
-    `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.fulfillment_method,
+    `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.fulfillment_method, o.payment_method,
             o.created_at, u.name AS customer_name,
             1 + (SELECT COUNT(*)::int FROM order_members om WHERE om.order_id = o.id) AS party_size
      FROM orders o
@@ -570,14 +571,17 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
 
 /**
  * PATCH /api/orders/:id/status
- * body: { status: 'confirmed' | 'ready' | 'out_for_delivery' | 'completed' }
+ * body: { status: 'confirmed' | 'ready' | 'out_for_delivery' | 'completed', payment_collected? }
  * Business-only, own shop's orders only. Mirrors bookings.js's /complete —
  * moving to 'completed' releases escrow so the order becomes eligible for
  * the next payout run (Section 7.2), same as payouts.js already expects.
+ * payment_collected (Batch 23) only matters alongside status: 'completed'
+ * on a pay_at_visit order; defaults true.
  */
 router.patch('/:id/status', authenticate, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  const paymentCollected = req.body?.payment_collected !== false;
   const ALLOWED = ['confirmed', 'ready', 'out_for_delivery', 'completed'];
   if (!ALLOWED.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${ALLOWED.join(', ')}` });
@@ -611,11 +615,15 @@ router.patch('/:id/status', authenticate, async (req, res) => {
         [status, id]
       );
 
-  if (status === 'completed' && isPayAtVisit) {
+  if (status === 'completed' && isPayAtVisit && !paymentCollected) {
+    await reportUnpaidPayAtVisit({
+      businessId: order.business_id, userId: order.user_id, orderId: id, amount: order.price_charged,
+    });
+  } else if (status === 'completed' && isPayAtVisit) {
     await accruePayAtVisitCommission(order.business_id, order.business_commission, { orderId: id });
   }
 
-  if (status === 'completed') {
+  if (status === 'completed' && paymentCollected) {
     await awardLoyaltyCreditForCompletion(order.user_id, order.price_charged);
   }
 

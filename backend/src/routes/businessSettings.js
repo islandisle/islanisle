@@ -55,6 +55,24 @@ router.get('/:businessId/billing-history', authenticate, requireBusinessOwnerOrA
 });
 
 /**
+ * GET /api/business/:businessId/pay-at-visit-incidents
+ * Batch 23 (not in the original spec) — a business's own history of
+ * Pay at Visit non-payment incidents it reported, so it can see patterns
+ * (e.g. the same guest repeatedly).
+ */
+router.get('/:businessId/pay-at-visit-incidents', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
+  const result = await query(
+    `SELECT i.id, i.amount, i.reported_at, i.booking_id, i.order_id, u.name AS user_name
+     FROM pay_at_visit_incidents i
+     JOIN users u ON u.id = i.user_id
+     WHERE i.business_id = $1
+     ORDER BY i.reported_at DESC`,
+    [req.params.businessId]
+  );
+  res.json({ incidents: result.rows });
+});
+
+/**
  * PATCH /api/business/:businessId/settings
  * body: any subset of { name, location_island, contact_info, payout_bank_details,
  *                        refund_fee_business_percent, notification_preferences }

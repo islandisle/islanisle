@@ -653,4 +653,51 @@ router.get('/analytics', authenticate, requireRole('admin'), async (req, res) =>
   });
 });
 
+/**
+ * GET /api/admin/pay-at-visit-incidents
+ * Batch 23 (not in the original spec) — every reported non-payment,
+ * newest first, so admin can review/follow up. No accept/reject step —
+ * see pay_at_visit_incidents' own schema comment for why this is a
+ * one-sided record rather than a dispute to arbitrate.
+ */
+router.get('/pay-at-visit-incidents', authenticate, requireRole('admin'), async (req, res) => {
+  const result = await query(
+    `SELECT i.id, i.amount, i.reported_at, i.booking_id, i.order_id,
+            b.name AS business_name, u.name AS user_name, u.id AS user_id, u.pay_at_visit_unpaid_count, u.pay_at_visit_eligible
+     FROM pay_at_visit_incidents i
+     JOIN businesses b ON b.id = i.business_id
+     JOIN users u ON u.id = i.user_id
+     ORDER BY i.reported_at DESC`
+  );
+  res.json({ incidents: result.rows });
+});
+
+/**
+ * POST /api/admin/users/:id/restore-pay-at-visit
+ * Manually restores Pay at Visit eligibility after it was revoked
+ * (services/payAtVisitIncidents.js) — the same "a human decides" pattern
+ * as POST /businesses/:id/mark-trusted. Resets the unpaid-count strike
+ * counter too, rather than leaving it primed to re-revoke on the very
+ * next incident.
+ */
+router.post('/users/:id/restore-pay-at-visit', authenticate, requireFullAdmin, async (req, res) => {
+  const result = await query(
+    `UPDATE users SET pay_at_visit_eligible = true, pay_at_visit_unpaid_count = 0
+     WHERE id = $1 RETURNING id, name`,
+    [req.params.id]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  await logAdminAction(req.user.id, 'restore_pay_at_visit', 'user', req.params.id, req.body.reason || 'Restored via admin console');
+  await notify({
+    recipientType: 'user',
+    recipientId: req.params.id,
+    type: 'pay_at_visit_bill',
+    title: 'Pay at Visit eligibility restored',
+    body: 'Your Pay at Visit eligibility has been restored.',
+  });
+  res.json({ status: 'restored' });
+});
+
 export default router;

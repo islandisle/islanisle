@@ -54,6 +54,7 @@ import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/pa
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
 import { round2, computeRefund } from '../services/refunds.js';
 import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
+import { reportUnpaidPayAtVisit } from '../services/payAtVisitIncidents.js';
 
 const router = Router();
 
@@ -527,7 +528,7 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
   }
 
   const result = await query(
-    `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type,
+    `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type, b.payment_method,
             l.id AS listing_id, l.title, u.name AS customer_name,
             1 + (SELECT COUNT(*)::int FROM booking_members bm WHERE bm.booking_id = b.id) AS party_size
      FROM bookings b
@@ -610,12 +611,16 @@ router.patch('/:id/reject-reservation', authenticate, async (req, res) => {
 
 /**
  * PATCH /api/bookings/:id/complete
+ * body: { payment_collected? } — Batch 23: only meaningful for a
+ * pay_at_visit booking; defaults true (the normal case) when omitted, so
+ * every pre-existing caller of this route keeps working unchanged.
  * Business marks a confirmed booking as fulfilled (guest checked in, table
  * seated, excursion run, etc.) — Section 7.2: this is what makes the booking
  * eligible for the next payout run. Business-only, and only on their own listings.
  */
 router.patch('/:id/complete', authenticate, async (req, res) => {
   const { id } = req.params;
+  const paymentCollected = req.body?.payment_collected !== false;
 
   const ownerCheck = await query(
     `SELECT b.id, b.payment_method, b.business_commission, b.user_id, b.price_charged, biz.id AS business_id
@@ -640,7 +645,16 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
     [isPayAtVisit ? 'not_applicable' : 'released', id]
   );
 
-  if (isPayAtVisit) {
+  // Batch 23: an unpaid Pay at Visit transaction owes no commission (there
+  // was no revenue to take 1% of) and gets no graduation credit — it's
+  // tracked as a reliability incident against the guest instead. Not
+  // possible for an online-paid booking, since payment already happened
+  // before it could ever reach 'confirmed'.
+  if (isPayAtVisit && !paymentCollected) {
+    await reportUnpaidPayAtVisit({
+      businessId: booking.business_id, userId: booking.user_id, bookingId: id, amount: booking.price_charged,
+    });
+  } else if (isPayAtVisit) {
     await accruePayAtVisitCommission(booking.business_id, booking.business_commission, { bookingId: id });
   }
 
@@ -663,7 +677,10 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
     await query(`UPDATE agent_bookings SET status = 'completed' WHERE id = $1`, [agentBooking.id]);
   }
 
-  await awardLoyaltyCreditForCompletion(booking.user_id, booking.price_charged);
+  // No loyalty credit for a transaction the guest never actually paid for.
+  if (paymentCollected) {
+    await awardLoyaltyCreditForCompletion(booking.user_id, booking.price_charged);
+  }
 
   res.json({ booking: result.rows[0], message: 'Marked fulfilled — eligible for the next payout run.' });
 });

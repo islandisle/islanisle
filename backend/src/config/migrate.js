@@ -220,6 +220,17 @@ async function main() {
     changed = true;
   }
 
+  console.log("Checking for admin_action_type.restore_pay_at_visit (Batch 23)...");
+  const restorePavResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'restore_pay_at_visit'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'admin_action_type')`
+  );
+  if (!restorePavResult.rows.length) {
+    console.log("Adding 'restore_pay_at_visit' to admin_action_type...");
+    await pool.query(`ALTER TYPE admin_action_type ADD VALUE IF NOT EXISTS 'restore_pay_at_visit'`);
+    changed = true;
+  }
+
   console.log('Checking for users.notification_preferences (per-category mute)...');
   if (!(await columnExists('users', 'notification_preferences'))) {
     console.log('Adding users.notification_preferences...');
@@ -295,6 +306,31 @@ async function main() {
   if (!(await columnExists('b2b_requests', 'slot_end'))) {
     console.log('Adding b2b_requests.slot_end...');
     await pool.query(`ALTER TABLE b2b_requests ADD COLUMN slot_end TIMESTAMPTZ`);
+    changed = true;
+  }
+
+  console.log('Checking for users.pay_at_visit_unpaid_count (Batch 23)...');
+  if (!(await columnExists('users', 'pay_at_visit_unpaid_count'))) {
+    console.log('Adding users.pay_at_visit_unpaid_count...');
+    await pool.query(`ALTER TABLE users ADD COLUMN pay_at_visit_unpaid_count INTEGER NOT NULL DEFAULT 0`);
+    changed = true;
+  }
+
+  console.log('Checking for pay_at_visit_incidents table (Batch 23)...');
+  if (!(await tableExists('pay_at_visit_incidents'))) {
+    console.log('Creating pay_at_visit_incidents...');
+    await pool.query(`
+      CREATE TABLE pay_at_visit_incidents (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          booking_id      UUID REFERENCES bookings(id),
+          order_id        UUID REFERENCES orders(id),
+          business_id      UUID NOT NULL REFERENCES businesses(id),
+          user_id         UUID NOT NULL REFERENCES users(id),
+          amount         NUMERIC(12,2) NOT NULL,
+          reported_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+          CONSTRAINT chk_pav_incident_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
+      )
+    `);
     changed = true;
   }
 

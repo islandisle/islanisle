@@ -34,7 +34,7 @@ CREATE TYPE admin_role AS ENUM ('admin', 'moderator');
 -- 'reclassify_tourist': Section 2.1's passport-instead-of-ID-card case —
 -- admin reclassifies a Local applicant to Tourist during review (Phase 1's
 -- manual equivalent of Phase 2's automatic OCR-based detection).
-CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted', 'reclassify_tourist');
+CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted', 'reclassify_tourist', 'restore_pay_at_visit');
 CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute');
 CREATE TYPE fulfillment_method AS ENUM ('pickup', 'delivery');
 CREATE TYPE handover_method AS ENUM ('buyer_pickup_at_boat', 'guesthouse_handover');
@@ -65,6 +65,17 @@ CREATE TABLE users (
     current_stay_business_id     UUID, -- FK added after businesses table exists
     current_stay_room_number     TEXT,
     pay_at_visit_eligible        BOOLEAN NOT NULL DEFAULT false, -- [PHASE 2]
+    -- Batch 23 (not in the original spec — a judgment call, flagged as
+    -- such): the reliability-signal mirror of businesses.trust_tier, but
+    -- for the tourist/local side of Pay at Visit. Incremented by
+    -- services/payAtVisitIncidents.js whenever a business marks a
+    -- pay_at_visit booking/order fulfilled with payment NOT collected.
+    -- Reaching PAY_AT_VISIT_UNPAID_THRESHOLD flips pay_at_visit_eligible
+    -- back to false — an active demotion, not just withheld credit,
+    -- since simply not counting toward eligibility (the way a disputed
+    -- transaction doesn't count toward a business's graduation) would
+    -- leave an already-eligible repeat non-payer fully unaffected.
+    pay_at_visit_unpaid_count     INTEGER NOT NULL DEFAULT 0,
     -- wallet_balance was [PHASE 2] and unused until Batch 19's
     -- referral/loyalty program: a signup referral bonus and a small
     -- per-completed-booking/order credit (services/loyalty.js) both land
@@ -828,6 +839,29 @@ CREATE TABLE local_events (
     description     TEXT,
     event_date       DATE NOT NULL,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
+-- [Batch 23] pay_at_visit_incidents — not in the original spec. A business
+-- marking a Pay at Visit booking/order fulfilled can now explicitly say
+-- payment was NOT collected (routes/bookings.js's /complete, routes/
+-- orders.js's /status) instead of that only ever meaning "and it was
+-- paid." Each incident: no business commission is accrued on it (there
+-- was no revenue to take 1% of), and it counts against the guest's
+-- users.pay_at_visit_unpaid_count. Deliberately business-raised only, no
+-- accept/reject step — unlike `disputes`, which is bidirectional and
+-- adversarial by design, this is a one-sided reliability record, closer
+-- to a credit-bureau mark than a dispute to be argued.
+-- ---------------------------------------------------------------------------
+CREATE TABLE pay_at_visit_incidents (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id      UUID REFERENCES bookings(id),
+    order_id        UUID REFERENCES orders(id),
+    business_id      UUID NOT NULL REFERENCES businesses(id),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    amount         NUMERIC(12,2) NOT NULL,
+    reported_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_pav_incident_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
 );
 CREATE INDEX idx_local_events_date ON local_events(event_date);
 
