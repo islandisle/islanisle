@@ -5,7 +5,7 @@ import {
   getMyGroup, removeGroupMember, getCurrentStay,
   getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
   getNotificationPreferences, updateNotificationPreferences,
-  exportMyData, deleteAccount,
+  exportMyData, deleteAccount, getMyProfile,
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
@@ -179,6 +179,8 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      <WalletReferralSection />
 
       <NotificationPreferencesSection />
 
@@ -428,6 +430,55 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'deals_promos', label: 'Deals and promos' },
   { key: 'boarding_reminders', label: 'Boarding reminders and ETA updates' },
 ];
+
+// Batch 19 — referral/loyalty. wallet_balance was [PHASE 2] and unused
+// until now; not yet spendable at checkout (services/loyalty.js explains
+// why), so this is display-and-share only for the moment.
+function WalletReferralSection() {
+  const [profile, setProfile] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getMyProfile().then((d) => setProfile(d.user)).catch((err) => setError(err.message));
+  }, []);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(profile.referral_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard API unavailable — the code is still shown on screen to copy manually
+    }
+  }
+
+  if (!profile) return null;
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Wallet & referrals
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+        Credit balance: <strong style={{ color: 'var(--lagoon)' }}>${Number(profile.wallet_balance).toFixed(2)}</strong>
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        Share your code — you and your friend each get a $5 credit when they sign up.
+      </p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <span
+          className="input-field"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', fontWeight: 600, letterSpacing: 1 }}
+        >
+          {profile.referral_code}
+        </span>
+        <button className="btn-secondary" onClick={handleCopy}>{copied ? 'Copied!' : 'Copy'}</button>
+      </div>
+    </div>
+  );
+}
 
 function NotificationPreferencesSection() {
   const [preferences, setPreferences] = useState(null);

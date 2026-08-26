@@ -27,6 +27,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [language, setLanguage] = useState('en');
   const [wantsGroup, setWantsGroup] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
 
   const step = STEPS[stepIndex];
 
@@ -59,6 +60,7 @@ export default function Signup() {
       formData.append('password', password);
       if (type === 'tourist') formData.append('language', language);
       formData.append('travel_group', String(wantsGroup));
+      if (referralCode.trim()) formData.append('referral_code', referralCode.trim());
       formData.append('document', documentFile);
 
       const result = await signup(formData);
@@ -128,6 +130,8 @@ export default function Signup() {
         <GroupStep
           wantsGroup={wantsGroup}
           setWantsGroup={setWantsGroup}
+          referralCode={referralCode}
+          setReferralCode={setReferralCode}
           onBack={goBack}
           onSubmit={handleSubmit}
           submitting={submitting}
@@ -225,7 +229,7 @@ function LanguageStep({ language, setLanguage, onBack, onNext }) {
   );
 }
 
-function GroupStep({ wantsGroup, setWantsGroup, onBack, onSubmit, submitting }) {
+function GroupStep({ wantsGroup, setWantsGroup, referralCode, setReferralCode, onBack, onSubmit, submitting }) {
   return (
     <div>
       <p style={{ fontSize: 15, marginBottom: 16 }}>Are you traveling with others?</p>
@@ -245,6 +249,21 @@ function GroupStep({ wantsGroup, setWantsGroup, onBack, onSubmit, submitting }) 
           No, just me
         </button>
       </div>
+
+      {/* Batch 19 referral program — optional, so it's tucked in on this
+          last step rather than given its own, since most sign-ups won't
+          have one. */}
+      <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        Referral code (optional)
+      </label>
+      <input
+        className="input-field"
+        placeholder="e.g. AB12CD34"
+        value={referralCode}
+        onChange={(e) => setReferralCode(e.target.value)}
+        style={{ marginBottom: 20 }}
+      />
+
       <div style={{ display: 'flex', gap: 12 }}>
         <button className="btn-secondary" onClick={onBack} disabled={submitting}>Back</button>
         <button className="btn-primary" style={{ flex: 1 }} onClick={onSubmit} disabled={submitting}>

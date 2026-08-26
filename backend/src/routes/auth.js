@@ -19,6 +19,8 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { REFERRAL_BONUS } from '../services/loyalty.js';
+import { notify } from '../services/notifications.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -43,6 +45,7 @@ async function saveDocumentImage(fileBuffer, userId) {
  *   language        string                        (tourist only, default 'en')
  *   document        file (image)                  (required — passport or ID card)
  *   travel_group    'true' | 'false'               (optional — creates a group if true)
+ *   referral_code   string                        (optional — Batch 19: another account's referral_code)
  */
 router.post('/signup', upload.single('document'), async (req, res) => {
   const client = await pool.connect();
@@ -57,6 +60,7 @@ router.post('/signup', upload.single('document'), async (req, res) => {
       password,
       language,
       travel_group,
+      referral_code,
     } = req.body;
 
     // --- Section 2.1 step 1: Tourist or Local is mandatory ---
@@ -89,19 +93,35 @@ router.post('/signup', upload.single('document'), async (req, res) => {
     // --- Section 2.1 step 4: language is Tourist-only ---
     const resolvedLanguage = type === 'tourist' ? (language || 'en') : null;
 
+    // Batch 19 referral program: this account's own shareable code (same
+    // short-code shape as travel_groups.group_code just below), plus —
+    // if a code was entered — the referrer to credit once signup commits.
+    const ownReferralCode = uuidv4().slice(0, 8).toUpperCase();
+    let referrer = null;
+    if (referral_code) {
+      const referrerResult = await client.query('SELECT id FROM users WHERE referral_code = $1', [referral_code.trim().toUpperCase()]);
+      referrer = referrerResult.rows[0] || null;
+    }
+
     const insertUser = await client.query(
       `INSERT INTO users (
          id, name, contact_email, contact_mobile, type, local_verification_status,
          uploaded_document_type, document_image_url, document_number, date_of_birth,
-         language, password_hash
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id, name, type, local_verification_status, language`,
+         language, password_hash, referral_code, referred_by_user_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       RETURNING id, name, type, local_verification_status, language, referral_code, wallet_balance`,
       [
         userId, name, contact_email || null, contact_mobile, type, localVerificationStatus,
         documentType, documentImageUrl, document_number, date_of_birth,
-        resolvedLanguage, passwordHash,
+        resolvedLanguage, passwordHash, ownReferralCode, referrer?.id || null,
       ]
     );
+
+    if (referrer) {
+      await client.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [REFERRAL_BONUS, userId]);
+      await client.query('UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2', [REFERRAL_BONUS, referrer.id]);
+      insertUser.rows[0].wallet_balance = Number(insertUser.rows[0].wallet_balance) + REFERRAL_BONUS;
+    }
 
     // --- Section 2.1 step 5: optional travel group creation, capped at 10 ---
     let groupCode = null;
@@ -120,6 +140,19 @@ router.post('/signup', upload.single('document'), async (req, res) => {
     }
 
     await client.query('COMMIT');
+
+    // Credit itself is already applied inside the transaction above — this
+    // is just the referrer's notification, sent after commit so a failed
+    // notify() can never roll back a successful signup.
+    if (referrer) {
+      await notify({
+        recipientType: 'user',
+        recipientId: referrer.id,
+        type: 'promo',
+        title: 'Referral bonus earned',
+        body: `You earned $${REFERRAL_BONUS} in Atoll Isle credit — someone signed up with your referral code.`,
+      }).catch(() => {});
+    }
 
     const user = insertUser.rows[0];
     res.status(201).json({
@@ -152,7 +185,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await query(
-      `SELECT id, name, type, password_hash, local_verification_status, language
+      `SELECT id, name, type, password_hash, local_verification_status, language, referral_code, wallet_balance
        FROM users WHERE contact_email = $1 OR contact_mobile = $2`,
       [contact_email || null, contact_mobile || null]
     );
@@ -173,12 +206,31 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id, name: user.name, type: user.type,
         local_verification_status: user.local_verification_status, language: user.language,
+        referral_code: user.referral_code, wallet_balance: user.wallet_balance,
       },
     });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed. Please try again.' });
   }
+});
+
+/**
+ * GET /api/auth/me
+ * Batch 19 — a small refresh point for fields that change after login
+ * without a re-login (wallet_balance grows via services/loyalty.js on
+ * every completed booking/order, so the value cached in localStorage at
+ * login time goes stale quickly).
+ */
+router.get('/me', authenticate, async (req, res) => {
+  const result = await query(
+    'SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  res.json({ user: result.rows[0] });
 });
 
 /**

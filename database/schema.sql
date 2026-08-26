@@ -65,7 +65,14 @@ CREATE TABLE users (
     current_stay_business_id     UUID, -- FK added after businesses table exists
     current_stay_room_number     TEXT,
     pay_at_visit_eligible        BOOLEAN NOT NULL DEFAULT false, -- [PHASE 2]
-    wallet_balance                NUMERIC(12,2) NOT NULL DEFAULT 0, -- [PHASE 2]
+    -- wallet_balance was [PHASE 2] and unused until Batch 19's
+    -- referral/loyalty program: a signup referral bonus and a small
+    -- per-completed-booking/order credit (services/loyalty.js) both land
+    -- here. Not yet spendable at checkout — earning and display only; see
+    -- that file's own comment for why spending is deliberately deferred.
+    wallet_balance                NUMERIC(12,2) NOT NULL DEFAULT 0,
+    referral_code                 TEXT UNIQUE, -- Batch 19: this account's own shareable code
+    referred_by_user_id           UUID REFERENCES users(id), -- set once, at signup, if a valid code was entered
     -- Section 11: "users can mute individual notification categories" —
     -- booking_updates (confirmations/cancellations/check-in/reservation
     -- status), chat_messages, deals_promos, boarding_reminders (also

@@ -37,6 +37,7 @@ import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { findFastestDelivery } from '../services/deliveryMatch.js';
+import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
 
 const router = Router();
 
@@ -564,7 +565,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
   }
 
   const ownerCheck = await query(
-    `SELECT o.id, o.payment_method, o.business_commission, o.business_id
+    `SELECT o.id, o.payment_method, o.business_commission, o.business_id, o.user_id, o.price_charged
      FROM orders o
      JOIN businesses biz ON biz.id = o.business_id
      WHERE o.id = $1 AND biz.owner_user_id = $2 AND o.status NOT IN ('cancelled', 'completed')`,
@@ -593,6 +594,10 @@ router.patch('/:id/status', authenticate, async (req, res) => {
 
   if (status === 'completed' && isPayAtVisit) {
     await accruePayAtVisitCommission(order.business_id, order.business_commission, { orderId: id });
+  }
+
+  if (status === 'completed') {
+    await awardLoyaltyCreditForCompletion(order.user_id, order.price_charged);
   }
 
   res.json({ order: result.rows[0], message: `Order marked ${status}.` });

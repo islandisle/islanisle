@@ -110,6 +110,8 @@ function TripCard({ trip }) {
         )}
       </div>
 
+      {!isCurrent && trip.stays.length > 0 && <TripSummary trip={trip} />}
+
       {trip.stays.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No island stays recorded yet.</p>
       ) : (
@@ -119,6 +121,37 @@ function TripCard({ trip }) {
             <StayItem key={stay.id} stay={stay} isLast={i === trip.stays.length - 1} />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Batch 19 — post-trip summary. Shown once every stay in a trip has ended
+// (the same isStayOngoing check TripCard already uses for "Current"),
+// computed client-side from data GET /api/trips/mine already returns —
+// no separate summary endpoint needed.
+function TripSummary({ trip }) {
+  const islands = [...new Set(trip.stays.map((s) => s.island))];
+  const allItems = trip.stays.flatMap((s) => [...s.bookings, ...s.orders]);
+  const totalSpent = allItems.reduce((sum, item) => sum + Number(item.price_charged || 0), 0);
+  const lastStay = trip.stays[trip.stays.length - 1];
+  const tripEnd = lastStay?.end_date || lastStay?.start_date;
+
+  return (
+    <div style={{ background: 'var(--lagoon-tint)', borderRadius: 'var(--radius-sm)', padding: 12, marginBottom: 14 }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--navy)', margin: '0 0 6px' }}>
+        Trip summary
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 2px' }}>
+        {islands.length} island{islands.length > 1 ? 's' : ''} · {islands.join(', ')}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 2px' }}>
+        {allItems.length} booking{allItems.length === 1 ? '' : 's'}/order{allItems.length === 1 ? '' : 's'} · ${totalSpent.toFixed(2)} total
+      </p>
+      {tripEnd && (
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+          Wrapped up {formatDate(tripEnd)}
+        </p>
       )}
     </div>
   );

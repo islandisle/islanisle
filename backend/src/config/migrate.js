@@ -266,6 +266,21 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for users.referral_code/referred_by_user_id (Batch 19 referral/loyalty)...');
+  if (!(await columnExists('users', 'referral_code'))) {
+    console.log('Adding users.referral_code...');
+    await pool.query(`ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE`);
+    // Backfill existing accounts so they have a shareable code too — same
+    // short-code shape as travel_groups.group_code (auth.js/groups.js).
+    await pool.query(`UPDATE users SET referral_code = UPPER(SUBSTRING(id::text, 1, 8)) WHERE referral_code IS NULL`);
+    changed = true;
+  }
+  if (!(await columnExists('users', 'referred_by_user_id'))) {
+    console.log('Adding users.referred_by_user_id...');
+    await pool.query(`ALTER TABLE users ADD COLUMN referred_by_user_id UUID REFERENCES users(id)`);
+    changed = true;
+  }
+
   console.log('Checking for favorites table (Batch 19)...');
   if (!(await tableExists('favorites'))) {
     console.log('Creating favorites...');

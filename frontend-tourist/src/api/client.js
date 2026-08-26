@@ -53,6 +53,13 @@ export async function updateMyLanguage(language) {
   return handleResponse(res);
 }
 
+// Batch 19 — refreshes fields that change after login without a re-login
+// (wallet_balance grows over time via services/loyalty.js).
+export async function getMyProfile() {
+  const res = await fetch(`${API_BASE}/api/auth/me`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Biometric login (routes/webauthn.js) — additional login option
 // alongside the password above, not a replacement ---
 

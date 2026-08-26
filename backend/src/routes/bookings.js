@@ -53,6 +53,7 @@ import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
 import { round2, computeRefund } from '../services/refunds.js';
+import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
 
 const router = Router();
 
@@ -606,7 +607,7 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
   const { id } = req.params;
 
   const ownerCheck = await query(
-    `SELECT b.id, b.payment_method, b.business_commission, biz.id AS business_id
+    `SELECT b.id, b.payment_method, b.business_commission, b.user_id, b.price_charged, biz.id AS business_id
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
      JOIN businesses biz ON biz.id = l.business_id
@@ -650,6 +651,8 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
     );
     await query(`UPDATE agent_bookings SET status = 'completed' WHERE id = $1`, [agentBooking.id]);
   }
+
+  await awardLoyaltyCreditForCompletion(booking.user_id, booking.price_charged);
 
   res.json({ booking: result.rows[0], message: 'Marked fulfilled — eligible for the next payout run.' });
 });
