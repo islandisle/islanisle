@@ -714,6 +714,14 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
     ]
   );
 
+  // document_access_grants (Batch 19) — a cancelled booking is no longer
+  // "an active booking", so any ID-viewing access checkin.js granted the
+  // guesthouse for it ends here too.
+  await query(
+    `UPDATE document_access_grants SET revoked_at = now() WHERE booking_id = $1 AND revoked_at IS NULL`,
+    [id]
+  );
+
   // Refund the actual charge via Stripe.
   if (booking.stripe_payment_intent_id) {
     await stripe.refunds.create({

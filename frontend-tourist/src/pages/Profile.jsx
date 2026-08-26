@@ -5,10 +5,12 @@ import {
   getMyGroup, removeGroupMember, getCurrentStay,
   getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
   getNotificationPreferences, updateNotificationPreferences,
+  exportMyData, deleteAccount,
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
+import { useModalA11y } from '../useModalA11y';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -177,6 +179,8 @@ export default function Profile() {
 
       <BiometricSection />
 
+      <AccountDataSection onDeleted={handleLogout} />
+
       <button className="btn-secondary" style={{ width: '100%' }} onClick={handleLogout}>
         Log out
       </button>
@@ -258,6 +262,138 @@ function BiometricSection() {
       <button className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={handleRegister} disabled={registering}>
         {registering ? 'Waiting for fingerprint/face…' : '+ Register this device'}
       </button>
+    </div>
+  );
+}
+
+// Section 7.5: "every account can export their own data" and delete it.
+// The backend (routes/legal.js) and even the api/client.js wrappers
+// (exportMyData/deleteAccount) already existed — nothing in the UI ever
+// called them. Delete requires typing DELETE plus the password, matching
+// legal.js's own confirmation requirement (it 400s without both).
+function AccountDataSection({ onDeleted }) {
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    setError('');
+    try {
+      const data = await exportMyData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'atollisle-my-data.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Your data
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn-secondary" style={{ width: '100%', marginBottom: 10 }} onClick={handleExport} disabled={exporting}>
+        {exporting ? 'Preparing export…' : 'Export my data'}
+      </button>
+      <button
+        className="btn-secondary"
+        style={{ width: '100%', color: 'var(--coral)' }}
+        onClick={() => setShowDeleteConfirm(true)}
+      >
+        Delete my account
+      </button>
+
+      {showDeleteConfirm && (
+        <DeleteAccountPopup onClose={() => setShowDeleteConfirm(false)} onDeleted={onDeleted} />
+      )}
+    </div>
+  );
+}
+
+function DeleteAccountPopup({ onClose, onDeleted }) {
+  const [password, setPassword] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const modalRef = useModalA11y(onClose);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await deleteAccount(password);
+      onDeleted(); // handleLogout — clears the stored token/user and redirects
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}
+      onClick={onClose}
+    >
+      <form
+        ref={modalRef}
+        onSubmit={handleSubmit}
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Delete account"
+        style={{ width: '100%', maxWidth: 380, padding: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
+          Delete your account?
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+          This is permanent. Your bookings and orders stay on record for the businesses involved, but your
+          profile is anonymized and you'll be logged out everywhere.
+        </p>
+        <input
+          className="input-field"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ marginBottom: 8 }}
+        />
+        <input
+          className="input-field"
+          placeholder='Type "DELETE" to confirm'
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          style={{ marginBottom: 10 }}
+        />
+        {error && <p className="error-text">{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ flex: 1, background: 'var(--coral)' }}
+            disabled={busy || confirmText !== 'DELETE' || !password}
+          >
+            {busy ? 'Deleting…' : 'Delete account'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

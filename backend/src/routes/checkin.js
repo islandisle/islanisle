@@ -268,6 +268,27 @@ router.post('/:bookingId', authenticate, async (req, res) => {
     for (const uid of checkedInUserIds) {
       await linkTripForCheckIn(uid, island, booking.slot_start, booking.slot_end);
     }
+
+    // document_access_grants (Batch 19) — the table existed unused; nothing
+    // ever let a business actually view a guest's passport/ID, even though
+    // check-in is exactly the moment front desk would want to verify it.
+    // Granted per (business, booking, member) so GET .../documents below
+    // can check it without caring which specific stay it came from, and
+    // revoked on cancellation (bookings.js) — "only while there's an
+    // active booking", per the schema's own naming.
+    for (const uid of checkedInUserIds) {
+      const existingGrant = await query(
+        `SELECT id FROM document_access_grants
+         WHERE business_id = $1 AND booking_id = $2 AND member_id = $3 AND revoked_at IS NULL`,
+        [booking.business_id, bookingId, uid]
+      );
+      if (!existingGrant.rows.length) {
+        await query(
+          `INSERT INTO document_access_grants (member_id, business_id, booking_id) VALUES ($1, $2, $3)`,
+          [uid, booking.business_id, bookingId]
+        );
+      }
+    }
   }
 
   await notify({
@@ -308,6 +329,29 @@ router.get('/mine', authenticate, async (req, res) => {
     ? { business_id: row.business_id, business_name: row.business_name, room_number: row.current_stay_room_number }
     : null;
   res.json({ current_stay: currentStay });
+});
+
+/**
+ * GET /api/checkin/booking/:bookingId/documents
+ * Batch 19 — the actual read side of document_access_grants: a guesthouse
+ * can view a checked-in guest's document ONLY while it holds a
+ * non-revoked grant for that specific booking (granted at check-in above,
+ * revoked on cancellation). Trying this for a booking at a different
+ * business, or one whose grant was revoked, returns nothing — not a 403,
+ * since "no active grant" and "not your booking" should look the same
+ * from the outside rather than confirming which booking ids exist.
+ */
+router.get('/booking/:bookingId/documents', authenticate, async (req, res) => {
+  const { bookingId } = req.params;
+  const result = await query(
+    `SELECT u.id AS user_id, u.name, u.uploaded_document_type, u.document_image_url
+     FROM document_access_grants g
+     JOIN businesses biz ON biz.id = g.business_id
+     JOIN users u ON u.id = g.member_id
+     WHERE g.booking_id = $1 AND g.revoked_at IS NULL AND biz.owner_user_id = $2`,
+    [bookingId, req.user.id]
+  );
+  res.json({ documents: result.rows });
 });
 
 export default router;

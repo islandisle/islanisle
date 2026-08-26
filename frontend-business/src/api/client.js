@@ -274,6 +274,13 @@ export async function checkInBooking(bookingId, { method, room_number, whole_gro
   return handleResponse(res);
 }
 
+// document_access_grants (Batch 19) — only returns anything for a guest
+// checked in at this business, for exactly this booking.
+export async function getBookingDocuments(bookingId) {
+  const res = await fetch(`${API_BASE}/api/checkin/booking/${bookingId}/documents`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // Section 6.5's ETA-update — one departure's confirmed passengers, notified
 // at once (routes/bookings.js).
 export async function sendEtaUpdate(listingId, slotStart, message) {

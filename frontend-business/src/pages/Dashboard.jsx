@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
-  getArrivals, checkInBooking, getBusinessReviews, getNotifications,
+  getArrivals, checkInBooking, getBookingDocuments, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
   fileDispute, approveReservation, rejectReservation, sendEtaUpdate,
 } from '../api/client';
@@ -974,8 +974,74 @@ function ArrivalRow({ arrival, open, viaQr, onOpen, onClose, onCheckedIn }) {
         </button>
       )}
 
+      {isCheckedIn && <ViewDocumentsButton bookingId={arrival.id} />}
+
       {open && <CheckInForm arrival={arrival} viaQr={viaQr} onDone={onCheckedIn} onCancel={onClose} />}
     </div>
+  );
+}
+
+// document_access_grants (Batch 19) — checkin.js grants this the moment a
+// guest is checked in, and revokes it if the booking is later cancelled;
+// this is the only place that reads it back. Photo URLs are the same
+// local-dev-storage:// placeholders used everywhere else in this
+// environment (no real object storage wired up) — the onError fallback
+// mirrors frontend-tourist's ListingDetail.jsx PhotoGallery pattern.
+function ViewDocumentsButton({ bookingId }) {
+  const [open, setOpen] = useState(false);
+  const [documents, setDocuments] = useState(null);
+  const [error, setError] = useState('');
+
+  function handleOpen() {
+    setOpen(true);
+    if (documents) return;
+    getBookingDocuments(bookingId)
+      .then((data) => setDocuments(data.documents))
+      .catch((err) => setError(err.message));
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleOpen}>
+        View ID
+      </button>
+      {open && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+          {error && <p className="error-text">{error}</p>}
+          {!documents && !error && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
+          {documents && documents.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No document on file for this guest.</p>
+          )}
+          {documents && documents.map((doc) => (
+            <div key={doc.user_id} style={{ marginBottom: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--navy)', margin: '0 0 4px' }}>
+                {doc.name} — {doc.uploaded_document_type === 'passport' ? 'Passport' : 'ID card'}
+              </p>
+              <div
+                style={{
+                  width: 160, height: 100, borderRadius: 6, background: 'var(--surface-alt, #eee)',
+                  border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', overflow: 'hidden',
+                }}
+              >
+                <img
+                  src={doc.document_image_url}
+                  alt="Document on file"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                <span style={{ display: 'none', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: 8 }}>
+                  Document image unavailable
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
