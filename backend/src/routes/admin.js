@@ -175,7 +175,7 @@ router.get('/approval-queue', authenticate, requireRole('admin'), async (req, re
      FROM listings l JOIN businesses b ON b.id = l.business_id WHERE l.approval_status = 'pending'`
   );
   const localVerifications = await query(
-    `SELECT id, name, 'local_verification' AS item_type, created_at FROM users
+    `SELECT id, name, uploaded_document_type, 'local_verification' AS item_type, created_at FROM users
      WHERE type = 'local' AND local_verification_status = 'pending'`
   );
   const agents = await query(
@@ -188,6 +188,49 @@ router.get('/approval-queue', authenticate, requireRole('admin'), async (req, re
     local_verifications: localVerifications.rows,
     agents: agents.rows,
   });
+});
+
+/**
+ * POST /api/admin/local-verifications/:id/reclassify-tourist
+ * Section 2.1's passport-instead-of-ID-card case: "if the person uploaded a
+ * passport instead of an ID card, and that passport is not Maldivian, the
+ * account gets reclassified to Tourist... In Phase 1, this reclassification
+ * happens through the same Super Admin review (the admin sees it's a
+ * passport rather than an ID card during review and reclassifies
+ * manually)." OCR-based auto-detection is Phase 2 and out of scope here —
+ * this is the manual action admin needs in the meantime. Only meaningful on
+ * a pending Local account; a Tourist has nothing to reclassify.
+ */
+router.post('/local-verifications/:id/reclassify-tourist', authenticate, requireRole('admin'), async (req, res) => {
+  const result = await query(
+    `SELECT type, local_verification_status FROM users WHERE id = $1`,
+    [req.params.id]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  if (result.rows[0].type !== 'local' || result.rows[0].local_verification_status !== 'pending') {
+    return res.status(400).json({ error: 'This account is not a pending Local verification.' });
+  }
+
+  // Section 12's User model: local_verification_status becomes
+  // 'auto_reclassified' regardless of whether the reclassification was
+  // triggered manually (here, Phase 1) or by OCR (Phase 2) — the value
+  // names the outcome, not the trigger.
+  await query(
+    `UPDATE users SET type = 'tourist', local_verification_status = 'auto_reclassified' WHERE id = $1`,
+    [req.params.id]
+  );
+  await logAdminAction(
+    req.user.id, 'reclassify_tourist', 'business', req.params.id,
+    req.body.reason || 'Uploaded document was a passport, not a Maldivian National ID card.'
+  );
+  await notify({
+    recipientType: 'user', recipientId: req.params.id,
+    type: 'reclassified', title: 'Account updated to Tourist',
+    body: 'Your account has been switched to Tourist since the uploaded document was a passport, not a Maldivian National ID card — you\'ll see tourist pricing going forward.',
+  });
+  res.json({ status: 'reclassified' });
 });
 
 /**

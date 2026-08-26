@@ -5,6 +5,7 @@ import {
   getStaff, addStaff, revokeStaff, getClosures, addClosure, removeClosure,
 } from '../api/client';
 import { useTheme } from '../theme';
+import IslandPicker from '../components/IslandPicker';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -91,13 +92,9 @@ export default function Settings() {
         <label htmlFor="settings-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Island
         </label>
-        <input
-          id="settings-island"
-          className="input-field"
-          value={locationIsland}
-          onChange={(e) => setLocationIsland(e.target.value)}
-          style={{ marginBottom: 14 }}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <IslandPicker value={locationIsland} onChange={setLocationIsland} id="settings-island" />
+        </div>
 
         <label htmlFor="settings-refund-fee" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Refund fee — your share (%)

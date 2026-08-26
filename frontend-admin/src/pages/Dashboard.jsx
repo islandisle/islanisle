@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  getApprovalQueue, approve, reject, getDisputes, resolveDispute, suspendBusiness, reinstateBusiness,
+  getApprovalQueue, approve, reject, reclassifyToTourist, getDisputes, resolveDispute, suspendBusiness, reinstateBusiness,
   markBusinessTrusted, getAgentDirectory, suspendAgent, reinstateAgent, getAuditLog,
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
@@ -71,6 +71,17 @@ export default function Dashboard() {
     }
   }
 
+  // Section 2.1's passport-instead-of-ID-card case.
+  async function handleReclassify(userId) {
+    if (!window.confirm('Reclassify this account as Tourist? The uploaded document was a passport, not a Maldivian National ID card.')) return;
+    try {
+      await reclassifyToTourist(userId, 'Uploaded document was a passport, not a Maldivian National ID card.');
+      loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -88,7 +99,7 @@ export default function Dashboard() {
 
       <AppearanceSection />
 
-      <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} />
+      <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
       {!isModerator && <PayoutsSection />}
       {!isModerator && <DisputesSection disputes={disputes} onResolved={loadAll} />}
       <BusinessDirectorySection isModerator={isModerator} />
@@ -99,13 +110,16 @@ export default function Dashboard() {
   );
 }
 
-function ApprovalQueueSection({ queue, onApprove, onReject }) {
+function ApprovalQueueSection({ queue, onApprove, onReject, onReclassify }) {
   const [expanded, setExpanded] = useState(null); // `${item_type}-${item.id}` or null
 
   const items = [
     ...queue.businesses.map((b) => ({ ...b, item_type: 'business', label: `${b.name} (${b.type})`, business_id: b.id })),
     ...queue.listings.map((l) => ({ ...l, item_type: 'listing', label: `${l.name} (${l.type})` })),
-    ...queue.local_verifications.map((u) => ({ ...u, item_type: 'local_verification', label: `${u.name} — Local ID verification` })),
+    ...queue.local_verifications.map((u) => ({
+      ...u, item_type: 'local_verification',
+      label: `${u.name} — Local ID verification${u.uploaded_document_type === 'passport' ? ' (uploaded a passport)' : ''}`,
+    })),
     ...(queue.agents || []).map((a) => ({ ...a, item_type: 'agent', label: `${a.name} — Agent account` })),
   ];
 
@@ -137,6 +151,11 @@ function ApprovalQueueSection({ queue, onApprove, onReject }) {
                     onClick={() => setExpanded(isExpanded ? null : key)}
                   >
                     {isExpanded ? 'Hide details' : 'View details'}
+                  </button>
+                )}
+                {item.item_type === 'local_verification' && item.uploaded_document_type === 'passport' && (
+                  <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => onReclassify(item.id)}>
+                    Reclassify as Tourist
                   </button>
                 )}
                 <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => onReject(item.item_type, item.id)}>

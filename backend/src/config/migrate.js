@@ -199,6 +199,17 @@ async function main() {
     changed = true;
   }
 
+  console.log("Checking for admin_action_type.reclassify_tourist (passport-instead-of-ID-card reclassification)...");
+  const reclassifyResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'reclassify_tourist'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'admin_action_type')`
+  );
+  if (!reclassifyResult.rows.length) {
+    console.log("Adding 'reclassify_tourist' to admin_action_type...");
+    await pool.query(`ALTER TYPE admin_action_type ADD VALUE IF NOT EXISTS 'reclassify_tourist'`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

@@ -8,6 +8,7 @@ import {
   fileDispute, approveReservation, rejectReservation,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
+import IslandPicker from '../components/IslandPicker';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -151,7 +152,9 @@ function CreateBusinessForm({ onCreated }) {
         <label htmlFor="create-business-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
           Island
         </label>
-        <input id="create-business-island" className="input-field" value={locationIsland} onChange={(e) => setLocationIsland(e.target.value)} style={{ marginBottom: 20 }} />
+        <div style={{ marginBottom: 20 }}>
+          <IslandPicker value={locationIsland} onChange={setLocationIsland} id="create-business-island" />
+        </div>
 
         {error && <p className="error-text">{error}</p>}
         <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={submitting}>

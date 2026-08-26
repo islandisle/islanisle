@@ -31,7 +31,10 @@ CREATE TYPE weather_condition_type AS ENUM ('sunny', 'cloudy', 'rainy', 'windy',
 CREATE TYPE promo_discount_type AS ENUM ('percentage', 'fixed'); -- added alongside the promo codes backend below; the original promo_codes table had no way to tell these apart
 CREATE TYPE dispute_status AS ENUM ('open', 'resolved');
 CREATE TYPE admin_role AS ENUM ('admin', 'moderator');
-CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted');
+-- 'reclassify_tourist': Section 2.1's passport-instead-of-ID-card case —
+-- admin reclassifies a Local applicant to Tourist during review (Phase 1's
+-- manual equivalent of Phase 2's automatic OCR-based detection).
+CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted', 'reclassify_tourist');
 CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute');
 CREATE TYPE fulfillment_method AS ENUM ('pickup', 'delivery');
 CREATE TYPE handover_method AS ENUM ('buyer_pickup_at_boat', 'guesthouse_handover');

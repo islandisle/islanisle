@@ -34,6 +34,15 @@ export async function approve(target_type, target_id) {
   return handleResponse(res);
 }
 
+export async function reclassifyToTourist(userId, reason) {
+  const res = await fetch(`${API_BASE}/api/admin/local-verifications/${userId}/reclassify-tourist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}
+
 export async function reject(target_type, target_id, reason) {
   const res = await fetch(`${API_BASE}/api/admin/reject`, {
     method: 'POST',

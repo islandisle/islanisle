@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getIslandListings, sendSOS, getNotifications, getWeather } from '../api/client';
+import IslandPicker from '../components/IslandPicker';
+import FirstRunTour from '../components/FirstRunTour';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -36,7 +38,6 @@ function getCurrentUser() {
 
 export default function Home() {
   const [island, setIsland] = useState(DEFAULT_ISLAND);
-  const [islandInput, setIslandInput] = useState(DEFAULT_ISLAND);
   const [typeFilter, setTypeFilter] = useState('');
   const [accessibilityFilter, setAccessibilityFilter] = useState([]);
   const [showAccessibilityFilters, setShowAccessibilityFilters] = useState(false);
@@ -87,33 +88,19 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [island]);
 
-  function handleIslandSubmit(e) {
-    e.preventDefault();
-    const trimmed = islandInput.trim();
-    if (trimmed) setIsland(trimmed);
-  }
-
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>
-        {/* Section 3.2 "Choosing a Stay Island": a plain text switcher, not
-            a curated island directory with photos/descriptions — that's a
-            larger, separate piece. This at least makes the island genuinely
-            choosable instead of hardcoded, and reuses the same
-            getIslandListings(island, type) call the backend already
-            supports. */}
-        <form onSubmit={handleIslandSubmit} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <input
-            className="input-field"
-            value={islandInput}
-            onChange={(e) => setIslandInput(e.target.value)}
-            placeholder="Island name"
-            style={{ flex: 1 }}
-          />
-          <button className="btn-secondary" type="submit">Go</button>
-        </form>
+        {/* Section 3.2/11 "Choosing a Stay Island": searchable, grouped by
+            atoll — not a curated island directory with photos/descriptions
+            (that's a larger, separate piece), but a real picker rather than
+            a plain text field. Reuses the same getIslandListings(island,
+            type) call the backend already supports. */}
+        <div style={{ marginBottom: 14 }}>
+          <IslandPicker value={island} onChange={setIsland} id="home-island-picker" />
+        </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <FilterPill label="All" active={typeFilter === ''} onClick={() => setTypeFilter('')} />
@@ -197,6 +184,7 @@ export default function Home() {
       </div>
 
       <SOSButton island={island} />
+      <FirstRunTour />
     </div>
   );
 }
