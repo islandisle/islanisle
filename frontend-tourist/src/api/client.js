@@ -42,6 +42,17 @@ export async function login({ contact_email, contact_mobile, password }) {
   return handleResponse(res);
 }
 
+// Section 11's "change language later" — i18n.jsx's LanguageProvider calls
+// this whenever a logged-in tourist switches languages from Profile.jsx.
+export async function updateMyLanguage(language) {
+  const res = await fetch(`${API_BASE}/api/auth/language`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ language }),
+  });
+  return handleResponse(res);
+}
+
 // --- Biometric login (routes/webauthn.js) — additional login option
 // alongside the password above, not a replacement ---
 

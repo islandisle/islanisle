@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { LanguageProvider } from './i18n';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -12,19 +13,21 @@ import Support from './pages/Support';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/listing/:id" element={<ListingDetail />} />
-        <Route path="/bookings" element={<MyActivity />} />
-        <Route path="/transfers" element={<Transfers />} />
-        <Route path="/trips" element={<Trips />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/support" element={<Support />} />
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/listing/:id" element={<ListingDetail />} />
+          <Route path="/bookings" element={<MyActivity />} />
+          <Route path="/transfers" element={<Transfers />} />
+          <Route path="/trips" element={<Trips />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/support" element={<Support />} />
+        </Routes>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }

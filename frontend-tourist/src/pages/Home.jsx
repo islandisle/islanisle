@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getIslandListings, sendSOS, getNotifications, getWeather } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
+import { useLanguage } from '../i18n';
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -53,6 +54,7 @@ export default function Home() {
   // tourist price.
   const user = getCurrentUser();
   const isLocal = user?.type === 'local';
+  const { t } = useLanguage();
 
   useEffect(() => {
     let cancelled = false;
@@ -103,13 +105,13 @@ export default function Home() {
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          <FilterPill label="All" active={typeFilter === ''} onClick={() => setTypeFilter('')} />
-          {BUSINESS_TYPES.map((t) => (
+          <FilterPill label={t('home.filter_all')} active={typeFilter === ''} onClick={() => setTypeFilter('')} />
+          {BUSINESS_TYPES.map((type) => (
             <FilterPill
-              key={t}
-              label={t.charAt(0).toUpperCase() + t.slice(1)}
-              active={typeFilter === t}
-              onClick={() => setTypeFilter(t)}
+              key={type}
+              label={t(`business_types.${type}`)}
+              active={typeFilter === type}
+              onClick={() => setTypeFilter(type)}
             />
           ))}
         </div>
@@ -132,7 +134,7 @@ export default function Home() {
             gap: 4,
           }}
         >
-          Accessibility filters{accessibilityFilter.length > 0 ? ` (${accessibilityFilter.length})` : ''}
+          {t('home.accessibility_filters')}{accessibilityFilter.length > 0 ? ` (${accessibilityFilter.length})` : ''}
           <span aria-hidden="true">{showAccessibilityFilters ? '▲' : '▼'}</span>
         </button>
 
@@ -167,14 +169,14 @@ export default function Home() {
             marginBottom: 14,
           }}
         >
-          Arriving by air? Find a speedboat transfer →
+          {t('home.arriving_by_air')}
         </Link>
 
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-          What's on {island}
+          {t('home.whats_on', { island })}
         </p>
 
-        {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Loading…</p>}
+        {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>}
         {error && <p className="error-text">{error}</p>}
         {!loading && !error && listings.length === 0 && <EmptyState island={island} />}
 
@@ -312,6 +314,7 @@ function FilterPill({ label, active, onClick }) {
 }
 
 function Header({ island, weather }) {
+  const { t } = useLanguage();
   return (
     <div style={{ background: 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
       {/* Line-art behind the logo, per Section 6.2 / 11 — now driven by
@@ -323,14 +326,14 @@ function Header({ island, weather }) {
         <div>
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>Staying on {island}</p>
+            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>{t('home.staying_on', { island })}</p>
             {weather && <WeatherBadge weather={weather} />}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <NotificationBell />
           <Link to="/profile" style={{ color: '#fff', fontSize: 13, textDecoration: 'none', background: 'rgba(255,255,255,0.15)', padding: '6px 10px', borderRadius: 20 }}>
-            Profile
+            {t('nav.profile')}
           </Link>
         </div>
       </div>
@@ -493,6 +496,7 @@ function NotificationBell() {
 }
 
 function ListingCard({ listing, isLocal }) {
+  const { t } = useLanguage();
   const price = isLocal ? listing.local_price : listing.tourist_price;
   return (
     <Link to={`/listing/${listing.id}`} className="card" style={{ display: 'block', marginBottom: 12, textDecoration: 'none', color: 'inherit' }}>
@@ -504,7 +508,7 @@ function ListingCard({ listing, isLocal }) {
           {/* Section 11's "at-a-glance trust signals" — open/closed status directly on the card. */}
           {listing.is_closed && (
             <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: 'var(--coral)', padding: '2px 7px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>
-              Closed
+              {t('home.closed')}
             </span>
           )}
         </div>
@@ -517,7 +521,7 @@ function ListingCard({ listing, isLocal }) {
         </p>
         <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--lagoon)', margin: 0 }}>
           ${price}
-          {isLocal && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}> local price</span>}
+          {isLocal && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}> {t('home.local_price_suffix')}</span>}
         </p>
         {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
@@ -530,9 +534,10 @@ function ListingCard({ listing, isLocal }) {
 }
 
 function EmptyState({ island }) {
+  const { t } = useLanguage();
   return (
     <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-      <p style={{ fontSize: 14 }}>No listings on {island} yet — check back soon.</p>
+      <p style={{ fontSize: 14 }}>{t('home.empty_state', { island })}</p>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
+import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -170,6 +171,8 @@ export default function Profile() {
 
       <NotificationPreferencesSection />
 
+      {user?.type === 'tourist' && <LanguageSection />}
+
       <AppearanceSection />
 
       <BiometricSection />
@@ -320,6 +323,43 @@ function NotificationPreferencesSection() {
         ))}
       </div>
       {error && <p className="error-text">{error}</p>}
+    </div>
+  );
+}
+
+// Section 11: "let the user change language later from Profile, not just
+// at signup." Tourist-only — Local accounts stay English-only (see
+// backend/src/routes/auth.js's PATCH /language, which no-ops for them).
+function LanguageSection() {
+  const { language, setLanguage, t } = useLanguage();
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        {t('profile.language')}
+      </p>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {SUPPORTED_LANGUAGES.map((opt) => (
+          <button
+            key={opt.code}
+            type="button"
+            onClick={() => setLanguage(opt.code)}
+            style={{
+              flex: '1 0 auto',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              border: language === opt.code ? 'none' : '1px solid var(--border)',
+              background: language === opt.code ? 'var(--lagoon)' : 'var(--surface)',
+              color: language === opt.code ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

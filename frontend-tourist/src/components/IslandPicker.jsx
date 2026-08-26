@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useModalA11y } from '../useModalA11y';
+import { useLanguage } from '../i18n';
 
 // Section 3.2/11: "a searchable popup organized by atoll — never a native
 // dropdown." Representative, not exhaustive — the real Maldives gazetteer
@@ -29,7 +30,9 @@ export const ATOLLS = [
   { atoll: 'Gnaviyani (Fuvahmulah)', islands: ['Fuvahmulah'] },
 ];
 
-export default function IslandPicker({ value, onChange, id, placeholder = 'Select an island…' }) {
+export default function IslandPicker({ value, onChange, id, placeholder }) {
+  const { t } = useLanguage();
+  const resolvedPlaceholder = placeholder ?? t('home.island_picker_placeholder');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const modalRef = useModalA11y(() => setOpen(false));
@@ -59,7 +62,7 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
         onClick={() => setOpen(true)}
         style={{ textAlign: 'left', width: '100%', color: value ? 'var(--navy)' : 'var(--text-muted)' }}
       >
-        {value || placeholder}
+        {value || resolvedPlaceholder}
       </button>
 
       {open && (
@@ -82,7 +85,7 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
             <input
               autoFocus
               className="input-field"
-              placeholder="Search island or atoll"
+              placeholder={t('home.island_search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ marginBottom: 10 }}
@@ -114,7 +117,7 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
               ))}
             </div>
             <button className="btn-secondary" style={{ marginTop: 10 }} onClick={() => setOpen(false)}>
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>

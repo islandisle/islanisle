@@ -18,6 +18,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { query, pool } from '../config/db.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -94,7 +95,7 @@ router.post('/signup', upload.single('document'), async (req, res) => {
          uploaded_document_type, document_image_url, document_number, date_of_birth,
          language, password_hash
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id, name, type, local_verification_status`,
+       RETURNING id, name, type, local_verification_status, language`,
       [
         userId, name, contact_email || null, contact_mobile, type, localVerificationStatus,
         documentType, documentImageUrl, document_number, date_of_birth,
@@ -151,7 +152,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await query(
-      `SELECT id, name, type, password_hash, local_verification_status
+      `SELECT id, name, type, password_hash, local_verification_status, language
        FROM users WHERE contact_email = $1 OR contact_mobile = $2`,
       [contact_email || null, contact_mobile || null]
     );
@@ -169,12 +170,41 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user.id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({
       token,
-      user: { id: user.id, name: user.name, type: user.type, local_verification_status: user.local_verification_status },
+      user: {
+        id: user.id, name: user.name, type: user.type,
+        local_verification_status: user.local_verification_status, language: user.language,
+      },
     });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed. Please try again.' });
   }
+});
+
+/**
+ * PATCH /api/auth/language
+ * body: { language }
+ * Section 11: "Tourists can change their language at any time here, not
+ * just at signup." Local accounts stay English-only per spec, so this is
+ * silently a no-op-but-still-200 for one rather than a special error case
+ * the frontend has to branch on — the language picker itself is just
+ * hidden for a Local account (see frontend-tourist's i18n.jsx).
+ */
+router.patch('/language', authenticate, async (req, res) => {
+  const { language } = req.body;
+  const VALID_LANGUAGES = ['en', 'zh', 'it', 'es'];
+  if (!VALID_LANGUAGES.includes(language)) {
+    return res.status(400).json({ error: `language must be one of: ${VALID_LANGUAGES.join(', ')}` });
+  }
+  const userResult = await query('SELECT type FROM users WHERE id = $1', [req.user.id]);
+  if (!userResult.rows.length) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
+  if (userResult.rows[0].type !== 'tourist') {
+    return res.json({ status: 'not_applicable' }); // Locals stay English-only
+  }
+  await query('UPDATE users SET language = $1 WHERE id = $2', [language, req.user.id]);
+  res.json({ status: 'updated', language });
 });
 
 export default router;
