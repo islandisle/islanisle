@@ -632,6 +632,10 @@ CREATE TABLE agents (
     account_status      agent_account_status NOT NULL DEFAULT 'active',
     payout_bank_details   JSONB,
     password_hash        TEXT NOT NULL,
+    -- Batch 19: Agent Settings page's security section — mirrors
+    -- users.two_factor_secret/two_factor_enabled (routes/twoFactor.js).
+    two_factor_secret     TEXT,
+    two_factor_enabled    BOOLEAN NOT NULL DEFAULT false,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

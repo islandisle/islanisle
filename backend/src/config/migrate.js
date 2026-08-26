@@ -249,6 +249,18 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for agents.two_factor_secret/two_factor_enabled (Agent Settings security section)...');
+  if (!(await columnExists('agents', 'two_factor_secret'))) {
+    console.log('Adding agents.two_factor_secret...');
+    await pool.query(`ALTER TABLE agents ADD COLUMN two_factor_secret TEXT`);
+    changed = true;
+  }
+  if (!(await columnExists('agents', 'two_factor_enabled'))) {
+    console.log('Adding agents.two_factor_enabled...');
+    await pool.query(`ALTER TABLE agents ADD COLUMN two_factor_enabled BOOLEAN NOT NULL DEFAULT false`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

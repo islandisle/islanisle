@@ -99,3 +99,38 @@ export async function sendMessage(otherRole, otherId, text) {
   });
   return handleResponse(res);
 }
+
+// --- Settings (routes/agents.js, routes/twoFactor.js) ---
+
+export async function getMySettings() {
+  const res = await fetch(`${API_BASE}/api/agents/me/settings`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function updateMySettings({ payout_bank_details }) {
+  const res = await fetch(`${API_BASE}/api/agents/me/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ payout_bank_details }),
+  });
+  return handleResponse(res);
+}
+
+export async function setup2FA() {
+  const res = await fetch(`${API_BASE}/api/2fa/setup`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function confirm2FA(token) {
+  const res = await fetch(`${API_BASE}/api/2fa/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ token }),
+  });
+  return handleResponse(res);
+}
+
+export async function disable2FA() {
+  const res = await fetch(`${API_BASE}/api/2fa/disable`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}

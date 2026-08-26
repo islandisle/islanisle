@@ -90,6 +90,16 @@ export default function MyActivity() {
       .finally(() => setLoading(false));
   }
 
+  // Batch 19: Trips' timeline entries link here as #booking-<id>/#order-<id>
+  // — client-side routing doesn't auto-scroll to a fragment the way a real
+  // page load does, so this does it manually once the list has rendered.
+  // The visual highlight itself is a plain :target CSS rule (theme.css).
+  useEffect(() => {
+    if (loading || !window.location.hash) return;
+    const el = document.getElementById(window.location.hash.slice(1));
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [loading]);
+
   useEffect(() => {
     if (!localStorage.getItem('atollisle_token')) {
       navigate('/login');
@@ -428,7 +438,7 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
   const canCheckIn = isGuesthouse && booking.status === 'confirmed' && !isCheckedIn;
 
   return (
-    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+    <div id={`booking-${booking.id}`} className="card" style={{ padding: 12, marginBottom: 8 }}>
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {booking.title} — {booking.business_name}
       </p>
@@ -512,7 +522,7 @@ const ORDER_STATUS_LABEL = {
 function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
   return (
-    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+    <div id={`order-${order.id}`} className="card" style={{ padding: 12, marginBottom: 8 }}>
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {itemsSummary} — {order.business_name}
       </p>

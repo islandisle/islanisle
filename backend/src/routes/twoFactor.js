@@ -1,6 +1,19 @@
 // Biometric/2FA login — script Section 8.6. Biometric auth is a client-side
 // (device-level) concern; this covers the TOTP-based 2FA server side, backed
 // by services/totp.js (validated against RFC 4226 test vectors).
+//
+// Batch 19 generalized this from users-only to also cover agents
+// (frontend-agent's new Settings page security section) — both tables have
+// the same two_factor_secret/two_factor_enabled columns. Table choice is
+// keyed off req.user.role since agents/users are entirely separate tables,
+// not a shared one with a type discriminator.
+//
+// Known gap, not introduced by this batch and not fixed here: auth.js's
+// user login (and agents.js's agent login) never actually call /verify —
+// enabling 2FA here changes nothing about what a login accepts. Wiring
+// login-time enforcement for every account type is a larger, separate
+// change than this settings page; flagging rather than silently leaving
+// the setup UI implying protection it doesn't yet provide.
 
 import { Router } from 'express';
 import { query } from '../config/db.js';
@@ -8,6 +21,10 @@ import { authenticate } from '../middleware/auth.js';
 import { generateSecret, otpAuthUrl, verifyToken } from '../services/totp.js';
 
 const router = Router();
+
+function tableForRole(role) {
+  return role === 'agent' ? 'agents' : 'users';
+}
 
 /**
  * POST /api/2fa/setup
@@ -17,10 +34,11 @@ const router = Router();
  */
 router.post('/setup', authenticate, async (req, res) => {
   const secret = generateSecret();
-  const userResult = await query('SELECT name, contact_email FROM users WHERE id = $1', [req.user.id]);
-  const accountName = userResult.rows[0]?.contact_email || userResult.rows[0]?.name || req.user.id;
+  const table = tableForRole(req.user.role);
+  const accountResult = await query(`SELECT name, contact_email FROM ${table} WHERE id = $1`, [req.user.id]);
+  const accountName = accountResult.rows[0]?.contact_email || accountResult.rows[0]?.name || req.user.id;
 
-  await query('UPDATE users SET two_factor_secret = $1, two_factor_enabled = false WHERE id = $2', [secret, req.user.id]);
+  await query(`UPDATE ${table} SET two_factor_secret = $1, two_factor_enabled = false WHERE id = $2`, [secret, req.user.id]);
 
   res.json({
     secret, // shown as a manual-entry fallback if the user can't scan
@@ -35,7 +53,8 @@ router.post('/setup', authenticate, async (req, res) => {
  */
 router.post('/confirm', authenticate, async (req, res) => {
   const { token } = req.body;
-  const result = await query('SELECT two_factor_secret FROM users WHERE id = $1', [req.user.id]);
+  const table = tableForRole(req.user.role);
+  const result = await query(`SELECT two_factor_secret FROM ${table} WHERE id = $1`, [req.user.id]);
   const secret = result.rows[0]?.two_factor_secret;
 
   if (!secret) {
@@ -45,18 +64,22 @@ router.post('/confirm', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Incorrect code. Please try again.' });
   }
 
-  await query('UPDATE users SET two_factor_enabled = true WHERE id = $1', [req.user.id]);
+  await query(`UPDATE ${table} SET two_factor_enabled = true WHERE id = $1`, [req.user.id]);
   res.json({ status: 'enabled' });
 });
 
 /**
  * POST /api/2fa/verify
- * Used during login when the account has 2FA enabled — see auth.js's login
- * flow, which should call this before issuing the final JWT once 2FA is on.
+ * body: { user_id, token, account_type? }
+ * Used during login when the account has 2FA enabled. account_type
+ * ('agent' vs anything else) picks the table the same way tableForRole
+ * does — not yet actually called from any login flow, see the file-level
+ * note on that gap.
  */
 router.post('/verify', async (req, res) => {
-  const { user_id, token } = req.body;
-  const result = await query('SELECT two_factor_secret, two_factor_enabled FROM users WHERE id = $1', [user_id]);
+  const { user_id, token, account_type } = req.body;
+  const table = tableForRole(account_type);
+  const result = await query(`SELECT two_factor_secret, two_factor_enabled FROM ${table} WHERE id = $1`, [user_id]);
   const row = result.rows[0];
 
   if (!row?.two_factor_enabled) {
@@ -69,7 +92,8 @@ router.post('/verify', async (req, res) => {
 });
 
 router.post('/disable', authenticate, async (req, res) => {
-  await query('UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL WHERE id = $1', [req.user.id]);
+  const table = tableForRole(req.user.role);
+  await query(`UPDATE ${table} SET two_factor_enabled = false, two_factor_secret = NULL WHERE id = $1`, [req.user.id]);
   res.json({ status: 'disabled' });
 });
 

@@ -304,4 +304,32 @@ router.get('/commissions/mine', authenticate, requireRole('agent'), async (req, 
   res.json({ commissions: result.rows });
 });
 
+/**
+ * GET /api/agents/me/settings
+ * Batch 19's Agent Settings page — payout bank details, previously only
+ * ever set once at signup (see /signup above) with no way to review or
+ * change them afterward.
+ */
+router.get('/me/settings', authenticate, requireRole('agent'), async (req, res) => {
+  const result = await query(
+    'SELECT id, name, contact_email, payout_bank_details, two_factor_enabled FROM agents WHERE id = $1',
+    [req.user.id]
+  );
+  res.json({ agent: result.rows[0] });
+});
+
+/**
+ * PATCH /api/agents/me/settings
+ * body: { payout_bank_details }
+ */
+router.patch('/me/settings', authenticate, requireRole('agent'), async (req, res) => {
+  const { payout_bank_details } = req.body;
+  const result = await query(
+    `UPDATE agents SET payout_bank_details = COALESCE($1, payout_bank_details) WHERE id = $2
+     RETURNING id, payout_bank_details`,
+    [payout_bank_details ? JSON.stringify(payout_bank_details) : null, req.user.id]
+  );
+  res.json({ agent: result.rows[0] });
+});
+
 export default router;

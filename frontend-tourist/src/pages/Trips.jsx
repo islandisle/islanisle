@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getMyTrips } from '../api/client';
 
 // Trip/itinerary view — script Section 12's Trip/TripIslandStay, populated
 // entirely from checkin.js's guesthouse check-in flow (there's no manual
-// "start a trip" action anywhere). A vertical timeline per trip, since that
-// reads naturally as a sequence of island stays without needing a real
-// calendar-grid component this codebase doesn't otherwise have.
+// "start a trip" action anywhere). Two views over the same data: the
+// original vertical timeline (a sequence of island stays reads naturally
+// that way), and a Batch 19 month-calendar view for "what do I have on the
+// 14th" at a glance. Both link every entry to MyActivity.jsx (see
+// StayItemRow) rather than duplicating booking/order detail here.
 const BUSINESS_TYPE_LABEL = {
   guesthouse: 'Stay',
   restaurant: 'Dining',
@@ -31,6 +33,7 @@ export default function Trips() {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [view, setView] = useState('timeline');
 
   useEffect(() => {
     if (!localStorage.getItem('atollisle_token')) {
@@ -51,9 +54,15 @@ export default function Trips() {
         ← Back
       </button>
 
-      <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>
-        My trips
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+          My trips
+        </h1>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <ViewToggleButton active={view === 'timeline'} onClick={() => setView('timeline')} label="Timeline" />
+          <ViewToggleButton active={view === 'calendar'} onClick={() => setView('calendar')} label="Calendar" />
+        </div>
+      </div>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
         Your itinerary fills in automatically as you check in to guesthouses.
       </p>
@@ -67,9 +76,15 @@ export default function Trips() {
         </p>
       )}
 
-      {mostRecentFirst.map((trip) => (
-        <TripCard key={trip.id} trip={trip} />
-      ))}
+      {!loading && !error && trips.length > 0 && view === 'calendar' && (
+        <CalendarView trips={trips} />
+      )}
+
+      {!loading && !error && trips.length > 0 && view === 'timeline' && (
+        mostRecentFirst.map((trip) => (
+          <TripCard key={trip.id} trip={trip} />
+        ))
+      )}
     </div>
   );
 }
@@ -142,16 +157,174 @@ function StayItem({ stay, isLast }) {
   );
 }
 
+// Batch 19: tappable timeline entries — previously just plain text with no
+// way to reach the full booking/order (cancellation, review, check-in QR,
+// etc.). There's no separate single-booking detail page in this app (see
+// MyActivity.jsx), so this jumps there and scrolls straight to the row,
+// highlighted via the :target CSS rule (theme.css) rather than duplicating
+// that detail view here.
 function StayItemRow({ item }) {
   const isOrder = 'items' in item;
   const label = isOrder
     ? item.items.map((i) => `${i.quantity}x ${i.title}`).join(', ') || 'Order'
     : `${item.title} (${BUSINESS_TYPE_LABEL[item.business_type] || item.business_type})`;
   const date = isOrder ? item.created_at : item.slot_start;
+  const anchor = isOrder ? `order-${item.id}` : `booking-${item.id}`;
 
   return (
-    <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
-      • {label} — {item.business_name}, {formatDate(date)} · ${item.price_charged}
-    </p>
+    <Link
+      to={`/bookings#${anchor}`}
+      style={{
+        display: 'block', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px',
+        textDecoration: 'none',
+      }}
+    >
+      • <span style={{ color: 'var(--lagoon)' }}>{label}</span> — {item.business_name}, {formatDate(date)} · ${item.price_charged}
+    </Link>
+  );
+}
+
+function ViewToggleButton({ active, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '5px 10px',
+        borderRadius: 'var(--radius-pill)',
+        fontSize: 12,
+        border: active ? 'none' : '1px solid var(--border)',
+        background: active ? 'var(--lagoon)' : 'var(--surface)',
+        color: active ? '#fff' : 'var(--text-secondary)',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function dateKey(d) {
+  const date = new Date(d);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Flattens every trip's bookings/orders into one date → entries map, keyed
+// by local calendar day, so the month grid below doesn't need to know
+// anything about trips/stays — just "what happened on this day".
+function buildEventsByDate(trips) {
+  const map = {};
+  for (const trip of trips) {
+    for (const stay of trip.stays) {
+      for (const item of [...stay.bookings, ...stay.orders]) {
+        const isOrder = 'items' in item;
+        const date = isOrder ? item.created_at : item.slot_start;
+        const key = dateKey(date);
+        (map[key] ??= []).push(item);
+      }
+    }
+  }
+  return map;
+}
+
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+// Batch 19 — a month-grid alternative to the vertical timeline, for
+// "what do I have going on this day" at a glance. Defaults to the month of
+// the most recent activity (or today, if somehow there's none) rather than
+// always opening on the current calendar month, since most trips are in
+// the past or near-future relative to whenever this is opened.
+function CalendarView({ trips }) {
+  const eventsByDate = buildEventsByDate(trips);
+  const allDates = Object.keys(eventsByDate).sort();
+  const [initialYear, initialMonthNum] = allDates.length
+    ? allDates[allDates.length - 1].split('-').map(Number)
+    : [new Date().getFullYear(), new Date().getMonth() + 1];
+
+  const [monthCursor, setMonthCursor] = useState(new Date(initialYear, initialMonthNum - 1, 1));
+  const [selectedKey, setSelectedKey] = useState(null);
+
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel = monthCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+
+  const selectedEvents = selectedKey ? eventsByDate[selectedKey] || [] : [];
+
+  return (
+    <div>
+      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+            onClick={() => setMonthCursor(new Date(year, month - 1, 1))}
+          >
+            ←
+          </button>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>{monthLabel}</p>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+            onClick={() => setMonthCursor(new Date(year, month + 1, 1))}
+          >
+            →
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+          {WEEKDAY_LABELS.map((w, i) => (
+            <p key={i} style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>{w}</p>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+          {cells.map((day, i) => {
+            if (day == null) return <div key={i} />;
+            const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const hasEvents = Boolean(eventsByDate[key]);
+            const isSelected = selectedKey === key;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setSelectedKey(hasEvents ? key : null)}
+                disabled={!hasEvents}
+                style={{
+                  aspectRatio: '1', border: 'none', borderRadius: 'var(--radius-sm)',
+                  background: isSelected ? 'var(--lagoon)' : hasEvents ? 'var(--lagoon-tint)' : 'transparent',
+                  color: isSelected ? '#fff' : hasEvents ? 'var(--navy)' : 'var(--text-muted)',
+                  fontSize: 12, fontWeight: hasEvents ? 600 : 400,
+                  cursor: hasEvents ? 'pointer' : 'default',
+                }}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {selectedKey && (
+        <div className="card" style={{ padding: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+            {(() => {
+              const [y, m, d] = selectedKey.split('-').map(Number);
+              return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+            })()}
+          </p>
+          {selectedEvents.map((item) => (
+            <StayItemRow key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

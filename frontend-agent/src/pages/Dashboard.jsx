@@ -58,7 +58,10 @@ export default function Dashboard() {
           <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>{agent.name}</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Approval: {agent.approval_status}</p>
         </div>
-        <button className="btn-secondary" onClick={handleLogout}>Log out</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" onClick={() => navigate('/settings')}>Settings</button>
+          <button className="btn-secondary" onClick={handleLogout}>Log out</button>
+        </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}

@@ -170,6 +170,14 @@ body {
   overflow: hidden;
 }
 
+/* Batch 19: tappable Trips-timeline entries jump here via #booking-<id>/
+   #order-<id> — a brief highlight so the target is obvious after the jump,
+   not just scrolled-to silently. */
+.card:target {
+  border-color: var(--lagoon);
+  box-shadow: 0 0 0 2px var(--lagoon-light);
+}
+
 .input-field {
   width: 100%;
   border: 1px solid var(--border);
