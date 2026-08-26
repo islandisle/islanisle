@@ -71,6 +71,15 @@ export default function Dashboard() {
         >
           B2B
         </button>
+        {(business.type === 'guesthouse' || business.type === 'speedboat') && (
+          <button
+            className="btn-secondary"
+            style={{ padding: '4px 12px', fontSize: 12 }}
+            onClick={() => navigate('/group-transfers')}
+          >
+            Group transfers
+          </button>
+        )}
         <button
           className="btn-secondary"
           style={{ padding: '4px 12px', fontSize: 12 }}

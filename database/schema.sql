@@ -542,9 +542,11 @@ CREATE TABLE weather_conditions (
 -- delivery matching (services/deliveryMatch.js) matches against that real
 -- data, so package_deliveries.route_id and orders.matched_route_id
 -- reference `listings(id)`, not `routes(id)`, despite the column names.
--- group_bookings.route_id below still points at the empty `routes` table
--- since guesthouse-arranged group transfers are a separate, still-unbuilt
--- feature this pass didn't touch.
+-- group_bookings.route_id follows the same fix as of Batch 19
+-- (routes/groupTransfers.js), which built out guesthouse-arranged group
+-- transfers against real speedboat listings — `eta` doubles as the
+-- resulting bookings' slot_start, since there was no dedicated column for
+-- one and every guest boards the same actual departure.
 -- ---------------------------------------------------------------------------
 CREATE TABLE routes (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -561,7 +563,7 @@ CREATE TABLE routes (
 CREATE TABLE group_bookings (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     guesthouse_business_id  UUID NOT NULL REFERENCES businesses(id),
-    route_id                UUID NOT NULL REFERENCES routes(id),
+    route_id                UUID NOT NULL REFERENCES listings(id), -- a speedboat listing, not the unused `routes` table — see the comment above CREATE TABLE routes
     payer                   TEXT NOT NULL, -- 'guesthouse' | 'tourist'
     discount_percent          NUMERIC(4,2),
     status                  TEXT NOT NULL DEFAULT 'pending',

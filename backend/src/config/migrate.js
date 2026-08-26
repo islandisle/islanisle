@@ -132,6 +132,11 @@ async function main() {
   // routes). Only needed if this database still has the original FK.
   if (await repointForeignKey('orders', 'matched_route_id', 'listings')) changed = true;
   if (await repointForeignKey('package_deliveries', 'route_id', 'listings')) changed = true;
+  // Batch 19's guesthouse-arranged guest transfers (routes/groupTransfers.js)
+  // is the "separate, still-unbuilt feature" schema.sql's routes-table
+  // comment referred to — built the same way as the two lines above,
+  // against `listings`, not the empty `routes` table.
+  if (await repointForeignKey('group_bookings', 'route_id', 'listings')) changed = true;
 
   console.log('Checking for the webauthn_credentials table (biometric login)...');
   const webauthnTableResult = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = 'webauthn_credentials'`);

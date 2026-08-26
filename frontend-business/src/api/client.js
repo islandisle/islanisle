@@ -435,3 +435,43 @@ export async function rejectB2BRequest(requestId) {
   const res = await fetch(`${API_BASE}/api/b2b/requests/${requestId}/reject`, { method: 'POST', headers: authHeaders() });
   return handleResponse(res);
 }
+
+// --- Guesthouse-arranged guest transfers (routes/groupTransfers.js) — Batch 19 ---
+
+export async function createGroupTransfer(guesthouseBusinessId, payload) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/${guesthouseBusinessId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function getMyGroupTransfers(guesthouseBusinessId) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/${guesthouseBusinessId}/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getGroupTransferManifest(speedboatBusinessId) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/business/${speedboatBusinessId}/manifest`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function boardGroupTransferGuestByBooking(bookingId) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/board`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ booking_id: bookingId }),
+  });
+  return handleResponse(res);
+}
+
+export async function boardGroupTransferGuest(guestId) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/guests/${guestId}/board`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function markGroupTransferGuestNoShow(guestId) {
+  const res = await fetch(`${API_BASE}/api/group-transfers/guests/${guestId}/no-show`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
