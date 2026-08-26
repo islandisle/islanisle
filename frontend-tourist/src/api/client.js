@@ -114,6 +114,28 @@ export async function getIslandListings(island, type, accessibilityFeatures, die
   return handleResponse(res);
 }
 
+// Favorites (routes/favorites.js)
+
+export async function getMyFavorites() {
+  const res = await fetch(`${API_BASE}/api/favorites/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getMyFavoriteIds() {
+  const res = await fetch(`${API_BASE}/api/favorites/ids`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function addFavorite(listingId) {
+  const res = await fetch(`${API_BASE}/api/favorites/${listingId}`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function removeFavorite(listingId) {
+  const res = await fetch(`${API_BASE}/api/favorites/${listingId}`, { method: 'DELETE', headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // Local events calendar (routes/events.js) — part of Batch 19's local
 // knowledge guide.
 export async function getLocalEvents(island) {

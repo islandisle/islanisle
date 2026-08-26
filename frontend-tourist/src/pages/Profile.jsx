@@ -106,6 +106,14 @@ export default function Profile() {
       </Link>
 
       <Link
+        to="/favorites"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}
+      >
+        My favorites
+      </Link>
+
+      <Link
         to="/support"
         className="btn-secondary"
         style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}

@@ -12,6 +12,7 @@ import Notifications from './pages/Notifications';
 import Support from './pages/Support';
 import EmergencyContacts from './pages/EmergencyContacts';
 import LocalGuide from './pages/LocalGuide';
+import Favorites from './pages/Favorites';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/support" element={<Support />} />
           <Route path="/emergency-contacts" element={<EmergencyContacts />} />
           <Route path="/local-guide" element={<LocalGuide />} />
+          <Route path="/favorites" element={<Favorites />} />
         </Routes>
       </BrowserRouter>
     </LanguageProvider>

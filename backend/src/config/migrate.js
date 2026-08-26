@@ -266,6 +266,21 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for favorites table (Batch 19)...');
+  if (!(await tableExists('favorites'))) {
+    console.log('Creating favorites...');
+    await pool.query(`
+      CREATE TABLE favorites (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id         UUID NOT NULL REFERENCES users(id),
+          listing_id       UUID NOT NULL REFERENCES listings(id),
+          created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE(user_id, listing_id)
+      )
+    `);
+    changed = true;
+  }
+
   console.log('Checking for local_events table (Batch 19 local-knowledge events calendar)...');
   if (!(await tableExists('local_events'))) {
     console.log('Creating local_events...');

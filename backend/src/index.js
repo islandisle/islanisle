@@ -28,6 +28,7 @@ import messageRoutes from './routes/messages.js';
 import webauthnRoutes from './routes/webauthn.js';
 import closureRoutes from './routes/closures.js';
 import eventRoutes from './routes/events.js';
+import favoriteRoutes from './routes/favorites.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -74,6 +75,7 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/auth/webauthn', webauthnRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

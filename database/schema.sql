@@ -779,6 +779,22 @@ CREATE TABLE support_ticket_messages (
 );
 
 -- ---------------------------------------------------------------------------
+-- [Batch 19] favorites — a tourist saving a listing for later. "Nearby now"
+-- from the same batch item is deliberately not a real geolocation feature:
+-- listings have no lat/lng anywhere in this schema, and Home.jsx is already
+-- scoped to one selected island, so "nearby" is approximated by an
+-- "open now" filter on the current island instead (is_closed, already
+-- computed from `closures` in listings.js) rather than faking distance.
+-- ---------------------------------------------------------------------------
+CREATE TABLE favorites (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    listing_id       UUID NOT NULL REFERENCES listings(id),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, listing_id)
+);
+
+-- ---------------------------------------------------------------------------
 -- [Batch 19] local_events — "local knowledge" events calendar. island NULL
 -- means Maldives-wide (e.g. a national holiday), set means specific to that
 -- one island — matched the same case/whitespace-insensitive way

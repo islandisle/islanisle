@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications, getWeather } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
@@ -62,6 +62,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [weather, setWeather] = useState(null);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [openNowOnly, setOpenNowOnly] = useState(false);
 
   // Section 3.4 Pricing Visibility: a Local account should see local_price
   // everywhere prices are shown, not tourist_price. The backend has always
@@ -92,6 +94,32 @@ export default function Home() {
     setAccessibilityFilter((prev) =>
       checked ? [...prev, key] : prev.filter((k) => k !== key)
     );
+  }
+
+  // Favorites (Batch 19) — fetched once as just the id set, cheap enough to
+  // hold for the whole session and used to light up each ListingCard's
+  // star without a per-card round trip.
+  useEffect(() => {
+    if (!localStorage.getItem('atollisle_token')) return;
+    getMyFavoriteIds()
+      .then((data) => setFavoriteIds(new Set(data.listing_ids)))
+      .catch(() => {});
+  }, []);
+
+  function toggleFavorite(listingId, isFavorited) {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFavorited) next.delete(listingId); else next.add(listingId);
+      return next;
+    });
+    (isFavorited ? removeFavorite(listingId) : addFavorite(listingId)).catch(() => {
+      // revert optimistic update on failure
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (isFavorited) next.add(listingId); else next.delete(listingId);
+        return next;
+      });
+    });
   }
 
   function toggleDietaryTag(key, checked) {
@@ -253,16 +281,31 @@ export default function Home() {
           {t('home.local_guide_link')}
         </Link>
 
-        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-          {t('home.whats_on', { island })}
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+            {t('home.whats_on', { island })}
+          </p>
+          {/* "Nearby now" scoped to "open now" on the current island — see
+              schema.sql's comment on the favorites table for why: no lat/lng
+              exists anywhere in this schema to do real geolocation with. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+            <input type="checkbox" checked={openNowOnly} onChange={(e) => setOpenNowOnly(e.target.checked)} />
+            Open now
+          </label>
+        </div>
 
         {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>}
         {error && <p className="error-text">{error}</p>}
         {!loading && !error && listings.length === 0 && <EmptyState island={island} />}
 
-        {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} isLocal={isLocal} />
+        {listings.filter((l) => !openNowOnly || !l.is_closed).map((listing) => (
+          <ListingCard
+            key={listing.id}
+            listing={listing}
+            isLocal={isLocal}
+            isFavorited={favoriteIds.has(listing.id)}
+            onToggleFavorite={localStorage.getItem('atollisle_token') ? toggleFavorite : undefined}
+          />
         ))}
       </div>
 
@@ -596,14 +639,14 @@ function NotificationBell() {
   );
 }
 
-function ListingCard({ listing, isLocal }) {
+export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite }) {
   const { t } = useLanguage();
   const price = isLocal ? listing.local_price : listing.tourist_price;
   return (
-    <Link to={`/listing/${listing.id}`} className="card" style={{ display: 'block', marginBottom: 12, textDecoration: 'none', color: 'inherit' }}>
+    <Link to={`/listing/${listing.id}`} className="card" style={{ display: 'block', marginBottom: 12, textDecoration: 'none', color: 'inherit', position: 'relative' }}>
       <div style={{ padding: '12px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px', paddingRight: onToggleFavorite ? 24 : 0 }}>
             {listing.title}
           </p>
           {/* Section 11's "at-a-glance trust signals" — open/closed status directly on the card. */}
@@ -613,6 +656,25 @@ function ListingCard({ listing, isLocal }) {
             </span>
           )}
         </div>
+        {onToggleFavorite && (
+          <button
+            type="button"
+            aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+            aria-pressed={isFavorited}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite(listing.id, isFavorited);
+            }}
+            style={{
+              position: 'absolute', top: 10, right: 10, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 18, color: isFavorited ? 'var(--coral)' : 'var(--text-muted)',
+              lineHeight: 1, padding: 4,
+            }}
+          >
+            {isFavorited ? '★' : '☆'}
+          </button>
+        )}
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 6px' }}>
           {listing.business_name}
           {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
