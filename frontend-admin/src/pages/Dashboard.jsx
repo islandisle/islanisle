@@ -6,7 +6,7 @@ import {
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
   getPlatformAnalytics, getEvents, createEvent, deleteEvent,
-  getPayAtVisitIncidents, restorePayAtVisit,
+  getPayAtVisitIncidents, restorePayAtVisit, getExternalPlacesProspects,
 } from '../api/client';
 import { useTheme } from '../theme';
 
@@ -111,6 +111,7 @@ export default function Dashboard() {
       <SupportTicketsSection />
       <LocalEventsSection />
       {!isModerator && <PayAtVisitIncidentsSection />}
+      {!isModerator && <ExternalPlacesProspectsSection />}
       {!isModerator && <AuditLogSection />}
     </div>
   );
@@ -200,6 +201,10 @@ function ApprovalQueueSection({ queue, onApprove, onReject, onReclassify }) {
       label: `${u.name} — Local ID verification${u.uploaded_document_type === 'passport' ? ' (uploaded a passport)' : ''}`,
     })),
     ...(queue.agents || []).map((a) => ({ ...a, item_type: 'agent', label: `${a.name} — Agent account` })),
+    ...(queue.external_place_claims || []).map((c) => ({
+      ...c, item_type: 'external_place_claim',
+      label: `${c.name} — claiming "${c.external_place_name}" (${c.external_place_island})`,
+    })),
   ];
 
   return (
@@ -223,7 +228,7 @@ function ApprovalQueueSection({ queue, onApprove, onReject, onReclassify }) {
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>{item.item_type}</p>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {item.business_id && (
+                {(item.business_id || item.item_type === 'external_place_claim') && (
                   <button
                     className="btn-secondary"
                     style={{ padding: '4px 10px', fontSize: 12 }}
@@ -245,7 +250,10 @@ function ApprovalQueueSection({ queue, onApprove, onReject, onReclassify }) {
                 </button>
               </div>
             </div>
-            {isExpanded && (
+            {isExpanded && item.item_type === 'external_place_claim' && (
+              <ExternalPlaceClaimPreview claim={item} />
+            )}
+            {isExpanded && item.item_type !== 'external_place_claim' && (
               <BusinessDetailPreview businessId={item.business_id} />
             )}
           </div>
@@ -321,6 +329,42 @@ function BusinessDetailPreview({ businessId }) {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+// Batch 25 (not in the original spec) — the claimed external place's own
+// Ministry-of-Tourism details side by side with what the claimant
+// submitted, plus the uploaded verification document, so admin can
+// actually compare the two before approving.
+function ExternalPlaceClaimPreview({ claim }) {
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>
+        Ministry of Tourism record
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+        {claim.external_place_name} · {claim.external_place_type} · {claim.external_place_island}, {claim.external_place_atoll}
+      </p>
+
+      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>
+        Submitted by {claim.submitted_by_name}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+        {claim.name} · {claim.type} · {claim.location_island}
+      </p>
+      {claim.contact_info && (claim.contact_info.email || claim.contact_info.mobile) && (
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+          {[claim.contact_info.email, claim.contact_info.mobile].filter(Boolean).join(' · ')}
+        </p>
+      )}
+
+      {/* local-dev-storage:// placeholder URLs aren't real links yet — see
+          externalPlaces.js's own comment on saveClaimDocument — but the
+          reference is still shown so admin can see one was uploaded. */}
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, wordBreak: 'break-all' }}>
+        Document: {claim.document_image_url}
+      </p>
     </div>
   );
 }
@@ -1057,6 +1101,61 @@ function PayAtVisitIncidentsSection() {
                 <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleRestore(i.user_id)}>
                   Restore eligibility
                 </button>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+// GET /api/admin/external-places-prospects — Batch 25, not in the original
+// spec. Still-unclaimed Ministry of Tourism places, grouped by island —
+// "who to approach about joining", a read-only outreach list rather than
+// a moderation queue (claims themselves go through ApprovalQueueSection).
+function ExternalPlacesProspectsSection() {
+  const [prospects, setProspects] = useState([]);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    getExternalPlacesProspects().then((d) => setProspects(d.prospects || [])).catch((err) => setError(err.message));
+  }, [open]);
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+          Outreach prospects (Ministry of Tourism)
+        </p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'View'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          {error && <p className="error-text">{error}</p>}
+          {prospects.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>None found yet.</p>}
+          {prospects.map((group) => (
+            <div key={group.island} style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {group.island} ({group.places.length})
+              </p>
+              {group.places.slice(0, 20).map((place) => (
+                <div key={place.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+                  <p style={{ fontSize: 13, color: 'var(--navy)', margin: 0 }}>{place.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                    {place.type}{place.phone && ` · ${place.phone}`}{place.email && ` · ${place.email}`}
+                  </p>
+                </div>
+              ))}
+              {group.places.length > 20 && (
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                  + {group.places.length - 20} more on {group.island}
+                </p>
               )}
             </div>
           ))}

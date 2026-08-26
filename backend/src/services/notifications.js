@@ -25,6 +25,7 @@ const CATEGORY_BY_TYPE = {
   rejected: 'booking_updates',
   reclassified: 'booking_updates',
   suspended: 'booking_updates',
+  business_claim_approved: 'booking_updates',
   boarding_reminder: 'boarding_reminders',
   eta_update: 'boarding_reminders',
   message: 'chat_messages',

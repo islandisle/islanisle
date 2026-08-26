@@ -82,6 +82,32 @@ export async function getAnalytics(businessId) {
   return handleResponse(res);
 }
 
+// --- External places / claim flow (routes/externalPlaces.js) — Batch 25, not in the original spec ---
+
+export async function getExternalPlaces(island) {
+  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// multipart/form-data — `document` is a required File (business
+// registration certificate), same blocking-upload pattern as
+// auth.js's signup document gate.
+export async function claimExternalPlace(placeId, claim) {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(claim)) {
+    if (key === 'document' || value == null) continue;
+    formData.append(key, value);
+  }
+  if (claim.document) formData.append('document', claim.document);
+
+  const res = await fetch(`${API_BASE}/api/external-places/${placeId}/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+  return handleResponse(res);
+}
+
 export async function updateSettings(businessId, updates) {
   const res = await fetch(`${API_BASE}/api/business/${businessId}/settings`, {
     method: 'PATCH',

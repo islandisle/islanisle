@@ -6,6 +6,7 @@ import {
   getArrivals, checkInBooking, getBookingDocuments, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
   fileDispute, approveReservation, rejectReservation, sendEtaUpdate,
+  getExternalPlaces, claimExternalPlace,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
@@ -43,7 +44,12 @@ export default function Dashboard() {
   }
 
   if (!business) {
-    return <CreateBusinessForm onCreated={handleBusinessCreated} />;
+    return (
+      <>
+        <CreateBusinessForm onCreated={handleBusinessCreated} />
+        <ClaimBusinessSection />
+      </>
+    );
   }
 
   return (
@@ -183,6 +189,185 @@ function CreateBusinessForm({ onCreated }) {
         <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={submitting}>
           {submitting ? 'Creating…' : 'Create business'}
         </button>
+      </form>
+    </div>
+  );
+}
+
+// Batch 25 (not in the original spec) — Ministry of Tourism lodging
+// categories all map to our single 'guesthouse' business type (the only
+// lodging category we have); a disclosed simplification, not a precise
+// equivalence.
+const EXTERNAL_PLACE_TYPE_TO_BUSINESS_TYPE = {
+  'Guest House': 'guesthouse',
+  'Home Stay': 'guesthouse',
+  Hotel: 'guesthouse',
+};
+
+// Batch 25 — lets a business owner search real Ministry of Tourism
+// registered places by island and claim theirs instead of typing a new
+// business from scratch. Shown alongside CreateBusinessForm since both are
+// ways to get from "no business yet" to a real one.
+function ClaimBusinessSection() {
+  const [island, setIsland] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [claimingPlace, setClaimingPlace] = useState(null);
+  const [submittedMessage, setSubmittedMessage] = useState('');
+
+  useEffect(() => {
+    if (!island) { setData(null); return; }
+    let cancelled = false;
+    getExternalPlaces(island).then((d) => { if (!cancelled) setData(d); }).catch((err) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [island]);
+
+  const groups = data
+    ? [
+        { label: 'Guest houses', places: data.guesthouses },
+        { label: 'Home stays', places: data.home_stays },
+        { label: 'Hotels', places: data.hotels },
+      ].filter((g) => g.places && g.places.length > 0)
+    : [];
+
+  return (
+    <div style={{ maxWidth: 420, margin: '32px auto 0', padding: '0 20px 32px', borderTop: '1px solid var(--border)' }}>
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', margin: '20px 0 4px' }}>
+        Already registered with the Ministry of Tourism?
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+        Search your island — if we already have your place listed, claim it instead of starting from scratch.
+      </p>
+
+      <label htmlFor="claim-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+        Island
+      </label>
+      <div style={{ marginBottom: 16 }}>
+        <IslandPicker value={island} onChange={setIsland} id="claim-island" />
+      </div>
+
+      {error && <p className="error-text">{error}</p>}
+      {submittedMessage && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{submittedMessage}</p>}
+
+      {island && groups.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No unclaimed places found on {island}.</p>
+      )}
+
+      {groups.map((group) => (
+        <div key={group.label} style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            {group.label}
+          </p>
+          {group.places.map((place) => (
+            <div key={place.id} className="card" style={{ padding: 12, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--navy)', margin: 0 }}>{place.name}</p>
+              <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { setClaimingPlace(place); setSubmittedMessage(''); }}>
+                Claim this business
+              </button>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {claimingPlace && (
+        <ClaimForm
+          place={claimingPlace}
+          island={island}
+          onClose={() => setClaimingPlace(null)}
+          onSubmitted={(message) => {
+            setClaimingPlace(null);
+            setSubmittedMessage(message);
+            setData((prev) => prev && {
+              ...prev,
+              guesthouses: prev.guesthouses.filter((p) => p.id !== claimingPlace.id),
+              home_stays: prev.home_stays.filter((p) => p.id !== claimingPlace.id),
+              hotels: prev.hotels.filter((p) => p.id !== claimingPlace.id),
+            });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ClaimForm({ place, island, onClose, onSubmitted }) {
+  const [businessName, setBusinessName] = useState(place.name);
+  const [businessType, setBusinessType] = useState(EXTERNAL_PLACE_TYPE_TO_BUSINESS_TYPE[place.type] || BUSINESS_TYPES[0]);
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMobile, setContactMobile] = useState('');
+  const [documentFile, setDocumentFile] = useState(null);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!documentFile) {
+      setError('A verification document (business registration certificate) is required.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await claimExternalPlace(place.id, {
+        business_name: businessName,
+        business_type: businessType,
+        location_island: island,
+        contact_email: contactEmail || undefined,
+        contact_mobile: contactMobile || undefined,
+        document: documentFile,
+      });
+      onSubmitted(`Claim for "${place.name}" submitted — you'll be notified once Super Admin reviews it.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginTop: 8 }}>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)', margin: '0 0 10px' }}>
+        Claim "{place.name}"
+      </p>
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="claim-business-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          Business name
+        </label>
+        <input id="claim-business-name" className="input-field" value={businessName} onChange={(e) => setBusinessName(e.target.value)} style={{ marginBottom: 12 }} />
+
+        <label htmlFor="claim-business-type" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          Business type
+        </label>
+        <select id="claim-business-type" className="input-field" value={businessType} onChange={(e) => setBusinessType(e.target.value)} style={{ marginBottom: 12 }}>
+          {BUSINESS_TYPES.map((t) => (
+            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          ))}
+        </select>
+
+        <label htmlFor="claim-contact-email" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          Contact email (optional)
+        </label>
+        <input id="claim-contact-email" type="email" className="input-field" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} style={{ marginBottom: 12 }} />
+
+        <label htmlFor="claim-contact-mobile" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          Contact mobile (optional)
+        </label>
+        <input id="claim-contact-mobile" className="input-field" value={contactMobile} onChange={(e) => setContactMobile(e.target.value)} style={{ marginBottom: 12 }} />
+
+        <label htmlFor="claim-document" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+          Verification document (business registration certificate)
+        </label>
+        <input id="claim-document" type="file" accept="image/*,.pdf" onChange={(e) => setDocumentFile(e.target.files?.[0] || null)} style={{ marginBottom: 14 }} />
+
+        {error && <p className="error-text">{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" type="button" onClick={onClose} style={{ flex: 1 }}>
+            Cancel
+          </button>
+          <button className="btn-primary" type="submit" disabled={submitting} style={{ flex: 1 }}>
+            {submitting ? 'Submitting…' : 'Submit claim'}
+          </button>
+        </div>
       </form>
     </div>
   );

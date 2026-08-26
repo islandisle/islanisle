@@ -217,12 +217,29 @@ router.get('/approval-queue', authenticate, requireRole('admin'), async (req, re
   const agents = await query(
     `SELECT id, name, 'agent' AS item_type, created_at FROM agents WHERE approval_status = 'pending'`
   );
+  // Batch 25 — "claim this business" requests (not in the original spec),
+  // reviewed through this same unified queue per the user's explicit
+  // request. Carries the claimed external place's own name/type/island
+  // alongside the claimant's submitted details, plus the uploaded
+  // verification document, so admin can compare the two.
+  const externalPlaceClaims = await query(
+    `SELECT c.id, c.business_name AS name, c.business_type AS type, c.location_island,
+            c.contact_info, c.document_image_url, c.created_at, 'external_place_claim' AS item_type,
+            ep.id AS external_place_id, ep.name AS external_place_name, ep.type AS external_place_type,
+            ep.atoll AS external_place_atoll, ep.island AS external_place_island,
+            u.id AS submitted_by_user_id, u.name AS submitted_by_name
+     FROM external_place_claims c
+     JOIN external_places ep ON ep.id = c.external_place_id
+     JOIN users u ON u.id = c.submitted_by_user_id
+     WHERE c.status = 'pending'`
+  );
 
   res.json({
     businesses: businesses.rows,
     listings: listings.rows,
     local_verifications: localVerifications.rows,
     agents: agents.rows,
+    external_place_claims: externalPlaceClaims.rows,
   });
 });
 
@@ -291,6 +308,50 @@ router.post('/approve', authenticate, requireRole('admin'), async (req, res) => 
       `UPDATE users SET local_verification_status = 'verified', pay_at_visit_eligible = true WHERE id = $1`,
       [target_id]
     );
+  } else if (target_type === 'external_place_claim') {
+    // Batch 25 (not in the original spec) — approving a claim converts it
+    // straight into a real, already-approved business + listing (the claim
+    // review IS the vetting step; there's no reason to make it go through
+    // the ordinary pending-business queue a second time). Assumption,
+    // flagged: tourist_price/local_price have no source in the Ministry
+    // data, so the listing is pre-filled at 0 — a real placeholder the
+    // business is expected to correct, not a genuinely bookable price.
+    const claimResult = await query(
+      `SELECT c.*, ep.name AS external_place_name FROM external_place_claims c
+       JOIN external_places ep ON ep.id = c.external_place_id
+       WHERE c.id = $1 AND c.status = 'pending'`,
+      [target_id]
+    );
+    const claim = claimResult.rows[0];
+    if (!claim) {
+      return res.status(404).json({ error: 'Claim not found or already decided.' });
+    }
+
+    const businessResult = await query(
+      `INSERT INTO businesses (owner_user_id, name, type, location_island, contact_info, approval_status)
+       VALUES ($1, $2, $3, $4, $5, 'approved')
+       RETURNING id`,
+      [claim.submitted_by_user_id, claim.business_name, claim.business_type, claim.location_island,
+        claim.contact_info ? JSON.stringify(claim.contact_info) : null]
+    );
+    const businessId = businessResult.rows[0].id;
+
+    await query(
+      `INSERT INTO listings (business_id, title, tourist_price, local_price, approval_status)
+       VALUES ($1, $2, 0, 0, 'approved')`,
+      [businessId, claim.external_place_name]
+    );
+    await query(`UPDATE external_places SET claimed_business_id = $1 WHERE id = $2`, [businessId, claim.external_place_id]);
+    await query(
+      `UPDATE external_place_claims SET status = 'approved', created_business_id = $1, decided_at = now() WHERE id = $2`,
+      [businessId, claim.id]
+    );
+    await notify({
+      recipientType: 'user', recipientId: claim.submitted_by_user_id,
+      type: 'business_claim_approved',
+      title: 'Business claim approved',
+      body: `Your claim for "${claim.external_place_name}" has been approved — it's now live on Atoll Isle. Set your real pricing and details to finish setting it up.`,
+    });
   } else if (tableMap[target_type]) {
     const { table, column } = tableMap[target_type];
     await query(`UPDATE ${table} SET ${column} = 'approved' WHERE id = $1`, [target_id]);
@@ -329,6 +390,14 @@ async function notifyRejection(targetType, targetId, reason) {
       recipientType: 'agent', recipientId: targetId,
       type: 'rejected', title: 'Agent application declined', body: reason,
     });
+  } else if (targetType === 'external_place_claim') {
+    const claimResult = await query('SELECT submitted_by_user_id FROM external_place_claims WHERE id = $1', [targetId]);
+    if (claimResult.rows.length) {
+      await notify({
+        recipientType: 'user', recipientId: claimResult.rows[0].submitted_by_user_id,
+        type: 'rejected', title: 'Business claim declined', body: reason,
+      });
+    }
   }
 }
 
@@ -348,11 +417,21 @@ router.post('/reject', authenticate, requireRole('admin'), async (req, res) => {
     listing: { table: 'listings', column: 'approval_status' },
     agent: { table: 'agents', column: 'approval_status' },
   };
-  const t = tableMap[target_type];
-  if (!t) {
-    return res.status(400).json({ error: 'Invalid target_type.' });
+
+  if (target_type === 'external_place_claim') {
+    // The external place itself stays unclaimed and keeps showing in
+    // "More on this island" — only the claim record is marked rejected.
+    await query(
+      `UPDATE external_place_claims SET status = 'rejected', decision_reason = $1, decided_at = now() WHERE id = $2`,
+      [reason, target_id]
+    );
+  } else {
+    const t = tableMap[target_type];
+    if (!t) {
+      return res.status(400).json({ error: 'Invalid target_type.' });
+    }
+    await query(`UPDATE ${t.table} SET ${t.column} = 'rejected' WHERE id = $1`, [target_id]);
   }
-  await query(`UPDATE ${t.table} SET ${t.column} = 'rejected' WHERE id = $1`, [target_id]);
   await logAdminAction(req.user.id, 'reject', target_type, target_id, reason);
   await notifyRejection(target_type, target_id, reason);
   res.json({ status: 'rejected', reason });
@@ -670,6 +749,28 @@ router.get('/pay-at-visit-incidents', authenticate, requireRole('admin'), async 
      ORDER BY i.reported_at DESC`
   );
   res.json({ incidents: result.rows });
+});
+
+/**
+ * GET /api/admin/external-places-prospects
+ * Batch 25 (not in the original spec) — the "outreach prospects" side of
+ * the Ministry of Tourism import: every still-unclaimed external place,
+ * grouped by island, so admin can see who to approach about joining.
+ */
+router.get('/external-places-prospects', authenticate, requireRole('admin'), async (req, res) => {
+  const result = await query(
+    `SELECT id, name, type, atoll, island, phone, email FROM external_places
+     WHERE claimed_business_id IS NULL
+     ORDER BY island ASC, name ASC`
+  );
+
+  const byIsland = new Map();
+  for (const place of result.rows) {
+    if (!byIsland.has(place.island)) byIsland.set(place.island, { island: place.island, atoll: place.atoll, places: [] });
+    byIsland.get(place.island).places.push(place);
+  }
+
+  res.json({ prospects: [...byIsland.values()] });
 });
 
 /**
