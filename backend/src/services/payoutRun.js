@@ -26,7 +26,72 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-export async function runPayoutBatch() {
+// Not spec-mandated — a reasonable placeholder Pro subscription price for
+// Tier 2's bundled bill (Section 9). Tune freely; there's no real payment
+// collection wired up for it yet (see bundleTier2SubscriptionBilling's own
+// comment) so the number itself doesn't need to be exact right now.
+const PRO_MONTHLY_FEE = 10;
+
+// Tier 2 of Pay at Visit collection (Section 9): "whatever owed balance
+// remains uncollected by month-end is billed directly, bundled with the
+// business's Pro subscription renewal charge... one combined bill."
+// Previously this never actually happened — a business with no payout to
+// deduct from just got a notification asking it to "settle directly," with
+// nothing recorded and the balance sitting on pay_at_visit_commission_owed
+// forever. Only called for the actual monthly cycle (isMonthlyBillingRun),
+// never an ad-hoc admin-triggered catch-up run, since billing_month is a
+// once-a-month concept.
+//
+// NOT yet implemented (flagged honestly rather than faked): there's no
+// real payment collection for this bill — no Stripe subscription/invoice
+// charge, consistent with online payment being disabled platform-wide
+// (config/payments.js). This records the bill (subscription_billing,
+// status 'unpaid') and business.js's listing-cap check treats an unpaid
+// past-month bill as a lapsed subscription (Section 7.2's consequence),
+// but nothing here actually collects the money — an admin would need to
+// mark it paid once settled outside the app, which also isn't built yet.
+async function bundleTier2SubscriptionBilling() {
+  const billingMonth = new Date();
+  billingMonth.setDate(1);
+  const billingMonthStr = billingMonth.toISOString().slice(0, 10);
+
+  const owingBusinesses = await pool.query(
+    `SELECT id, subscription_tier FROM businesses WHERE pay_at_visit_commission_owed > 0`
+  );
+
+  for (const biz of owingBusinesses.rows) {
+    const businessRow = await pool.query(
+      `SELECT pay_at_visit_commission_owed FROM businesses WHERE id = $1 FOR UPDATE`,
+      [biz.id]
+    );
+    const duesOwed = round2(Number(businessRow.rows[0]?.pay_at_visit_commission_owed || 0));
+    if (duesOwed <= 0) continue;
+
+    const subscriptionFee = biz.subscription_tier === 'pro' ? PRO_MONTHLY_FEE : 0;
+    const totalCharged = round2(subscriptionFee + duesOwed);
+
+    await pool.query(
+      `INSERT INTO subscription_billing (business_id, billing_month, subscription_fee, pay_at_visit_dues, total_charged, status)
+       VALUES ($1, $2, $3, $4, $5, 'unpaid')
+       ON CONFLICT (business_id, billing_month)
+       DO UPDATE SET pay_at_visit_dues = EXCLUDED.pay_at_visit_dues, total_charged = EXCLUDED.total_charged`,
+      [biz.id, billingMonthStr, subscriptionFee, duesOwed, totalCharged]
+    );
+    await pool.query(`UPDATE businesses SET pay_at_visit_commission_owed = 0 WHERE id = $1`, [biz.id]);
+
+    await notify({
+      recipientType: 'business',
+      recipientId: biz.id,
+      type: 'pay_at_visit_bill',
+      title: 'Monthly bill ready',
+      body: subscriptionFee > 0
+        ? `Your monthly bill is $${totalCharged} ($${subscriptionFee} subscription + $${duesOwed} Pay at Visit dues) — paying this keeps your account in good standing.`
+        : `Your monthly bill is $${totalCharged} in Pay at Visit dues — paying this keeps your account in good standing.`,
+    });
+  }
+}
+
+export async function runPayoutBatch({ isMonthlyBillingRun = false } = {}) {
   const client = await pool.connect();
   try {
     // Businesses with something eligible to pay out, or Pay at Visit dues
@@ -155,6 +220,10 @@ export async function runPayoutBatch() {
         business_id: businessId, payout_id: payoutId, amount: netAmount,
         pay_at_visit_dues_deducted: duesDeducted, items: items.length,
       });
+    }
+
+    if (isMonthlyBillingRun) {
+      await bundleTier2SubscriptionBilling();
     }
 
     return { payouts_created: results.length, results };

@@ -31,11 +31,27 @@ async function requireBusinessOwnerOrAdmin(req, res, next) {
 router.get('/:businessId/settings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const result = await query(
     `SELECT id, name, type, location_island, contact_info, subscription_tier, subscription_expiry,
-            payout_bank_details, refund_fee_business_percent, notification_preferences, account_status
+            payout_bank_details, refund_fee_business_percent, notification_preferences, account_status,
+            pay_at_visit_commission_owed
      FROM businesses WHERE id = $1`,
     [req.params.businessId]
   );
   res.json({ business: result.rows[0] });
+});
+
+/**
+ * GET /api/business/:businessId/billing-history
+ * Section 4.8: "the monthly subscription billing history" — subscription_
+ * billing existed with nothing ever reading it back out (or writing to it,
+ * before services/payoutRun.js's bundleTier2SubscriptionBilling).
+ */
+router.get('/:businessId/billing-history', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
+  const result = await query(
+    `SELECT id, billing_month, subscription_fee, pay_at_visit_dues, total_charged, status
+     FROM subscription_billing WHERE business_id = $1 ORDER BY billing_month DESC`,
+    [req.params.businessId]
+  );
+  res.json({ billing_history: result.rows });
 });
 
 /**

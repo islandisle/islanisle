@@ -131,21 +131,47 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
     // business is effectively Pay-at-Visit-only right now regardless of
     // what's set here, since 'online' is rejected at checkout no matter
     // what this flag says.
-    const trustResult = await query('SELECT trust_tier, subscription_tier FROM businesses WHERE id = $1', [businessId]);
+    const trustResult = await query(
+      `SELECT b.trust_tier, b.subscription_tier, b.subscription_expiry,
+              EXISTS (
+                SELECT 1 FROM subscription_billing sb
+                WHERE sb.business_id = b.id AND sb.status = 'unpaid'
+                  AND sb.billing_month < date_trunc('month', CURRENT_DATE)
+              ) AS has_unpaid_bill
+       FROM businesses b WHERE b.id = $1`,
+      [businessId]
+    );
     const isNewBusiness = trustResult.rows[0]?.trust_tier === 'new';
     const effectivePayAtVisitEnabled = isNewBusiness ? true : (pay_at_visit_enabled === 'true' || pay_at_visit_enabled === true);
 
     // Free/Pro listing cap (Section 2.3/4.9) — checked here rather than at
     // signup, since it's the actual creation of listing N+1 that should be
-    // blocked, not the business existing.
-    const subscriptionTier = trustResult.rows[0]?.subscription_tier === 'pro' ? 'pro' : 'free';
+    // blocked, not the business existing. Section 7.2's subscription-lapse
+    // consequence — "the business just loses the ability to add new
+    // listings beyond the free-tier limit" — applies the same way whether
+    // the lapse is a simple expired subscription_expiry, or an unpaid
+    // Tier 2 monthly bill from a past month (services/payoutRun.js's
+    // bundleTier2SubscriptionBilling): either way, Pro access is suspended
+    // until resolved, dropping the effective cap back to free-tier.
+    const isExpired = trustResult.rows[0]?.subscription_expiry
+      ? new Date(trustResult.rows[0].subscription_expiry) < new Date()
+      : false;
+    const hasUnpaidBill = trustResult.rows[0]?.has_unpaid_bill || false;
+    const isProActive = trustResult.rows[0]?.subscription_tier === 'pro' && !isExpired && !hasUnpaidBill;
+    const subscriptionTier = isProActive ? 'pro' : 'free';
     const listingLimit = LISTING_LIMIT_BY_TIER[subscriptionTier];
     const listingCountResult = await query('SELECT COUNT(*)::int AS count FROM listings WHERE business_id = $1', [businessId]);
     if (listingCountResult.rows[0].count >= listingLimit) {
+      let reason = subscriptionTier === 'pro' ? 'Your Pro plan allows' : 'Free tier allows';
+      if (trustResult.rows[0]?.subscription_tier === 'pro' && !isProActive) {
+        reason = isExpired
+          ? 'Your Pro subscription has lapsed, so you\'re back on the free-tier limit of'
+          : 'You have an unpaid monthly bill, so you\'re back on the free-tier limit of';
+      }
       return res.status(403).json({
         error: subscriptionTier === 'pro'
-          ? `Your Pro plan allows up to ${listingLimit} listings — remove one to add another.`
-          : `Free tier allows 1 listing — upgrade to Pro for up to 10.`,
+          ? `${reason} up to ${listingLimit} listings — remove one to add another.`
+          : `${reason} 1 listing — ${trustResult.rows[0]?.subscription_tier === 'pro' ? 'settle your balance to restore Pro' : 'upgrade to Pro for up to 10'}.`,
       });
     }
 

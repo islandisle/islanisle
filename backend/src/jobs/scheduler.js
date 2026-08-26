@@ -31,7 +31,7 @@ const BOARDING_REMINDER_CRON = '*/15 * * * *'; // every 15 minutes
 export function startScheduledJobs() {
   cron.schedule(PAYOUT_CRON, async () => {
     try {
-      const result = await runPayoutBatch();
+      const result = await runPayoutBatch({ isMonthlyBillingRun: true });
       console.log(`[cron] Monthly payout run: ${result.payouts_created} payout(s) created.`);
     } catch (err) {
       console.error('[cron] Monthly payout run failed:', err);

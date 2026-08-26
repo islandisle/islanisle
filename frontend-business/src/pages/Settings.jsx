@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   getSettings, updateSettings, getPromoCodes, createPromoCode, updatePromoCode,
-  getStaff, addStaff, revokeStaff, getClosures, addClosure, removeClosure,
+  getStaff, addStaff, revokeStaff, getClosures, addClosure, removeClosure, getBillingHistory,
 } from '../api/client';
 import { useTheme } from '../theme';
 import IslandPicker from '../components/IslandPicker';
@@ -87,6 +87,8 @@ export default function Settings() {
       <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 16 }}>
         Business settings
       </h1>
+
+      <SubscriptionStatusSection businessId={business.id} />
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
         <label htmlFor="settings-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
@@ -176,6 +178,65 @@ export default function Settings() {
 
 // Promo code management — POST/GET/PATCH /api/business/:businessId/promo-codes.
 // Applies at checkout in frontend-tourist's ListingDetail.jsx.
+const BILLING_STATUS_LABEL = { paid: 'Paid', unpaid: 'Unpaid' };
+
+// Section 4.9's "Pro subscription status and renewal date" (previously
+// shown nowhere) + Section 4.8's "Pay at Visit owed balance and monthly
+// subscription billing history" — all already returned by GET
+// /business/:businessId/settings, just never displayed.
+function SubscriptionStatusSection({ businessId }) {
+  const [business, setBusiness] = useState(null);
+  const [billingHistory, setBillingHistory] = useState([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getSettings(businessId).then((d) => setBusiness(d.business)).catch((err) => setError(err.message));
+    getBillingHistory(businessId).then((d) => setBillingHistory(d.billing_history || [])).catch(() => {});
+  }, [businessId]);
+
+  if (!business) return null;
+
+  const isPro = business.subscription_tier === 'pro';
+  const isExpired = business.subscription_expiry && new Date(business.subscription_expiry) < new Date();
+  const owed = Number(business.pay_at_visit_commission_owed || 0);
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+        Subscription
+      </p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+        {isPro ? 'Pro' : 'Free'} plan
+        {isPro && business.subscription_expiry && (
+          isExpired
+            ? <span style={{ color: 'var(--coral)' }}> — lapsed {new Date(business.subscription_expiry).toLocaleDateString()}</span>
+            : <span> — renews {new Date(business.subscription_expiry).toLocaleDateString()}</span>
+        )}
+      </p>
+      {owed > 0 && (
+        <p style={{ fontSize: 13, color: 'var(--coral)', margin: '0 0 8px' }}>
+          ${owed} in Pay at Visit commission currently owed
+        </p>
+      )}
+      {error && <p className="error-text">{error}</p>}
+
+      {billingHistory.length > 0 && (
+        <>
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '10px 0 6px' }}>
+            Billing history
+          </p>
+          {billingHistory.map((b) => (
+            <p key={b.id} style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+              {new Date(b.billing_month).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })} — ${b.total_charged}
+              {' '}({BILLING_STATUS_LABEL[b.status] || b.status})
+            </p>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 function PromoCodesSection({ businessId }) {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);

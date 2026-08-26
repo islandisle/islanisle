@@ -65,6 +65,11 @@ export async function getSettings(businessId) {
   return handleResponse(res);
 }
 
+export async function getBillingHistory(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/billing-history`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 export async function updateSettings(businessId, updates) {
   const res = await fetch(`${API_BASE}/api/business/${businessId}/settings`, {
     method: 'PATCH',
