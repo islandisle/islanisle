@@ -277,6 +277,12 @@ export async function getMyTrips() {
   return handleResponse(res);
 }
 
+// Batch 24 — Home.jsx's trip-stage-aware content prioritization.
+export async function getTripContext() {
+  const res = await fetch(`${API_BASE}/api/trips/context`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Orders (routes/orders.js) — shop purchases: stock-based, not slot-based ---
 
 export async function createOrderRaw(payload) {

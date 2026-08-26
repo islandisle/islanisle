@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
@@ -64,6 +64,10 @@ export default function Home() {
   const [weather, setWeather] = useState(null);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [openNowOnly, setOpenNowOnly] = useState(false);
+  // Batch 24 — trip-stage-aware prioritization. { stage: 'none' } until
+  // fetched (or for a guest with no token, which never fetches at all —
+  // browse-as-guest has no trip to be staged against).
+  const [tripContext, setTripContext] = useState({ stage: 'none' });
 
   // Section 3.4 Pricing Visibility: a Local account should see local_price
   // everywhere prices are shown, not tourist_price. The backend has always
@@ -104,6 +108,17 @@ export default function Home() {
     getMyFavoriteIds()
       .then((data) => setFavoriteIds(new Set(data.listing_ids)))
       .catch(() => {});
+  }, []);
+
+  // Batch 24 — trip-stage-aware prioritization: fetched once on mount (the
+  // underlying signal — current_stay_business_id, upcoming bookings — only
+  // changes via a check-in or a new booking, neither of which happens
+  // without leaving this page, so a one-time fetch is enough).
+  useEffect(() => {
+    if (!localStorage.getItem('atollisle_token')) return;
+    getTripContext()
+      .then(setTripContext)
+      .catch(() => {}); // decorative prioritization — a failed fetch just means the default browse order, not an error banner
   }, []);
 
   function toggleFavorite(listingId, isFavorited) {
@@ -157,6 +172,8 @@ export default function Home() {
       <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>
+        <TripStagePriority context={tripContext} isLocal={isLocal} />
+
         {/* Section 3.2/11 "Choosing a Stay Island": searchable, grouped by
             atoll — not a curated island directory with photos/descriptions
             (that's a larger, separate piece), but a real picker rather than
@@ -649,6 +666,69 @@ function NotificationBell() {
       )}
     </Link>
   );
+}
+
+// Batch 24 — trip-stage-aware Home prioritization. Renders one of three
+// things above the normal island-browse UI, based on GET /api/trips/context:
+//   'pre_arrival' — a prompt toward Arrival Transfers, since a tourist
+//     with a booking starting soon and no check-in yet hasn't landed.
+//   'on_island'   — that island's excursions + local events, since arrival
+//     transfer is no longer relevant once actually checked in somewhere.
+//   'none'        — nothing; falls through to today's default browse.
+function TripStagePriority({ context, isLocal }) {
+  const [excursions, setExcursions] = useState([]);
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    if (context.stage !== 'on_island' || !context.island) return;
+    getIslandListings(context.island, 'excursion').then((d) => setExcursions(d.listings || [])).catch(() => {});
+    getLocalEvents(context.island).then((d) => setEvents(d.events || [])).catch(() => {});
+  }, [context.stage, context.island]);
+
+  if (context.stage === 'pre_arrival') {
+    return (
+      <Link
+        to="/transfers"
+        className="card"
+        style={{
+          display: 'block', padding: 16, marginBottom: 16, textDecoration: 'none',
+          background: 'var(--lagoon)', color: '#fff', border: 'none',
+        }}
+      >
+        <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 4px' }}>
+          Arriving soon?
+        </p>
+        <p style={{ fontSize: 13, margin: 0, opacity: 0.9 }}>
+          Your trip is coming up — book your airport transfer now so it's ready when you land →
+        </p>
+      </Link>
+    );
+  }
+
+  if (context.stage === 'on_island') {
+    if (excursions.length === 0 && events.length === 0) return null;
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+          On {context.island} now
+        </p>
+        {excursions.slice(0, 3).map((listing) => (
+          <ListingCard key={listing.id} listing={listing} isLocal={isLocal} />
+        ))}
+        {events.slice(0, 3).map((e) => (
+          <div key={e.id} className="card" style={{ padding: 12, marginBottom: 12 }}>
+            <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>{e.title}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+              {new Date(e.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </p>
+          </div>
+        ))}
+        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 16px' }} />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite }) {

@@ -124,4 +124,53 @@ router.get('/mine', authenticate, async (req, res) => {
   res.json({ trips: tripsWithStays });
 });
 
+// Pre-arrival window (Batch 24) — how many days out an upcoming booking
+// counts as "arriving soon" for prioritizing the Arrival Transfers screen.
+const PRE_ARRIVAL_WINDOW_DAYS = 3;
+
+/**
+ * GET /api/trips/context
+ * Batch 24 — Home.jsx's trip-stage-aware prioritization, derived from data
+ * this app already has rather than a separate manually-toggled state:
+ *   - 'on_island': users.current_stay_business_id is set (checked in
+ *     somewhere right now) — returns that stay's island. Moving to a new
+ *     guesthouse on check-in already overwrites current_stay_business_id
+ *     (checkin.js), so a multi-island trip naturally updates this on its
+ *     own as the tourist checks in island to island.
+ *   - 'pre_arrival': not checked in anywhere, but has a confirmed booking
+ *     starting within PRE_ARRIVAL_WINDOW_DAYS.
+ *   - 'none': neither — today's normal default browse.
+ * Known limitation, not introduced here: current_stay_business_id is only
+ * ever set at check-in and never cleared anywhere (no checkout action
+ * exists in the app yet), so 'on_island' technically persists after a
+ * trip is actually over rather than reverting to 'none' — a pre-existing
+ * gap in the check-in system this endpoint just reads from as-is.
+ */
+router.get('/context', authenticate, async (req, res) => {
+  const userResult = await query(
+    `SELECT u.current_stay_business_id, biz.location_island
+     FROM users u LEFT JOIN businesses biz ON biz.id = u.current_stay_business_id
+     WHERE u.id = $1`,
+    [req.user.id]
+  );
+  const row = userResult.rows[0];
+  if (row?.current_stay_business_id) {
+    return res.json({ stage: 'on_island', island: row.location_island });
+  }
+
+  const upcoming = await query(
+    `SELECT b.slot_start
+     FROM bookings b
+     WHERE b.user_id = $1 AND b.status = 'confirmed'
+       AND b.slot_start BETWEEN now() AND now() + make_interval(days => $2)
+     ORDER BY b.slot_start ASC LIMIT 1`,
+    [req.user.id, PRE_ARRIVAL_WINDOW_DAYS]
+  );
+  if (upcoming.rows.length) {
+    return res.json({ stage: 'pre_arrival' });
+  }
+
+  res.json({ stage: 'none' });
+});
+
 export default router;
