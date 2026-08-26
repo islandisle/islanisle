@@ -345,6 +345,13 @@ export async function fileDispute({ booking_id, order_id, reason, description })
   return handleResponse(res);
 }
 
+// Batch 22 — the backend route existed with nothing in the UI ever
+// calling it, so a filed dispute had no way to be tracked afterward.
+export async function getMyDisputes() {
+  const res = await fetch(`${API_BASE}/api/disputes/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Reviews (routes/reviews.js) ---
 
 // multipart/form-data — Section 6.4's review photos. photos is an array of
@@ -488,8 +495,9 @@ export async function getMyGroup() {
 
 // --- Chat (routes/messages.js) — generic, shared with the agent portal ---
 // Section 6.5's tourist↔business chat: the backend was already generic and
-// already used by frontend-agent; this is the same client shape, just for
-// a tourist messaging a business (other_role is always 'business' here).
+// already used by frontend-agent; this is the same client shape, for a
+// tourist messaging a business OR an agent (Batch 22 generalized
+// ChatPanel.jsx beyond business-only).
 
 export async function getThread(otherRole, otherId) {
   const params = new URLSearchParams({ other_role: otherRole, other_id: otherId });
@@ -503,6 +511,13 @@ export async function sendMessage(otherRole, otherId, text) {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ other_role: otherRole, other_id: otherId, text }),
   });
+  return handleResponse(res);
+}
+
+// Batch 22 — a tourist had no way to see threads an agent (or a business)
+// started, only ones they themselves opened via a specific listing.
+export async function getMyThreads() {
+  const res = await fetch(`${API_BASE}/api/messages/threads/mine`, { headers: authHeaders() });
   return handleResponse(res);
 }
 

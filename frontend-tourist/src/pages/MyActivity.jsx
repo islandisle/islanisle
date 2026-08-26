@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn } from '../api/client';
+import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn, getMyDisputes } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
@@ -14,6 +14,7 @@ export default function MyActivity() {
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [reviewsByTarget, setReviewsByTarget] = useState({});
   const [returnsByOrder, setReturnsByOrder] = useState({});
   const [loading, setLoading] = useState(true);
@@ -52,13 +53,15 @@ export default function MyActivity() {
       getMyReviews().catch(() => ({ reviews: [] })),
       getMyWaitlist().catch(() => ({ waitlist: [] })),
       getMyReturns().catch(() => ({ returns: [] })),
+      getMyDisputes().catch(() => ({ disputes: [] })),
     ])
-      .then(([bookingsData, ordersData, reviewsData, waitlistData, returnsData]) => {
+      .then(([bookingsData, ordersData, reviewsData, waitlistData, returnsData, disputesData]) => {
         const loadedBookings = bookingsData.bookings || [];
         const loadedOrders = ordersData.orders || [];
         setBookings(loadedBookings);
         setOrders(loadedOrders);
         setWaitlist(waitlistData.waitlist || []);
+        setDisputes(disputesData.disputes || []);
         const byTarget = {};
         for (const r of reviewsData.reviews || []) {
           if (r.booking_id) byTarget[`booking:${r.booking_id}`] = r;
@@ -186,6 +189,17 @@ export default function MyActivity() {
           </p>
           {waitlist.map((w) => (
             <WaitlistRow key={w.id} entry={w} />
+          ))}
+        </>
+      )}
+
+      {disputes.length > 0 && (
+        <>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
+            My disputes
+          </p>
+          {disputes.map((d) => (
+            <DisputeRow key={d.id} dispute={d} />
           ))}
         </>
       )}
@@ -417,6 +431,32 @@ function WaitlistRow({ entry }) {
       <p style={{ fontSize: 12, color: entry.status === 'notified' ? 'var(--lagoon)' : 'var(--text-secondary)', margin: 0 }}>
         {new Date(entry.requested_slot).toLocaleString()} · {WAITLIST_STATUS_LABEL[entry.status] || entry.status}
       </p>
+    </div>
+  );
+}
+
+// Batch 22 — GET /api/disputes/mine existed with nothing in the UI ever
+// calling it, so a tourist who filed a "Report a problem" (Section 7.1)
+// had no way to check back on it afterward.
+const DISPUTE_STATUS_LABEL = {
+  open: 'Under review',
+  resolved: 'Resolved',
+};
+
+function DisputeRow({ dispute }) {
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {dispute.reason}
+      </p>
+      <p style={{ fontSize: 12, color: dispute.status === 'resolved' ? 'var(--lagoon)' : 'var(--text-secondary)', margin: 0 }}>
+        Filed {new Date(dispute.created_at).toLocaleDateString()} · {DISPUTE_STATUS_LABEL[dispute.status] || dispute.status}
+      </p>
+      {dispute.resolution && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          {dispute.resolution}
+        </p>
+      )}
     </div>
   );
 }
