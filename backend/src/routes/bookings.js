@@ -137,7 +137,8 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 
     const listingResult = await query(
       `SELECT l.title, l.tourist_price, l.local_price, l.approval_status, l.type_specific_fields,
-              l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type, b.trust_tier
+              l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type, b.trust_tier,
+              b.approval_status AS business_approval_status, b.account_status
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
        WHERE l.id = $1`,
@@ -149,6 +150,16 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const listing = listingResult.rows[0];
     if (listing.approval_status !== 'approved') {
       return res.status(400).json({ error: 'This listing is not currently bookable.' });
+    }
+    // Business suspension (Section 7.2) — listings.js's browse query and
+    // orders.js's checkout both already filter a suspended business out;
+    // this route never did, so hitting a still-known listing_id directly
+    // on a suspended business bypassed it entirely. approval_status is
+    // checked too since a business awaiting/denied approval shouldn't be
+    // bookable either, matching the same posture as listings.js's browse
+    // query (`b.approval_status = 'approved' AND b.account_status = 'active'`).
+    if (listing.business_approval_status !== 'approved' || listing.account_status !== 'active') {
+      return res.status(400).json({ error: 'This business is not currently available.' });
     }
 
     // Business closures (Section 8.4): a listing "stays visible but is shown
