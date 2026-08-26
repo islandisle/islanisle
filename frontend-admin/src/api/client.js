@@ -206,3 +206,24 @@ export async function closeSupportTicket(id) {
   });
   return handleResponse(res);
 }
+
+// --- Local events (routes/events.js) — Batch 19 local-knowledge calendar ---
+
+export async function getEvents() {
+  const res = await fetch(`${API_BASE}/api/events`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function createEvent({ island, title, description, event_date }) {
+  const res = await fetch(`${API_BASE}/api/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ island, title, description, event_date }),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteEvent(id) {
+  const res = await fetch(`${API_BASE}/api/events/${id}`, { method: 'DELETE', headers: authHeaders() });
+  return handleResponse(res);
+}

@@ -11,6 +11,7 @@ import Trips from './pages/Trips';
 import Notifications from './pages/Notifications';
 import Support from './pages/Support';
 import EmergencyContacts from './pages/EmergencyContacts';
+import LocalGuide from './pages/LocalGuide';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/support" element={<Support />} />
           <Route path="/emergency-contacts" element={<EmergencyContacts />} />
+          <Route path="/local-guide" element={<LocalGuide />} />
         </Routes>
       </BrowserRouter>
     </LanguageProvider>

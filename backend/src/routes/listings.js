@@ -33,7 +33,7 @@ const router = Router();
  */
 router.get('/:island/listings', async (req, res) => {
   const { island } = req.params;
-  const { type, accessibility } = req.query;
+  const { type, accessibility, dietary } = req.query;
 
   const params = [island];
   let typeFilter = '';
@@ -51,9 +51,18 @@ router.get('/:island/listings', async (req, res) => {
     }
   }
 
+  let dietaryFilter = '';
+  if (dietary) {
+    const tags = dietary.split(',').map((s) => s.trim()).filter(Boolean);
+    if (tags.length > 0) {
+      params.push(tags);
+      dietaryFilter = `AND l.dietary_tags @> $${params.length}::TEXT[]`;
+    }
+  }
+
   const result = await query(
     `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.photos,
-            l.accessibility_features,
+            l.accessibility_features, l.dietary_tags,
             b.id AS business_id, b.name AS business_name, b.type AS business_type,
             b.verified_badge,
             COALESCE(rv.review_count, 0) AS review_count,
@@ -74,6 +83,7 @@ router.get('/:island/listings', async (req, res) => {
        AND b.account_status = 'active'
        ${typeFilter}
        ${accessibilityFilter}
+       ${dietaryFilter}
      ORDER BY l.created_at DESC`,
     params
   );

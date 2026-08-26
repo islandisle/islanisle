@@ -30,6 +30,17 @@ const ACCESSIBILITY_FEATURE_LABELS = {
   accessible_parking: 'Accessible parking',
 };
 
+// Batch 19 — same pattern, for listing.dietary_tags.
+const DIETARY_TAG_LABELS = {
+  vegetarian: 'Vegetarian options',
+  vegan: 'Vegan options',
+  halal: 'Halal',
+  gluten_free: 'Gluten-free options',
+  dairy_free: 'Dairy-free options',
+  nut_free: 'Nut-free options',
+  pescatarian: 'Pescatarian options',
+};
+
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -105,6 +116,19 @@ export default function ListingDetail() {
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
             {listing.accessibility_features.map((key) => (
               <li key={key}>{ACCESSIBILITY_FEATURE_LABELS[key] || key}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {Array.isArray(listing.dietary_tags) && listing.dietary_tags.length > 0 && (
+        <div className="card" style={{ padding: 12, marginBottom: 20 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
+            Dietary options
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {listing.dietary_tags.map((key) => (
+              <li key={key}>{DIETARY_TAG_LABELS[key] || key}</li>
             ))}
           </ul>
         </div>

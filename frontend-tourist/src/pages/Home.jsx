@@ -29,6 +29,18 @@ const ACCESSIBILITY_FEATURES = [
   { key: 'accessible_parking', label: 'Accessible parking' },
 ];
 
+// Batch 19 — kept in sync manually with database/schema.sql's comment above
+// listings.dietary_tags / frontend-business's Dashboard.jsx DIETARY_TAGS.
+const DIETARY_TAGS = [
+  { key: 'vegetarian', label: 'Vegetarian options' },
+  { key: 'vegan', label: 'Vegan options' },
+  { key: 'halal', label: 'Halal' },
+  { key: 'gluten_free', label: 'Gluten-free options' },
+  { key: 'dairy_free', label: 'Dairy-free options' },
+  { key: 'nut_free', label: 'Nut-free options' },
+  { key: 'pescatarian', label: 'Pescatarian options' },
+];
+
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
   if (!raw) return null;
@@ -44,6 +56,8 @@ export default function Home() {
   const [typeFilter, setTypeFilter] = useState('');
   const [accessibilityFilter, setAccessibilityFilter] = useState([]);
   const [showAccessibilityFilters, setShowAccessibilityFilters] = useState(false);
+  const [dietaryFilter, setDietaryFilter] = useState([]);
+  const [showDietaryFilters, setShowDietaryFilters] = useState(false);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,7 +75,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getIslandListings(island, typeFilter || undefined, accessibilityFilter)
+    getIslandListings(island, typeFilter || undefined, accessibilityFilter, dietaryFilter)
       .then((data) => {
         if (!cancelled) setListings(data.listings);
       })
@@ -72,10 +86,16 @@ export default function Home() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [island, typeFilter, accessibilityFilter]);
+  }, [island, typeFilter, accessibilityFilter, dietaryFilter]);
 
   function toggleAccessibilityFeature(key, checked) {
     setAccessibilityFilter((prev) =>
+      checked ? [...prev, key] : prev.filter((k) => k !== key)
+    );
+  }
+
+  function toggleDietaryTag(key, checked) {
+    setDietaryFilter((prev) =>
       checked ? [...prev, key] : prev.filter((k) => k !== key)
     );
   }
@@ -164,6 +184,49 @@ export default function Home() {
           </div>
         )}
 
+        <button
+          type="button"
+          onClick={() => setShowDietaryFilters((v) => !v)}
+          aria-expanded={showDietaryFilters}
+          aria-controls="dietary-filter-panel"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            marginBottom: showDietaryFilters ? 8 : 14,
+            fontSize: 13,
+            color: 'var(--lagoon)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          {t('home.dietary_filters')}{dietaryFilter.length > 0 ? ` (${dietaryFilter.length})` : ''}
+          <span aria-hidden="true">{showDietaryFilters ? '▲' : '▼'}</span>
+        </button>
+
+        {showDietaryFilters && (
+          <div
+            id="dietary-filter-panel"
+            role="group"
+            aria-label="Filter listings by dietary option"
+            className="card"
+            style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            {DIETARY_TAGS.map((tag) => (
+              <label key={tag.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={dietaryFilter.includes(tag.key)}
+                  onChange={(e) => toggleDietaryTag(tag.key, e.target.checked)}
+                />
+                {tag.label}
+              </label>
+            ))}
+          </div>
+        )}
+
         <Link
           to="/transfers"
           style={{
@@ -171,10 +234,23 @@ export default function Home() {
             fontSize: 13,
             color: 'var(--lagoon)',
             textDecoration: 'none',
-            marginBottom: 14,
+            marginBottom: 6,
           }}
         >
           {t('home.arriving_by_air')}
+        </Link>
+
+        <Link
+          to={`/local-guide?island=${encodeURIComponent(island)}`}
+          style={{
+            display: 'block',
+            fontSize: 13,
+            color: 'var(--lagoon)',
+            textDecoration: 'none',
+            marginBottom: 14,
+          }}
+        >
+          {t('home.local_guide_link')}
         </Link>
 
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
@@ -551,6 +627,11 @@ function ListingCard({ listing, isLocal }) {
         {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
             ♿ {listing.accessibility_features.length} accessibility feature{listing.accessibility_features.length > 1 ? 's' : ''}
+          </p>
+        )}
+        {Array.isArray(listing.dietary_tags) && listing.dietary_tags.length > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+            🍽 {listing.dietary_tags.map((tag) => tag.replace(/_/g, ' ')).join(', ')}
           </p>
         )}
       </div>

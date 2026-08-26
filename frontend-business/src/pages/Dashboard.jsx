@@ -236,6 +236,20 @@ const ACCESSIBILITY_FEATURES = [
   { key: 'accessible_parking', label: 'Accessible parking' },
 ];
 
+// Batch 19 — same self-reported tag pattern as ACCESSIBILITY_FEATURES,
+// kept in sync manually with schema.sql's comment above
+// listings.dietary_tags. Shown for restaurant listings, where it's most
+// actually useful, though the backend doesn't restrict it to that type.
+const DIETARY_TAGS = [
+  { key: 'vegetarian', label: 'Vegetarian options' },
+  { key: 'vegan', label: 'Vegan options' },
+  { key: 'halal', label: 'Halal' },
+  { key: 'gluten_free', label: 'Gluten-free options' },
+  { key: 'dairy_free', label: 'Dairy-free options' },
+  { key: 'nut_free', label: 'Nut-free options' },
+  { key: 'pescatarian', label: 'Pescatarian options' },
+];
+
 function AddListingForm({ businessType, businessId, onCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -247,6 +261,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [freeDelivery, setFreeDelivery] = useState(false);
   const [accessibilityFeatures, setAccessibilityFeatures] = useState([]);
+  const [dietaryTags, setDietaryTags] = useState([]);
   const [payAtVisitEnabled, setPayAtVisitEnabled] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
@@ -265,6 +280,12 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     );
   }
 
+  function toggleDietaryTag(key, checked) {
+    setDietaryTags((prev) =>
+      checked ? [...prev, key] : prev.filter((k) => k !== key)
+    );
+  }
+
   function resetForm() {
     setTitle('');
     setDescription('');
@@ -276,6 +297,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     setDeliveryAvailable(false);
     setFreeDelivery(false);
     setAccessibilityFeatures([]);
+    setDietaryTags([]);
     setPayAtVisitEnabled(false);
     setPhotos([]);
     setOpen(false);
@@ -308,6 +330,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         local_price: Number(localPrice),
         type_specific_fields: processedTypeFields,
         accessibility_features: accessibilityFeatures,
+        dietary_tags: dietaryTags,
         pay_at_visit_enabled: payAtVisitEnabled,
         photos,
       };
@@ -440,6 +463,26 @@ function AddListingForm({ businessType, businessId, onCreated }) {
           </label>
         ))}
       </div>
+
+      {businessType === 'restaurant' && (
+        <>
+          <p id="listing-dietary-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Dietary options
+          </p>
+          <div role="group" aria-labelledby="listing-dietary-label" style={{ marginBottom: 10 }}>
+            {DIETARY_TAGS.map((tag) => (
+              <label key={tag.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={dietaryTags.includes(tag.key)}
+                  onChange={(e) => toggleDietaryTag(tag.key, e.target.checked)}
+                />
+                {tag.label}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 12px' }} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4 }}>

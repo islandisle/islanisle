@@ -116,6 +116,7 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
     const type_specific_fields = req.body.type_specific_fields ? JSON.parse(req.body.type_specific_fields) : {};
     const fulfillment_options = req.body.fulfillment_options ? JSON.parse(req.body.fulfillment_options) : null;
     const accessibility_features = req.body.accessibility_features ? JSON.parse(req.body.accessibility_features) : [];
+    const dietary_tags = req.body.dietary_tags ? JSON.parse(req.body.dietary_tags) : [];
 
     if (!title || tourist_price == null || local_price == null) {
       return res.status(400).json({ error: 'title, tourist_price, and local_price are required.' });
@@ -197,15 +198,17 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
     const result = await query(
       `INSERT INTO listings (
          business_id, title, description, type_specific_fields, tourist_price, local_price,
-         photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled, accessibility_features
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, photos`,
+         photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled, accessibility_features,
+         dietary_tags
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, dietary_tags, photos`,
       [
         businessId, title, description || null, JSON.stringify(type_specific_fields || {}),
         Number(tourist_price), Number(local_price), photoUrls, stock_count ? Number(stock_count) : null,
         fulfillment_options || null, free_delivery === 'true' || free_delivery === true,
         effectivePayAtVisitEnabled,
         accessibility_features || [],
+        dietary_tags || [],
       ]
     );
 
@@ -229,7 +232,7 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
 router.get('/:businessId/listings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const { businessId } = req.params;
   const result = await query(
-    `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, photos, created_at
+    `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, dietary_tags, photos, created_at
      FROM listings WHERE business_id = $1 ORDER BY created_at DESC`,
     [businessId]
   );
@@ -243,7 +246,7 @@ router.get('/:businessId/listings', authenticate, requireBusinessOwnerOrAdmin, a
  */
 router.patch('/:businessId/listings/:listingId', authenticate, requireBusinessOwner, async (req, res) => {
   const { listingId } = req.params;
-  const { title, description, tourist_price, local_price, photos, accessibility_features } = req.body;
+  const { title, description, tourist_price, local_price, photos, accessibility_features, dietary_tags } = req.body;
 
   const result = await query(
     `UPDATE listings SET
@@ -253,10 +256,11 @@ router.patch('/:businessId/listings/:listingId', authenticate, requireBusinessOw
        local_price = COALESCE($4, local_price),
        photos = COALESCE($5, photos),
        accessibility_features = COALESCE($6, accessibility_features),
+       dietary_tags = COALESCE($7, dietary_tags),
        updated_at = now()
-     WHERE id = $7
-     RETURNING id, title, tourist_price, local_price, accessibility_features`,
-    [title, description, tourist_price, local_price, photos, accessibility_features, listingId]
+     WHERE id = $8
+     RETURNING id, title, tourist_price, local_price, accessibility_features, dietary_tags`,
+    [title, description, tourist_price, local_price, photos, accessibility_features, dietary_tags, listingId]
   );
 
   if (!result.rows.length) {

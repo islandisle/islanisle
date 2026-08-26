@@ -100,14 +100,27 @@ export async function submitWebauthnLogin(userId, response) {
 
 // --- Islands / listings (routes/listings.js) ---
 
-export async function getIslandListings(island, type, accessibilityFeatures) {
+export async function getIslandListings(island, type, accessibilityFeatures, dietaryTags) {
   const params = new URLSearchParams();
   if (type) params.set('type', type);
   if (accessibilityFeatures && accessibilityFeatures.length > 0) {
     params.set('accessibility', accessibilityFeatures.join(','));
   }
+  if (dietaryTags && dietaryTags.length > 0) {
+    params.set('dietary', dietaryTags.join(','));
+  }
   const qs = params.toString();
   const res = await fetch(`${API_BASE}/api/islands/${encodeURIComponent(island)}/listings${qs ? `?${qs}` : ''}`);
+  return handleResponse(res);
+}
+
+// Local events calendar (routes/events.js) — part of Batch 19's local
+// knowledge guide.
+export async function getLocalEvents(island) {
+  const params = new URLSearchParams();
+  if (island) params.set('island', island);
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE}/api/events${qs ? `?${qs}` : ''}`);
   return handleResponse(res);
 }
 

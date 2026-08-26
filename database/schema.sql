@@ -159,6 +159,13 @@ CREATE TABLE listings (
     -- 'braille_signage', 'hearing_loop', 'service_animal_friendly',
     -- 'accessible_parking'. Filterable via GET /:island/listings?accessibility=.
     accessibility_features     TEXT[] NOT NULL DEFAULT '{}',
+    -- dietary_tags (Batch 19): same free-standing self-reported tag
+    -- pattern as accessibility_features, most relevant on restaurant
+    -- listings but not restricted to them (a shop selling food, or an
+    -- excursion that includes a meal, can tag too) — any of 'vegetarian',
+    -- 'vegan', 'halal', 'gluten_free', 'dairy_free', 'nut_free',
+    -- 'pescatarian'. Filterable via GET /:island/listings?dietary=.
+    dietary_tags               TEXT[] NOT NULL DEFAULT '{}',
     -- shop-specific fields (NULL for non-shop listings)
     stock_count                INTEGER,
     fulfillment_options        fulfillment_method[],
@@ -169,6 +176,7 @@ CREATE TABLE listings (
 CREATE INDEX idx_listings_business ON listings(business_id);
 CREATE INDEX idx_listings_approval ON listings(approval_status);
 CREATE INDEX idx_listings_accessibility ON listings USING GIN (accessibility_features);
+CREATE INDEX idx_listings_dietary ON listings USING GIN (dietary_tags);
 
 -- ---------------------------------------------------------------------------
 -- [MVP] travel_groups + group_members — Section 12: TravelGroup
@@ -769,6 +777,23 @@ CREATE TABLE support_ticket_messages (
     text            TEXT NOT NULL,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ---------------------------------------------------------------------------
+-- [Batch 19] local_events — "local knowledge" events calendar. island NULL
+-- means Maldives-wide (e.g. a national holiday), set means specific to that
+-- one island — matched the same case/whitespace-insensitive way
+-- listings.js's island browsing already handles businesses.location_island.
+-- Admin-managed (routes/events.js); read-only for tourists.
+-- ---------------------------------------------------------------------------
+CREATE TABLE local_events (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    island         TEXT,
+    title          TEXT NOT NULL,
+    description     TEXT,
+    event_date       DATE NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_local_events_date ON local_events(event_date);
 
 -- ============================================================================
 -- END OF SCHEMA

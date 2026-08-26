@@ -5,7 +5,7 @@ import {
   markBusinessTrusted, getAgentDirectory, suspendAgent, reinstateAgent, getAuditLog,
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
-  getPlatformAnalytics,
+  getPlatformAnalytics, getEvents, createEvent, deleteEvent,
 } from '../api/client';
 import { useTheme } from '../theme';
 
@@ -108,6 +108,7 @@ export default function Dashboard() {
       <BusinessDirectorySection isModerator={isModerator} />
       {!isModerator && <AgentDirectorySection />}
       <SupportTicketsSection />
+      <LocalEventsSection />
       {!isModerator && <AuditLogSection />}
     </div>
   );
@@ -916,6 +917,86 @@ function SupportTicketRow({ ticket, expanded, onToggle, onChanged }) {
         </div>
       )}
     </div>
+  );
+}
+
+// GET/POST/DELETE /api/events — Batch 19's local-knowledge events calendar.
+// local_events existed nowhere before this batch; this is the admin side
+// that actually populates it (frontend-tourist's LocalGuide reads it back).
+function LocalEventsSection() {
+  const [events, setEvents] = useState([]);
+  const [island, setIsland] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function load() {
+    getEvents().then((d) => setEvents(d.events || [])).catch((err) => setError(err.message));
+  }
+
+  useEffect(() => { if (open) load(); }, [open]);
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    if (!title.trim() || !eventDate) return;
+    try {
+      await createEvent({ island: island.trim() || null, title: title.trim(), description: description.trim() || null, event_date: eventDate });
+      setTitle(''); setDescription(''); setEventDate(''); setIsland('');
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDelete(id) {
+    try {
+      await deleteEvent(id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Local events calendar</p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'Manage'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          {error && <p className="error-text">{error}</p>}
+
+          <form onSubmit={handleCreate} className="card" style={{ padding: 12, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input className="input-field" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input className="input-field" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input-field" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} style={{ flex: 1 }} />
+              <input className="input-field" placeholder="Island (blank = Maldives-wide)" value={island} onChange={(e) => setIsland(e.target.value)} style={{ flex: 1 }} />
+            </div>
+            <button className="btn-primary" type="submit">Add event</button>
+          </form>
+
+          {events.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No upcoming events.</p>}
+          {events.map((e) => (
+            <div key={e.id} className="card" style={{ padding: 10, marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: 12, color: 'var(--navy)', margin: 0 }}>{e.title} — {new Date(e.event_date).toLocaleDateString()}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>{e.island || 'Maldives-wide'}</p>
+              </div>
+              <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleDelete(e.id)}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
   );
 }
 

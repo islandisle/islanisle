@@ -34,6 +34,11 @@ async function columnExists(table, column) {
   return result.rows.length > 0;
 }
 
+async function tableExists(table) {
+  const result = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = $1`, [table]);
+  return result.rows.length > 0;
+}
+
 async function typeExists(typeName) {
   const result = await pool.query(`SELECT 1 FROM pg_type WHERE typname = $1`, [typeName]);
   return result.rows.length > 0;
@@ -258,6 +263,31 @@ async function main() {
   if (!(await columnExists('agents', 'two_factor_enabled'))) {
     console.log('Adding agents.two_factor_enabled...');
     await pool.query(`ALTER TABLE agents ADD COLUMN two_factor_enabled BOOLEAN NOT NULL DEFAULT false`);
+    changed = true;
+  }
+
+  console.log('Checking for local_events table (Batch 19 local-knowledge events calendar)...');
+  if (!(await tableExists('local_events'))) {
+    console.log('Creating local_events...');
+    await pool.query(`
+      CREATE TABLE local_events (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          island         TEXT,
+          title          TEXT NOT NULL,
+          description     TEXT,
+          event_date       DATE NOT NULL,
+          created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_local_events_date ON local_events(event_date)`);
+    changed = true;
+  }
+
+  console.log('Checking for listings.dietary_tags (Batch 19 dietary tags)...');
+  if (!(await columnExists('listings', 'dietary_tags'))) {
+    console.log('Adding listings.dietary_tags...');
+    await pool.query(`ALTER TABLE listings ADD COLUMN dietary_tags TEXT[] NOT NULL DEFAULT '{}'`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_listings_dietary ON listings USING GIN (dietary_tags)`);
     changed = true;
   }
 

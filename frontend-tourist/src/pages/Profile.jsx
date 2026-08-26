@@ -9,6 +9,7 @@ import {
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
+import { useTextSize, TEXT_SIZE_OPTIONS } from '../textSize';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 import { useModalA11y } from '../useModalA11y';
 
@@ -176,6 +177,8 @@ export default function Profile() {
       {user?.type === 'tourist' && <LanguageSection />}
 
       <AppearanceSection />
+
+      <TextSizeSection />
 
       <BiometricSection />
 
@@ -487,6 +490,40 @@ function LanguageSection() {
               border: language === opt.code ? 'none' : '1px solid var(--border)',
               background: language === opt.code ? 'var(--lagoon)' : 'var(--surface)',
               color: language === opt.code ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TextSizeSection() {
+  const { scale, setScale } = useTextSize();
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Text size
+      </p>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {TEXT_SIZE_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            type="button"
+            onClick={() => setScale(opt.value)}
+            style={{
+              flex: 1,
+              padding: '8px 0',
+              borderRadius: 'var(--radius-sm)',
+              border: scale === opt.value ? 'none' : '1px solid var(--border)',
+              background: scale === opt.value ? 'var(--lagoon)' : 'var(--surface)',
+              color: scale === opt.value ? '#fff' : 'var(--text-secondary)',
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
