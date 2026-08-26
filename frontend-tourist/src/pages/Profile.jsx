@@ -5,7 +5,7 @@ import {
   getMyGroup, removeGroupMember, getCurrentStay,
   getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
   getNotificationPreferences, updateNotificationPreferences,
-  exportMyData, deleteAccount, getMyProfile,
+  exportMyData, deleteAccount, getMyProfile, setup2FA, confirm2FA, disable2FA,
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
@@ -18,6 +18,7 @@ export default function Profile() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
+  const [showGroupQR, setShowGroupQR] = useState(false);
   const [error, setError] = useState('');
   const [currentStay, setCurrentStay] = useState(null);
 
@@ -139,15 +140,20 @@ export default function Profile() {
 
         {!loading && !group && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            You're not in a group yet. Use "My QR code" above to start one or join with a code.
+            You're not in a group yet. Use "My QR code" above to scan or enter a group code someone shares with you.
           </p>
         )}
 
         {group && (
           <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-              {group.members.length} of {group.max_members} members
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                {group.members.length} of {group.max_members} members
+              </p>
+              <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setShowGroupQR(true)}>
+                Share group QR
+              </button>
+            </div>
             {group.members.map((m) => (
               <div
                 key={m.id}
@@ -192,6 +198,8 @@ export default function Profile() {
 
       <BiometricSection />
 
+      <TwoFactorSection />
+
       <AccountDataSection onDeleted={handleLogout} />
 
       <button className="btn-secondary" style={{ width: '100%' }} onClick={handleLogout}>
@@ -200,8 +208,18 @@ export default function Profile() {
 
       {showQR && (
         <QRPopup
-          qrValue={group?.group_code}
+          qrValue={user?.id}
+          label="Your personal QR code"
           onClose={() => setShowQR(false)}
+          onJoinSuccess={loadGroup}
+        />
+      )}
+
+      {showGroupQR && (
+        <QRPopup
+          qrValue={group?.group_code}
+          label="Your group's QR — share to invite others"
+          onClose={() => setShowGroupQR(false)}
           onJoinSuccess={loadGroup}
         />
       )}
@@ -275,6 +293,114 @@ function BiometricSection() {
       <button className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={handleRegister} disabled={registering}>
         {registering ? 'Waiting for fingerprint/face…' : '+ Register this device'}
       </button>
+    </div>
+  );
+}
+
+// Batch 20 — a tourist previously had no way to ever turn 2FA on, even
+// though the backend (routes/twoFactor.js) and its login-time enforcement
+// (routes/auth.js's POST /login now returns requires_2fa) both work.
+// Mirrors frontend-agent's Settings.jsx TwoFactorSection.
+function TwoFactorSection() {
+  const [enabled, setEnabled] = useState(null); // null = still loading
+  const [pending, setPending] = useState(null); // { secret, otpauth_url } while mid-setup
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getMyProfile().then((d) => setEnabled(Boolean(d.user.two_factor_enabled))).catch((err) => setError(err.message));
+  }, []);
+
+  async function handleStart() {
+    setError('');
+    setBusy(true);
+    try {
+      const data = await setup2FA();
+      setPending(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await confirm2FA(code);
+      setPending(null);
+      setCode('');
+      setEnabled(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDisable() {
+    if (!window.confirm('Turn off 2FA for this account?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      await disable2FA();
+      setEnabled(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (enabled === null) return null;
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Two-factor authentication
+      </p>
+
+      {error && <p className="error-text">{error}</p>}
+
+      {enabled && !pending && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+            Enabled — you'll be asked for a code every time you log in.
+          </p>
+          <button className="btn-secondary" onClick={handleDisable} disabled={busy}>Turn off</button>
+        </>
+      )}
+
+      {!enabled && !pending && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+            Not enabled. Set up an authenticator app for extra login security.
+          </p>
+          <button className="btn-primary" onClick={handleStart} disabled={busy}>Set up 2FA</button>
+        </>
+      )}
+
+      {pending && (
+        <form onSubmit={handleConfirm}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Scan this in your authenticator app, or enter the code manually:
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', wordBreak: 'break-all', marginBottom: 10 }}>
+            {pending.secret}
+          </p>
+          <input
+            className="input-field"
+            placeholder="6-digit code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            style={{ marginBottom: 10 }}
+          />
+          <button className="btn-primary" type="submit" disabled={busy}>Confirm</button>
+        </form>
+      )}
     </div>
   );
 }

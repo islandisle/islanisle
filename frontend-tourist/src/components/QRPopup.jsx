@@ -11,6 +11,17 @@ import { useModalA11y } from '../useModalA11y';
 // keeps this component working even if the CDN script takes a moment to
 // arrive. Manual code entry stays as a permanent fallback (not just a
 // stopgap) for anyone whose camera doesn't work or who'd rather type it.
+//
+// Batch 20 fix: this popup is reused for two distinct QR values via the
+// `qrValue`/`label` props — Profile.jsx's "My QR code" button passes the
+// user's own id as a stable personal identity QR (always present,
+// regardless of group membership — the bug this fixes is that it used to
+// show the group's code here instead, and disappeared entirely for a solo
+// user), while a separate "Share group QR" affordance inside the Travel
+// group card passes the group's own code for invite-sharing. The top-half
+// scan-in stays group-join-only (calls joinGroup on whatever's scanned) —
+// that matches the spec's own "e.g. a Group QR" example for what gets
+// scanned here, and is unrelated to which QR is being shown below it.
 
 let jsQRPromise = null;
 function loadJsQR() {
@@ -26,7 +37,7 @@ function loadJsQR() {
   return jsQRPromise;
 }
 
-export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
+export default function QRPopup({ qrValue, label = 'Your code', onClose, onJoinSuccess }) {
   const modalRef = useModalA11y(onClose);
   const [manualCode, setManualCode] = useState('');
   const [joining, setJoining] = useState(false);
@@ -221,13 +232,13 @@ export default function QRPopup({ qrValue, onClose, onJoinSuccess }) {
         {/* Bottom half — show your own QR */}
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 12 }}>
-            Your code
+            {label}
           </p>
           {qrValue ? (
             <QRCodeSVG value={qrValue} size={160} fgColor="#0b2e3d" />
           ) : (
             <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              No group yet — start one from your Profile.
+              No code to show yet.
             </p>
           )}
         </div>
