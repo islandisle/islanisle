@@ -588,9 +588,15 @@ function IncomingActivity({ businessId, businessType }) {
     loadAll();
   }, [businessId]);
 
-  async function handleMarkBookingFulfilled(id) {
+  // paymentCollected (Batch 23) defaults true — the normal case. Passing
+  // false is an explicit, separate action (see the "Payment not collected"
+  // button below), not a silent side-effect of the regular fulfill button.
+  async function handleMarkBookingFulfilled(id, paymentCollected = true) {
+    if (!paymentCollected && !window.confirm('Mark this fulfilled with payment NOT collected? This is tracked against the guest\'s account and reported for review.')) {
+      return;
+    }
     try {
-      const res = await markBookingFulfilled(id);
+      const res = await markBookingFulfilled(id, paymentCollected);
       if (res.queued) window.alert(res.message);
       loadAll();
     } catch (err) {
@@ -598,9 +604,12 @@ function IncomingActivity({ businessId, businessType }) {
     }
   }
 
-  async function handleAdvanceOrder(id, nextStatus) {
+  async function handleAdvanceOrder(id, nextStatus, paymentCollected = true) {
+    if (nextStatus === 'completed' && !paymentCollected && !window.confirm('Mark this order completed with payment NOT collected? This is tracked against the buyer\'s account and reported for review.')) {
+      return;
+    }
     try {
-      const res = await markOrderStatus(id, nextStatus);
+      const res = await markOrderStatus(id, nextStatus, paymentCollected);
       if (res.queued) window.alert(res.message);
       loadAll();
     } catch (err) {
@@ -679,13 +688,24 @@ function IncomingActivity({ businessId, businessType }) {
               {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
               {b.party_size > 1 && ` · Party of ${b.party_size}`}
             </p>
-            <button
-              className="btn-primary"
-              style={{ padding: '4px 10px', fontSize: 12 }}
-              onClick={() => handleMarkBookingFulfilled(b.id)}
-            >
-              Mark fulfilled
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className="btn-primary"
+                style={{ padding: '4px 10px', fontSize: 12 }}
+                onClick={() => handleMarkBookingFulfilled(b.id)}
+              >
+                Mark fulfilled
+              </button>
+              {b.payment_method === 'pay_at_visit' && (
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }}
+                  onClick={() => handleMarkBookingFulfilled(b.id, false)}
+                >
+                  Payment not collected
+                </button>
+              )}
+            </div>
             <ReportProblem businessId={businessId} bookingId={b.id} />
           </div>
         ))
@@ -737,9 +757,20 @@ function DepartureManifest({ bookings, businessId, onMarkFulfilled }) {
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {p.customer_name}{p.party_size > 1 && ` (+${p.party_size - 1})`} · ${p.price_charged}
                 </span>
-                <button className="btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => onMarkFulfilled(p.id)}>
-                  Boarded
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => onMarkFulfilled(p.id)}>
+                    Boarded
+                  </button>
+                  {p.payment_method === 'pay_at_visit' && (
+                    <button
+                      className="btn-secondary"
+                      style={{ padding: '3px 8px', fontSize: 11, color: 'var(--coral)' }}
+                      onClick={() => onMarkFulfilled(p.id, false)}
+                    >
+                      Boarded, unpaid
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -805,13 +836,24 @@ function OrderRow({ order, businessId, onAdvance }) {
         {order.party_size > 1 && ` · Party of ${order.party_size}`}
       </p>
       {nextStatus && (
-        <button
-          className="btn-primary"
-          style={{ padding: '4px 10px', fontSize: 12 }}
-          onClick={() => onAdvance(order.id, nextStatus)}
-        >
-          Mark {ORDER_STATUS_LABEL[nextStatus].toLowerCase()}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            className="btn-primary"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+            onClick={() => onAdvance(order.id, nextStatus)}
+          >
+            Mark {ORDER_STATUS_LABEL[nextStatus].toLowerCase()}
+          </button>
+          {nextStatus === 'completed' && order.payment_method === 'pay_at_visit' && (
+            <button
+              className="btn-secondary"
+              style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }}
+              onClick={() => onAdvance(order.id, nextStatus, false)}
+            >
+              Payment not collected
+            </button>
+          )}
+        </div>
       )}
       <ReportProblem businessId={businessId} orderId={order.id} />
     </div>

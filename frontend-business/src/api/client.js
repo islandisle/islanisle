@@ -70,6 +70,13 @@ export async function getBillingHistory(businessId) {
   return handleResponse(res);
 }
 
+// Batch 23 (not in the original spec) — this business's own history of
+// Pay at Visit non-payment incidents it reported.
+export async function getPayAtVisitIncidents(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/pay-at-visit-incidents`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 export async function getAnalytics(businessId) {
   const res = await fetch(`${API_BASE}/api/business/${businessId}/analytics`, { headers: authHeaders() });
   return handleResponse(res);
@@ -89,10 +96,13 @@ export async function getPayouts() {
   return handleResponse(res);
 }
 
-export async function markBookingFulfilledRaw(bookingId) {
+// paymentCollected (Batch 23) defaults true — omit it entirely for the
+// normal case, matching what the backend already defaults to.
+export async function markBookingFulfilledRaw(bookingId, paymentCollected = true) {
   const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/complete`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ payment_collected: paymentCollected }),
   });
   return handleResponse(res);
 }
@@ -100,12 +110,12 @@ export async function markBookingFulfilledRaw(bookingId) {
 // Offline-aware wrapper — see offlineQueue.js. If the front desk marks a
 // booking fulfilled with no signal, it's queued and retried automatically
 // once connectivity returns instead of just failing.
-export async function markBookingFulfilled(bookingId) {
+export async function markBookingFulfilled(bookingId, paymentCollected = true) {
   try {
-    return await markBookingFulfilledRaw(bookingId);
+    return await markBookingFulfilledRaw(bookingId, paymentCollected);
   } catch (err) {
     if (isNetworkError(err)) {
-      queueRequest('markBookingFulfilled', bookingId);
+      queueRequest('markBookingFulfilled', { bookingId, paymentCollected });
       return { queued: true, message: "You're offline — this will be marked fulfilled automatically once you're back online." };
     }
     throw err;
@@ -124,22 +134,22 @@ export async function getBusinessOrders(businessId) {
   return handleResponse(res);
 }
 
-export async function markOrderStatusRaw(orderId, status) {
+export async function markOrderStatusRaw(orderId, status, paymentCollected = true) {
   const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, payment_collected: paymentCollected }),
   });
   return handleResponse(res);
 }
 
 // See markBookingFulfilled's identical wrapper above for why this exists.
-export async function markOrderStatus(orderId, status) {
+export async function markOrderStatus(orderId, status, paymentCollected = true) {
   try {
-    return await markOrderStatusRaw(orderId, status);
+    return await markOrderStatusRaw(orderId, status, paymentCollected);
   } catch (err) {
     if (isNetworkError(err)) {
-      queueRequest('markOrderStatus', { orderId, status });
+      queueRequest('markOrderStatus', { orderId, status, paymentCollected });
       return { queued: true, message: "You're offline — this status update will be sent automatically once you're back online." };
     }
     throw err;

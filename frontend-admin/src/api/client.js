@@ -227,3 +227,19 @@ export async function deleteEvent(id) {
   const res = await fetch(`${API_BASE}/api/events/${id}`, { method: 'DELETE', headers: authHeaders() });
   return handleResponse(res);
 }
+
+// --- Pay at Visit incidents (routes/admin.js) — Batch 23, not in the original spec ---
+
+export async function getPayAtVisitIncidents() {
+  const res = await fetch(`${API_BASE}/api/admin/pay-at-visit-incidents`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function restorePayAtVisit(userId, reason) {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/restore-pay-at-visit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+  return handleResponse(res);
+}

@@ -6,6 +6,7 @@ import {
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
   getPlatformAnalytics, getEvents, createEvent, deleteEvent,
+  getPayAtVisitIncidents, restorePayAtVisit,
 } from '../api/client';
 import { useTheme } from '../theme';
 
@@ -109,6 +110,7 @@ export default function Dashboard() {
       {!isModerator && <AgentDirectorySection />}
       <SupportTicketsSection />
       <LocalEventsSection />
+      {!isModerator && <PayAtVisitIncidentsSection />}
       {!isModerator && <AuditLogSection />}
     </div>
   );
@@ -992,6 +994,70 @@ function LocalEventsSection() {
               <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleDelete(e.id)}>
                 Delete
               </button>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+// GET /api/admin/pay-at-visit-incidents — Batch 23, not in the original
+// spec. A one-sided reliability record (no accept/reject), so this is
+// just a review list with a manual "Restore eligibility" action per
+// affected guest — the same "a human decides" pattern as mark-trusted.
+function PayAtVisitIncidentsSection() {
+  const [incidents, setIncidents] = useState([]);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  function load() {
+    getPayAtVisitIncidents().then((d) => setIncidents(d.incidents || [])).catch((err) => setError(err.message));
+  }
+
+  useEffect(() => { if (open) load(); }, [open]);
+
+  async function handleRestore(userId) {
+    if (!window.confirm('Restore Pay at Visit eligibility for this account?')) return;
+    try {
+      await restorePayAtVisit(userId, 'Restored via admin console');
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+          Unpaid Pay at Visit incidents
+        </p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'View'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          {error && <p className="error-text">{error}</p>}
+          {incidents.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>None reported.</p>}
+          {incidents.map((i) => (
+            <div key={i.id} className="card" style={{ padding: 12, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--navy)', margin: 0 }}>
+                  {i.user_name} — ${i.amount} at {i.business_name}
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                  {new Date(i.reported_at).toLocaleString()} · {i.pay_at_visit_unpaid_count} total incident{i.pay_at_visit_unpaid_count === 1 ? '' : 's'}
+                  {!i.pay_at_visit_eligible && ' · eligibility revoked'}
+                </p>
+              </div>
+              {!i.pay_at_visit_eligible && (
+                <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleRestore(i.user_id)}>
+                  Restore eligibility
+                </button>
+              )}
             </div>
           ))}
         </>

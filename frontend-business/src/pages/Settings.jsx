@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   getSettings, updateSettings, getPromoCodes, createPromoCode, updatePromoCode,
   getStaff, addStaff, revokeStaff, getClosures, addClosure, removeClosure, getBillingHistory,
+  getPayAtVisitIncidents,
 } from '../api/client';
 import { useTheme } from '../theme';
 import IslandPicker from '../components/IslandPicker';
@@ -89,6 +90,8 @@ export default function Settings() {
       </h1>
 
       <SubscriptionStatusSection businessId={business.id} />
+
+      <PayAtVisitIncidentsSection businessId={business.id} />
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
         <label htmlFor="settings-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
@@ -232,6 +235,41 @@ function SubscriptionStatusSection({ businessId }) {
             </p>
           ))}
         </>
+      )}
+    </div>
+  );
+}
+
+// Batch 23 (not in the original spec) — this business's own history of
+// Pay at Visit non-payment incidents it reported, so it can spot patterns
+// (the same guest repeatedly, say).
+function PayAtVisitIncidentsSection({ businessId }) {
+  const [incidents, setIncidents] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    getPayAtVisitIncidents(businessId).then((d) => setIncidents(d.incidents || [])).catch(() => {});
+  }, [businessId, open]);
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+          Unpaid Pay at Visit incidents
+        </p>
+        <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'View'}
+        </button>
+      </div>
+      {open && (
+        incidents.length === 0
+          ? <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 10 }}>None reported.</p>
+          : incidents.map((i) => (
+            <p key={i.id} style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0' }}>
+              {i.user_name} — ${i.amount} · {new Date(i.reported_at).toLocaleDateString()}
+            </p>
+          ))
       )}
     </div>
   );

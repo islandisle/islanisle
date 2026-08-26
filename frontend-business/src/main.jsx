@@ -18,8 +18,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 startAutoRetry({
-  markBookingFulfilled: markBookingFulfilledRaw,
-  markOrderStatus: (payload) => markOrderStatusRaw(payload.orderId, payload.status),
+  markBookingFulfilled: (payload) => markBookingFulfilledRaw(payload.bookingId, payload.paymentCollected),
+  markOrderStatus: (payload) => markOrderStatusRaw(payload.orderId, payload.status, payload.paymentCollected),
 });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
