@@ -527,6 +527,11 @@ CREATE TABLE weather_conditions (
     temperature          NUMERIC(4,1),
     wind_speed           NUMERIC(5,1),
     conditions_summary    TEXT,
+    -- Batch 22: was "cache once per (atoll, date), refetch tomorrow" —
+    -- fetched_at lets routes/weather.js refresh within the same day once
+    -- this goes stale (15 minutes), so Home.jsx's periodic polling
+    -- actually surfaces new conditions instead of the same row all day.
+    fetched_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(atoll, date)
 );
 

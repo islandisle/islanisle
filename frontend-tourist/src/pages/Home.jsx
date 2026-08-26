@@ -130,14 +130,26 @@ export default function Home() {
 
   // Section 6.2: the header's line-art and tappable badge are meant to
   // reflect real conditions for the island currently selected, not be
-  // purely decorative.
+  // purely decorative. Batch 22: this used to fetch once per island
+  // change and then sit static — the backend's own cache was once-per-day
+  // regardless, so a page left open all day never saw a condition change.
+  // Polls every 15 minutes (matching backend/src/routes/weather.js's own
+  // staleness window) as long as this page is open; only resets to null
+  // (the loading state) on an actual island change, not on a refresh
+  // tick, so the badge doesn't flicker every 15 minutes.
   useEffect(() => {
     let cancelled = false;
     setWeather(null);
-    getWeather(island)
-      .then((data) => { if (!cancelled) setWeather(data.weather); })
-      .catch(() => {}); // decorative — a failed fetch just means no badge/live icon, not an error banner
-    return () => { cancelled = true; };
+
+    function refresh() {
+      getWeather(island)
+        .then((data) => { if (!cancelled) setWeather(data.weather); })
+        .catch(() => {}); // decorative — a failed fetch just means no badge/live icon, not an error banner
+    }
+
+    refresh();
+    const intervalId = setInterval(refresh, 15 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(intervalId); };
   }, [island]);
 
   return (

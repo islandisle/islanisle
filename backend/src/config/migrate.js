@@ -298,6 +298,13 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for weather_conditions.fetched_at (Batch 22 live-refresh)...');
+  if (!(await columnExists('weather_conditions', 'fetched_at'))) {
+    console.log('Adding weather_conditions.fetched_at...');
+    await pool.query(`ALTER TABLE weather_conditions ADD COLUMN fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()`);
+    changed = true;
+  }
+
   console.log('Checking for favorites table (Batch 19)...');
   if (!(await tableExists('favorites'))) {
     console.log('Creating favorites...');

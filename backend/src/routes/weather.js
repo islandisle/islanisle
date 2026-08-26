@@ -14,11 +14,16 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
+const STALE_AFTER_MINUTES = 15; // matches Home.jsx's own polling interval
+
 /**
  * GET /api/weather/:atoll
- * Returns today's cached row if one exists (UNIQUE(atoll, date) means at
- * most one fetch per atoll per day); otherwise fetches, stores, and
- * returns a fresh one.
+ * Returns today's cached row if one exists and is still fresh (within
+ * STALE_AFTER_MINUTES); otherwise fetches, stores, and returns a fresh
+ * one. Batch 22: previously cached for the whole day regardless of age —
+ * fine when nothing ever polled this more than once, but Home.jsx now
+ * polls periodically to stay live, and a once-a-day cache would have made
+ * that polling pointless (same row all day, every day).
  */
 router.get('/:atoll', async (req, res) => {
   const { atoll } = req.params;
@@ -26,8 +31,9 @@ router.get('/:atoll', async (req, res) => {
 
   const existing = await query(
     `SELECT atoll, date, condition_type, temperature, wind_speed, conditions_summary
-     FROM weather_conditions WHERE atoll = $1 AND date = $2`,
-    [atoll, date]
+     FROM weather_conditions
+     WHERE atoll = $1 AND date = $2 AND fetched_at > now() - make_interval(mins => $3)`,
+    [atoll, date, STALE_AFTER_MINUTES]
   );
   if (existing.rows.length) {
     return res.json({ weather: existing.rows[0] });
@@ -36,20 +42,23 @@ router.get('/:atoll', async (req, res) => {
   const fetched = await fetchWeather(atoll, date);
 
   const result = await query(
-    `INSERT INTO weather_conditions (atoll, date, condition_type, temperature, wind_speed, conditions_summary)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (atoll, date) DO UPDATE SET condition_type = EXCLUDED.condition_type
+    `INSERT INTO weather_conditions (atoll, date, condition_type, temperature, wind_speed, conditions_summary, fetched_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
+     ON CONFLICT (atoll, date) DO UPDATE SET
+       condition_type = EXCLUDED.condition_type, temperature = EXCLUDED.temperature,
+       wind_speed = EXCLUDED.wind_speed, conditions_summary = EXCLUDED.conditions_summary,
+       fetched_at = now()
      RETURNING atoll, date, condition_type, temperature, wind_speed, conditions_summary`,
     [atoll, date, fetched.condition_type, fetched.temperature, fetched.wind_speed, fetched.conditions_summary]
   );
 
-  // Weather-cancellation cascade (Batch 19) — only reachable here because
-  // this whole branch (the INSERT above ran instead of returning the
-  // `existing` row earlier) only executes once per (atoll, date): the very
-  // first time today's weather for this atoll is fetched. That's exactly
-  // the "just turned severe" moment this should fire on, and guarantees it
-  // can't re-cascade the same already-cancelled bookings on a later request
-  // the same day.
+  // Weather-cancellation cascade (Batch 19) — reachable on every fresh
+  // fetch now (not just the day's first one, since caching is staleness-
+  // based rather than once-per-day). Naturally idempotent either way:
+  // triggerWeatherCascade only ever touches 'confirmed' bookings, so a
+  // repeat call the same day just no-ops against anything it already
+  // cancelled, and correctly still catches a booking made *after* an
+  // earlier cascade already ran.
   if (fetched.condition_type === 'thundery') {
     triggerWeatherCascade(atoll, date).catch((err) => {
       console.error(`Weather cascade failed for ${atoll} on ${date}:`, err);
