@@ -6,10 +6,22 @@
 // a new login, it attaches a business to the one you already have.
 
 import { Router } from 'express';
+import multer from 'multer';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
+
+// Section 6.4's photo galleries — listings.photos existed with no way to
+// populate it (AddListingForm had no file field). Same placeholder-storage
+// pattern as auth.js's document upload: memory storage, a fake dev-only URL
+// returned instead of a real object-storage upload — see auth.js's own
+// comment for why (no S3/Cloudinary wired up yet in this environment).
+const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+
+function savePhotoPlaceholder(businessId, index) {
+  return `local-dev-storage://listings/${businessId}/${Date.now()}-${index}.jpg`;
+}
 
 const VALID_BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -93,10 +105,17 @@ router.post('/signup', authenticate, async (req, res) => {
  * type_specific_fields for anything unique to that business type — room
  * capacity, excursion duration, luggage_allowance, etc.)
  */
-router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (req, res) => {
+router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUpload.array('photos', 6), async (req, res) => {
   try {
     const { businessId } = req.params;
-    const { title, description, tourist_price, local_price, type_specific_fields, photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled, accessibility_features } = req.body;
+    // multipart/form-data (photoUpload above) means every non-file field
+    // arrives as a string — JSON-encoded ones need parsing back out, and
+    // numeric/boolean ones need explicit coercion, unlike the old
+    // application/json body this replaced.
+    const { title, description, tourist_price, local_price, stock_count, free_delivery, pay_at_visit_enabled } = req.body;
+    const type_specific_fields = req.body.type_specific_fields ? JSON.parse(req.body.type_specific_fields) : {};
+    const fulfillment_options = req.body.fulfillment_options ? JSON.parse(req.body.fulfillment_options) : null;
+    const accessibility_features = req.body.accessibility_features ? JSON.parse(req.body.accessibility_features) : [];
 
     if (!title || tourist_price == null || local_price == null) {
       return res.status(400).json({ error: 'title, tourist_price, and local_price are required.' });
@@ -114,7 +133,7 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
     // what this flag says.
     const trustResult = await query('SELECT trust_tier, subscription_tier FROM businesses WHERE id = $1', [businessId]);
     const isNewBusiness = trustResult.rows[0]?.trust_tier === 'new';
-    const effectivePayAtVisitEnabled = isNewBusiness ? true : Boolean(pay_at_visit_enabled);
+    const effectivePayAtVisitEnabled = isNewBusiness ? true : (pay_at_visit_enabled === 'true' || pay_at_visit_enabled === true);
 
     // Free/Pro listing cap (Section 2.3/4.9) — checked here rather than at
     // signup, since it's the actual creation of listing N+1 that should be
@@ -130,16 +149,19 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
       });
     }
 
+    const photoUrls = (req.files || []).map((_, i) => savePhotoPlaceholder(businessId, i));
+
     const result = await query(
       `INSERT INTO listings (
          business_id, title, description, type_specific_fields, tourist_price, local_price,
          photos, stock_count, fulfillment_options, free_delivery, pay_at_visit_enabled, accessibility_features
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features`,
+       RETURNING id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, photos`,
       [
         businessId, title, description || null, JSON.stringify(type_specific_fields || {}),
-        tourist_price, local_price, photos || [], stock_count || null,
-        fulfillment_options || null, free_delivery || false, effectivePayAtVisitEnabled,
+        Number(tourist_price), Number(local_price), photoUrls, stock_count ? Number(stock_count) : null,
+        fulfillment_options || null, free_delivery === 'true' || free_delivery === true,
+        effectivePayAtVisitEnabled,
         accessibility_features || [],
       ]
     );
@@ -161,7 +183,7 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, async (
 router.get('/:businessId/listings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const { businessId } = req.params;
   const result = await query(
-    `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, created_at
+    `SELECT id, title, tourist_price, local_price, approval_status, pay_at_visit_enabled, accessibility_features, photos, created_at
      FROM listings WHERE business_id = $1 ORDER BY created_at DESC`,
     [businessId]
   );

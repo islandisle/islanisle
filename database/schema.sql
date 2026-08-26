@@ -66,6 +66,12 @@ CREATE TABLE users (
     current_stay_room_number     TEXT,
     pay_at_visit_eligible        BOOLEAN NOT NULL DEFAULT false, -- [PHASE 2]
     wallet_balance                NUMERIC(12,2) NOT NULL DEFAULT 0, -- [PHASE 2]
+    -- Section 11: "users can mute individual notification categories" —
+    -- booking_updates (confirmations/cancellations/check-in/reservation
+    -- status), chat_messages, deals_promos, boarding_reminders (also
+    -- covers eta_update). Checked by services/notifications.js's notify()
+    -- before a notification is even written, not filtered after the fact.
+    notification_preferences     JSONB NOT NULL DEFAULT '{"booking_updates": true, "chat_messages": true, "deals_promos": true, "boarding_reminders": true}',
     two_factor_secret             TEXT,
     two_factor_enabled            BOOLEAN NOT NULL DEFAULT false,
     password_hash                TEXT NOT NULL,
@@ -116,7 +122,12 @@ CREATE TABLE businesses (
     pay_at_visit_commission_owed        NUMERIC(12,2) NOT NULL DEFAULT 0, -- [PHASE 2]
     location_island                   TEXT,
     contact_info                     JSONB,
-    notification_preferences          JSONB NOT NULL DEFAULT '{"new_booking": true, "disputes": true, "messages": true}',
+    -- Same 4-category shape as users.notification_preferences (Section 11's
+    -- "Consistent settings pattern") — was {"new_booking","disputes",
+    -- "messages"} before services/notifications.js's notify() started
+    -- actually checking these; migrate.js remaps any existing business
+    -- still on the old shape.
+    notification_preferences          JSONB NOT NULL DEFAULT '{"booking_updates": true, "chat_messages": true, "deals_promos": true, "boarding_reminders": true}',
     created_at                        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -220,6 +231,7 @@ CREATE TABLE bookings (
     stripe_payment_intent_id           TEXT,
     promo_code_id                     UUID, -- FK added after promo_codes table exists; set when a promo code was applied at checkout
     promo_discount_amount              NUMERIC(12,2) NOT NULL DEFAULT 0, -- deducted from price_charged only; base_price/commissions are computed pre-discount, unchanged
+    boarding_reminder_sent             BOOLEAN NOT NULL DEFAULT false, -- Section 6.5 — services/boardingReminders.js sets this once sent, so the job never double-sends
     created_at                         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                         TIMESTAMPTZ NOT NULL DEFAULT now()
 );

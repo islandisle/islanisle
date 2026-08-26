@@ -38,11 +38,24 @@ export async function getMyListings(businessId) {
   return handleResponse(res);
 }
 
+// multipart/form-data now (photos — Section 6.4) — object/array fields are
+// JSON-encoded as strings, the backend (business.js) parses them back out.
+// `listing.photos` is an array of File objects from an <input type="file"
+// multiple>, appended individually under the same 'photos' field name.
 export async function createListing(businessId, listing) {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(listing)) {
+    if (key === 'photos') continue;
+    if (value == null) continue;
+    formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+  }
+  for (const file of listing.photos || []) {
+    formData.append('photos', file);
+  }
   const res = await fetch(`${API_BASE}/api/business/${businessId}/listings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify(listing),
+    headers: authHeaders(), // no Content-Type — fetch sets the multipart boundary itself
+    body: formData,
   });
   return handleResponse(res);
 }
@@ -247,6 +260,17 @@ export async function checkInBooking(bookingId, { method, room_number, whole_gro
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ method, room_number, whole_group, member_ids }),
+  });
+  return handleResponse(res);
+}
+
+// Section 6.5's ETA-update — one departure's confirmed passengers, notified
+// at once (routes/bookings.js).
+export async function sendEtaUpdate(listingId, slotStart, message) {
+  const res = await fetch(`${API_BASE}/api/bookings/departure/eta-update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ listing_id: listingId, slot_start: slotStart, message }),
   });
   return handleResponse(res);
 }

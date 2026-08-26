@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup, getBusinessClosures } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
+import ChatPanel from '../components/ChatPanel';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -34,6 +35,7 @@ export default function ListingDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null); // shared pending-payment result for both bookings and orders
+  const [showChat, setShowChat] = useState(false);
 
   const user = getCurrentUser();
   const isLocal = user?.type === 'local';
@@ -63,10 +65,23 @@ export default function ListingDetail() {
       <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>
         {listing.title}
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-        {listing.business_name}
-        {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+          {listing.business_name}
+          {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
+        </p>
+        {localStorage.getItem('atollisle_token') && (
+          <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setShowChat(true)}>
+            Message business
+          </button>
+        )}
+      </div>
+
+      {showChat && (
+        <ChatPanel businessId={listing.business_id} businessName={listing.business_name} onClose={() => setShowChat(false)} />
+      )}
+
+      <PhotoGallery photos={listing.photos} />
 
       {listing.description && (
         <p style={{ fontSize: 14, color: 'var(--navy)', marginBottom: 20 }}>{listing.description}</p>
@@ -135,6 +150,45 @@ function ClosureBanner({ businessId }) {
 // Section 4.4's luggage limits: "shown to the tourist at booking time so
 // there are no surprises at boarding." listing.type_specific_fields was
 // already captured at listing creation but never rendered anywhere.
+// Section 6.4's photo galleries. listings.photos are placeholder
+// dev-storage URLs right now (no real object storage wired up yet — see
+// business.js's savePhotoPlaceholder / auth.js's identical TODO for
+// documents), so a plain <img> would just 404 in any real browser; this
+// attempts the real <img> first and falls back to a labeled placeholder
+// tile rather than a broken-image icon, so the gallery reads as "photo not
+// available yet" instead of looking like a bug once real storage lands.
+function PhotoGallery({ photos }) {
+  if (!Array.isArray(photos) || photos.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 20, paddingBottom: 4 }}>
+      {photos.map((url, i) => (
+        <GalleryTile key={url + i} url={url} index={i} />
+      ))}
+    </div>
+  );
+}
+
+function GalleryTile({ url, index }) {
+  const [failed, setFailed] = useState(false);
+  const boxStyle = { width: 120, height: 90, borderRadius: 10, flexShrink: 0, overflow: 'hidden' };
+
+  if (failed) {
+    return (
+      <div style={{ ...boxStyle, background: 'var(--sand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Photo {index + 1}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={`Listing photo ${index + 1}`}
+      style={{ ...boxStyle, objectFit: 'cover' }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function LuggageInfo({ listing }) {
   const fields = listing.type_specific_fields || {};
   const hasRoute = fields.origin || fields.destination;
@@ -193,7 +247,14 @@ function Reviews({ businessId }) {
             {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} — {r.reviewer_name}
           </p>
           {r.text && (
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.text}</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 8px' }}>{r.text}</p>
+          )}
+          {Array.isArray(r.photos) && r.photos.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+              {r.photos.map((url, i) => (
+                <GalleryTile key={url + i} url={url} index={i} />
+              ))}
+            </div>
           )}
         </div>
       ))}

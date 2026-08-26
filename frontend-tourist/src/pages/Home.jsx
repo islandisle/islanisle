@@ -497,12 +497,23 @@ function ListingCard({ listing, isLocal }) {
   return (
     <Link to={`/listing/${listing.id}`} className="card" style={{ display: 'block', marginBottom: 12, textDecoration: 'none', color: 'inherit' }}>
       <div style={{ padding: '12px 14px' }}>
-        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>
-          {listing.title}
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {listing.title}
+          </p>
+          {/* Section 11's "at-a-glance trust signals" — open/closed status directly on the card. */}
+          {listing.is_closed && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: 'var(--coral)', padding: '2px 7px', borderRadius: 'var(--radius-pill)', whiteSpace: 'nowrap' }}>
+              Closed
+            </span>
+          )}
+        </div>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 6px' }}>
           {listing.business_name}
           {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
+          {listing.review_count > 0 && (
+            <span> · {Number(listing.average_rating).toFixed(1)} ★ ({listing.review_count})</span>
+          )}
         </p>
         <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--lagoon)', margin: 0 }}>
           ${price}

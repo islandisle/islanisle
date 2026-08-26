@@ -210,6 +210,45 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for users.notification_preferences (per-category mute)...');
+  if (!(await columnExists('users', 'notification_preferences'))) {
+    console.log('Adding users.notification_preferences...');
+    await pool.query(
+      `ALTER TABLE users ADD COLUMN notification_preferences JSONB NOT NULL DEFAULT '{"booking_updates": true, "chat_messages": true, "deals_promos": true, "boarding_reminders": true}'`
+    );
+    changed = true;
+  }
+
+  console.log('Checking for bookings.boarding_reminder_sent (boarding-reminder job)...');
+  if (!(await columnExists('bookings', 'boarding_reminder_sent'))) {
+    console.log('Adding bookings.boarding_reminder_sent...');
+    await pool.query(`ALTER TABLE bookings ADD COLUMN boarding_reminder_sent BOOLEAN NOT NULL DEFAULT false`);
+    changed = true;
+  }
+
+  // Remaps any business still on the pre-existing {"new_booking","disputes",
+  // "messages"} notification_preferences shape to the 4-category shape
+  // notify() now actually checks — see schema.sql's comment on the column.
+  // Only touches rows that still look like the old shape (have
+  // 'new_booking' but not 'booking_updates'), so this is safe to re-run.
+  const oldShapeCount = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM businesses
+     WHERE notification_preferences ? 'new_booking' AND NOT (notification_preferences ? 'booking_updates')`
+  );
+  if (oldShapeCount.rows[0].count > 0) {
+    console.log(`Remapping notification_preferences for ${oldShapeCount.rows[0].count} business(es) to the new category shape...`);
+    await pool.query(`
+      UPDATE businesses SET notification_preferences = jsonb_build_object(
+        'booking_updates', COALESCE((notification_preferences->>'new_booking')::boolean, true),
+        'chat_messages', COALESCE((notification_preferences->>'messages')::boolean, true),
+        'deals_promos', true,
+        'boarding_reminders', true
+      )
+      WHERE notification_preferences ? 'new_booking' AND NOT (notification_preferences ? 'booking_updates')
+    `);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

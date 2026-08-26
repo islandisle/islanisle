@@ -3,19 +3,26 @@
 // the tourist/local who actually completed it.
 
 import { Router } from 'express';
+import multer from 'multer';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
+// Section 6.4's review photos — reviews.photos existed with nothing ever
+// uploading to it. Same placeholder-storage pattern as business.js's
+// listing photos / auth.js's document upload (no real object storage wired
+// up in this environment yet).
+const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+
 /**
  * POST /api/reviews
- * body: { booking_id?, order_id?, rating, text? }
+ * multipart/form-data: { booking_id?, order_id?, rating, text?, photos? }
  * One of booking_id/order_id is required (mirrors the chk_review_target
  * constraint). The booking/order must belong to the caller and be
  * 'completed', and must not already have a review.
  */
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, photoUpload.array('photos', 4), async (req, res) => {
   const { booking_id, order_id, rating, text } = req.body;
 
   if (!booking_id && !order_id) {
@@ -67,11 +74,13 @@ router.post('/', authenticate, async (req, res) => {
     return res.status(409).json({ error: 'A review already exists for this booking/order.' });
   }
 
+  const photoUrls = (req.files || []).map((_, i) => `local-dev-storage://reviews/${req.user.id}/${Date.now()}-${i}.jpg`);
+
   const result = await query(
-    `INSERT INTO reviews (business_id, user_id, booking_id, order_id, rating, text)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, business_id, booking_id, order_id, rating, text, created_at`,
-    [businessId, req.user.id, booking_id || null, order_id || null, ratingNum, text || null]
+    `INSERT INTO reviews (business_id, user_id, booking_id, order_id, rating, text, photos)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, business_id, booking_id, order_id, rating, text, photos, created_at`,
+    [businessId, req.user.id, booking_id || null, order_id || null, ratingNum, text || null, photoUrls]
   );
 
   res.status(201).json({ review: result.rows[0], message: 'Thanks for your review!' });
@@ -90,7 +99,7 @@ router.get('/business/:businessId', async (req, res) => {
 
   const [reviewsResult, statsResult] = await Promise.all([
     query(
-      `SELECT r.id, r.rating, r.text, r.created_at, u.name AS reviewer_name
+      `SELECT r.id, r.rating, r.text, r.photos, r.created_at, u.name AS reviewer_name
        FROM reviews r
        JOIN users u ON u.id = r.user_id
        WHERE r.business_id = $1

@@ -19,6 +19,31 @@ export default function MyActivity() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Section 6.4's auto-prompt review popup: "a prompt appears on the
+  // completed booking/order... Submit or Skip." Dismissal (Submit or Skip)
+  // is remembered in localStorage so it only ever auto-pops once per item —
+  // "reached later from the invoice/booking history for anyone who skips"
+  // still works via the inline "Leave a review" button on the row itself.
+  const [autoPromptTarget, setAutoPromptTarget] = useState(null);
+
+  function getDismissedPrompts() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('atollisle_review_prompt_dismissed') || '[]'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function dismissPrompt(key) {
+    const dismissed = getDismissedPrompts();
+    dismissed.add(key);
+    try {
+      localStorage.setItem('atollisle_review_prompt_dismissed', JSON.stringify([...dismissed]));
+    } catch {
+      // ignore — worst case the popup reappears next visit
+    }
+  }
+
   function loadAll() {
     setLoading(true);
     Promise.all([
@@ -29,8 +54,10 @@ export default function MyActivity() {
       getMyReturns().catch(() => ({ returns: [] })),
     ])
       .then(([bookingsData, ordersData, reviewsData, waitlistData, returnsData]) => {
-        setBookings(bookingsData.bookings || []);
-        setOrders(ordersData.orders || []);
+        const loadedBookings = bookingsData.bookings || [];
+        const loadedOrders = ordersData.orders || [];
+        setBookings(loadedBookings);
+        setOrders(loadedOrders);
         setWaitlist(waitlistData.waitlist || []);
         const byTarget = {};
         for (const r of reviewsData.reviews || []) {
@@ -43,6 +70,21 @@ export default function MyActivity() {
           byOrder[r.order_id] = r;
         }
         setReturnsByOrder(byOrder);
+
+        const dismissed = getDismissedPrompts();
+        const dueBooking = loadedBookings.find(
+          (b) => b.status === 'completed' && !byTarget[`booking:${b.id}`] && !dismissed.has(`booking:${b.id}`)
+        );
+        if (dueBooking) {
+          setAutoPromptTarget({ type: 'booking', id: dueBooking.id, label: dueBooking.title });
+        } else {
+          const dueOrder = loadedOrders.find(
+            (o) => o.status === 'completed' && !byTarget[`order:${o.id}`] && !dismissed.has(`order:${o.id}`)
+          );
+          if (dueOrder) {
+            setAutoPromptTarget({ type: 'order', id: dueOrder.id, label: dueOrder.business_name });
+          }
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -145,6 +187,124 @@ export default function MyActivity() {
           onClose={() => setCancelTargetId(null)}
         />
       )}
+
+      {autoPromptTarget && (
+        <ReviewPopup
+          target={autoPromptTarget}
+          onDone={() => {
+            dismissPrompt(`${autoPromptTarget.type}:${autoPromptTarget.id}`);
+            setAutoPromptTarget(null);
+            loadAll();
+          }}
+          onSkip={() => {
+            dismissPrompt(`${autoPromptTarget.type}:${autoPromptTarget.id}`);
+            setAutoPromptTarget(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Section 6.4's auto-prompt: "How was your stay at [Business]?" — Submit or
+// Skip. Shares submitReview with the inline ReviewPrompt fallback below.
+function ReviewPopup({ target, onDone, onSkip }) {
+  const modalRef = useModalA11y(onSkip);
+  const [rating, setRating] = useState(5);
+  const [text, setText] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      await submitReview({
+        booking_id: target.type === 'booking' ? target.id : undefined,
+        order_id: target.type === 'order' ? target.id : undefined,
+        rating, text, photos,
+      });
+      onDone();
+    } catch (err) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,
+      }}
+      onClick={onSkip}
+    >
+      <form
+        ref={modalRef}
+        onSubmit={handleSubmit}
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Leave a review"
+        style={{ width: '100%', maxWidth: 380, padding: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 14 }}>
+          How was {target.label}?
+        </p>
+
+        <div role="group" aria-label="Rating" style={{ display: 'flex', gap: 6, marginBottom: 14, justifyContent: 'center' }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              type="button"
+              key={n}
+              onClick={() => setRating(n)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 26, padding: 0, lineHeight: 1 }}
+              aria-label={`${n} star${n > 1 ? 's' : ''}`}
+            >
+              {n <= rating ? '★' : '☆'}
+            </button>
+          ))}
+        </div>
+
+        <label htmlFor="review-popup-text" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+          Your review (optional)
+        </label>
+        <textarea
+          id="review-popup-text"
+          className="input-field"
+          rows={3}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          style={{ fontSize: 13, marginBottom: 8, resize: 'vertical' }}
+        />
+
+        <label htmlFor="review-popup-photos" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+          Photos (optional, up to 4)
+        </label>
+        <input
+          id="review-popup-photos"
+          className="input-field"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setPhotos(Array.from(e.target.files || []).slice(0, 4))}
+          style={{ marginBottom: 14 }}
+        />
+
+        {error && <p className="error-text">{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={onSkip} disabled={submitting}>
+            Skip
+          </button>
+          <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -470,6 +630,7 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
+  const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -489,7 +650,7 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
     setSubmitting(true);
     setError('');
     try {
-      await submitReview({ booking_id: bookingId, order_id: orderId, rating, text });
+      await submitReview({ booking_id: bookingId, order_id: orderId, rating, text, photos });
       onReviewed();
     } catch (err) {
       setError(err.message);
@@ -542,6 +703,19 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         style={{ fontSize: 13, marginBottom: 8, resize: 'vertical' }}
+      />
+
+      <label htmlFor="review-photos" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Photos (optional, up to 4)
+      </label>
+      <input
+        id="review-photos"
+        className="input-field"
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => setPhotos(Array.from(e.target.files || []).slice(0, 4))}
+        style={{ marginBottom: 8 }}
       />
 
       {error && <p className="error-text">{error}</p>}

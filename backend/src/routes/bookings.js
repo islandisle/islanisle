@@ -397,6 +397,41 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
 });
 
 /**
+ * POST /api/bookings/departure/eta-update
+ * body: { listing_id, slot_start, message }
+ * Section 6.5's ETA-update notification, operator-triggered rather than
+ * scheduled (unlike the boarding-reminder job above) — a speedboat operator
+ * sends a free-text update to every confirmed passenger on one specific
+ * departure. Reuses the same (listing_id, slot_start) shape
+ * DepartureManifest (frontend-business's Dashboard.jsx) already groups by.
+ */
+router.post('/departure/eta-update', authenticate, async (req, res) => {
+  const { listing_id, slot_start, message } = req.body;
+  if (!listing_id || !slot_start || !message) {
+    return res.status(400).json({ error: 'listing_id, slot_start, and message are required.' });
+  }
+  const ownerCheck = await query(
+    `SELECT biz.owner_user_id FROM listings l JOIN businesses biz ON biz.id = l.business_id WHERE l.id = $1`,
+    [listing_id]
+  );
+  if (!ownerCheck.rows.length || ownerCheck.rows[0].owner_user_id !== req.user.id) {
+    return res.status(403).json({ error: 'You do not manage this listing.' });
+  }
+
+  const passengers = await query(
+    `SELECT user_id FROM bookings WHERE listing_id = $1 AND slot_start = $2 AND status = 'confirmed'`,
+    [listing_id, slot_start]
+  );
+  for (const p of passengers.rows) {
+    await notify({
+      recipientType: 'user', recipientId: p.user_id,
+      type: 'eta_update', title: 'Departure update', body: message,
+    });
+  }
+  res.json({ status: 'sent', recipients: passengers.rows.length });
+});
+
+/**
  * GET /api/bookings/mine
  */
 router.get('/mine', authenticate, async (req, res) => {
@@ -481,7 +516,7 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
 
   const result = await query(
     `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type,
-            l.title, u.name AS customer_name,
+            l.id AS listing_id, l.title, u.name AS customer_name,
             1 + (SELECT COUNT(*)::int FROM booking_members bm WHERE bm.booking_id = b.id) AS party_size
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id

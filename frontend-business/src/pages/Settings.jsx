@@ -7,6 +7,17 @@ import {
 import { useTheme } from '../theme';
 import IslandPicker from '../components/IslandPicker';
 
+// Section 11's per-category notification mute controls — same 4 categories
+// as frontend-tourist's Profile.jsx, checked by the shared
+// services/notifications.js's notify() before it ever writes a
+// notification, not just filtered client-side.
+const NOTIFICATION_CATEGORIES = [
+  { key: 'booking_updates', label: 'New bookings, cancellations, and reservation requests' },
+  { key: 'chat_messages', label: 'Chat messages' },
+  { key: 'deals_promos', label: 'Deals and promo code activity' },
+  { key: 'boarding_reminders', label: 'Boarding reminders and ETA updates' },
+];
+
 export default function Settings() {
   const navigate = useNavigate();
   const [business] = useState(() => {
@@ -117,17 +128,24 @@ export default function Settings() {
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 14px' }} />
 
-        <label htmlFor="settings-notify-booking" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 14 }}>
-          <input
-            id="settings-notify-booking"
-            type="checkbox"
-            checked={Boolean(notificationPreferences.new_booking)}
-            onChange={(e) =>
-              setNotificationPreferences((prev) => ({ ...prev, new_booking: e.target.checked }))
-            }
-          />
-          Email me on new bookings
-        </label>
+        <p id="settings-notify-label" style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+          Notifications
+        </p>
+        <div role="group" aria-labelledby="settings-notify-label" style={{ marginBottom: 14 }}>
+          {NOTIFICATION_CATEGORIES.map((cat) => (
+            <label key={cat.key} htmlFor={`settings-notify-${cat.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
+              <input
+                id={`settings-notify-${cat.key}`}
+                type="checkbox"
+                checked={notificationPreferences[cat.key] !== false}
+                onChange={(e) =>
+                  setNotificationPreferences((prev) => ({ ...prev, [cat.key]: e.target.checked }))
+                }
+              />
+              {cat.label}
+            </label>
+          ))}
+        </div>
 
         {error && <p className="error-text">{error}</p>}
         {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}

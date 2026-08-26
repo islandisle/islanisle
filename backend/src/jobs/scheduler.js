@@ -10,6 +10,7 @@
 import cron from 'node-cron';
 import { runPayoutBatch } from '../services/payoutRun.js';
 import { expireStalePendingPayments } from '../services/staleCleanup.js';
+import { sendBoardingReminders } from '../services/boardingReminders.js';
 
 // Monthly billing cycle: 00:00 on the 1st of each month. Bundles both the
 // normal online-payment payout run and Pay at Visit commission collection
@@ -20,6 +21,12 @@ const PAYOUT_CRON = '0 0 1 * *';
 // order is holding real stock hostage (see services/staleCleanup.js) and
 // shouldn't wait up to a month to be released.
 const CLEANUP_CRON = '0 * * * *'; // hourly
+
+// Boarding reminders (Section 6.5) need finer granularity than the hourly
+// cleanup — a 2-hour reminder window (services/boardingReminders.js) means
+// running only once an hour could otherwise let a departure's whole window
+// pass between ticks depending on timing.
+const BOARDING_REMINDER_CRON = '*/15 * * * *'; // every 15 minutes
 
 export function startScheduledJobs() {
   cron.schedule(PAYOUT_CRON, async () => {
@@ -40,5 +47,16 @@ export function startScheduledJobs() {
     }
   });
 
-  console.log('[cron] Scheduled jobs registered: monthly payout run (1st @ 00:00), hourly stale-payment cleanup.');
+  cron.schedule(BOARDING_REMINDER_CRON, async () => {
+    try {
+      const result = await sendBoardingReminders();
+      if (result.reminders_sent > 0) {
+        console.log(`[cron] Boarding reminders: ${result.reminders_sent} sent.`);
+      }
+    } catch (err) {
+      console.error('[cron] Boarding reminders failed:', err);
+    }
+  });
+
+  console.log('[cron] Scheduled jobs registered: monthly payout run (1st @ 00:00), hourly stale-payment cleanup, boarding reminders every 15 min.');
 }

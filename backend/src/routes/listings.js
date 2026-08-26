@@ -55,9 +55,19 @@ router.get('/:island/listings', async (req, res) => {
     `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.photos,
             l.accessibility_features,
             b.id AS business_id, b.name AS business_name, b.type AS business_type,
-            b.verified_badge
+            b.verified_badge,
+            COALESCE(rv.review_count, 0) AS review_count,
+            rv.average_rating,
+            EXISTS (
+              SELECT 1 FROM closures c
+              WHERE c.business_id = b.id AND CURRENT_DATE BETWEEN c.start_date AND c.end_date
+            ) AS is_closed
      FROM listings l
      JOIN businesses b ON b.id = l.business_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS review_count, AVG(rating)::float AS average_rating
+       FROM reviews r WHERE r.business_id = b.id
+     ) rv ON true
      WHERE LOWER(TRIM(b.location_island)) = LOWER(TRIM($1))
        AND l.approval_status = 'approved'
        AND b.approval_status = 'approved'

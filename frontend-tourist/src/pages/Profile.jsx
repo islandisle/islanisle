@@ -4,6 +4,7 @@ import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/brow
 import {
   getMyGroup, removeGroupMember, getCurrentStay,
   getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
+  getNotificationPreferences, updateNotificationPreferences,
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
@@ -167,6 +168,8 @@ export default function Profile() {
         )}
       </div>
 
+      <NotificationPreferencesSection />
+
       <AppearanceSection />
 
       <BiometricSection />
@@ -265,6 +268,62 @@ const THEME_OPTIONS = [
 // Manual override for the system-preference dark mode set up in
 // src/theme.js / styles/theme.css. "System" clears the override and goes
 // back to following prefers-color-scheme.
+// Section 11's per-category notification mute controls — tourists
+// previously had none at all. Checked by the shared
+// services/notifications.js's notify() before a notification is even
+// written, not just filtered client-side.
+const NOTIFICATION_CATEGORIES = [
+  { key: 'booking_updates', label: 'Bookings, cancellations, and check-ins' },
+  { key: 'chat_messages', label: 'Chat messages' },
+  { key: 'deals_promos', label: 'Deals and promos' },
+  { key: 'boarding_reminders', label: 'Boarding reminders and ETA updates' },
+];
+
+function NotificationPreferencesSection() {
+  const [preferences, setPreferences] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getNotificationPreferences()
+      .then((d) => setPreferences(d.preferences || {}))
+      .catch((err) => setError(err.message));
+  }, []);
+
+  async function handleToggle(key, checked) {
+    const next = { ...preferences, [key]: checked };
+    setPreferences(next); // optimistic — this is a low-stakes preference toggle
+    try {
+      await updateNotificationPreferences(next);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!preferences) return null;
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p id="notif-prefs-label" style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Notifications
+      </p>
+      <div role="group" aria-labelledby="notif-prefs-label">
+        {NOTIFICATION_CATEGORIES.map((cat) => (
+          <label key={cat.key} htmlFor={`notif-pref-${cat.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
+            <input
+              id={`notif-pref-${cat.key}`}
+              type="checkbox"
+              checked={preferences[cat.key] !== false}
+              onChange={(e) => handleToggle(cat.key, e.target.checked)}
+            />
+            {cat.label}
+          </label>
+        ))}
+      </div>
+      {error && <p className="error-text">{error}</p>}
+    </div>
+  );
+}
+
 function AppearanceSection() {
   const { override, setOverride } = useTheme();
 

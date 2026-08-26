@@ -125,4 +125,31 @@ router.post('/read-all', authenticate, async (req, res) => {
   res.json({ marked_read: result.rows.length });
 });
 
+/**
+ * GET /api/notifications/preferences?business_id=
+ * PATCH /api/notifications/preferences?business_id=  body: { preferences }
+ * Section 11's per-category mute controls — services/notifications.js's
+ * notify() is what actually checks these before writing a notification.
+ * PATCH replaces the whole preferences object rather than merging, so the
+ * frontend always sends its full current state with one category flipped.
+ */
+router.get('/preferences', authenticate, async (req, res) => {
+  const scope = await resolveScope(req, res, req.query.business_id);
+  if (!scope) return;
+  const table = scope.recipientType === 'user' ? 'users' : 'businesses';
+  const result = await query(`SELECT notification_preferences FROM ${table} WHERE id = $1`, [scope.recipientId]);
+  res.json({ preferences: result.rows[0]?.notification_preferences || {} });
+});
+
+router.patch('/preferences', authenticate, async (req, res) => {
+  const scope = await resolveScope(req, res, req.body.business_id);
+  if (!scope) return;
+  const table = scope.recipientType === 'user' ? 'users' : 'businesses';
+  const result = await query(
+    `UPDATE ${table} SET notification_preferences = $1 WHERE id = $2 RETURNING notification_preferences`,
+    [JSON.stringify(req.body.preferences || {}), scope.recipientId]
+  );
+  res.json({ preferences: result.rows[0].notification_preferences });
+});
+
 export default router;

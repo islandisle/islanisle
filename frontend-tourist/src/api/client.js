@@ -255,11 +255,21 @@ export async function fileDispute({ booking_id, order_id, reason, description })
 
 // --- Reviews (routes/reviews.js) ---
 
-export async function submitReview({ booking_id, order_id, rating, text }) {
+// multipart/form-data — Section 6.4's review photos. photos is an array of
+// File objects from an <input type="file" multiple>, optional.
+export async function submitReview({ booking_id, order_id, rating, text, photos }) {
+  const formData = new FormData();
+  if (booking_id) formData.append('booking_id', booking_id);
+  if (order_id) formData.append('order_id', order_id);
+  formData.append('rating', rating);
+  if (text) formData.append('text', text);
+  for (const file of photos || []) {
+    formData.append('photos', file);
+  }
   const res = await fetch(`${API_BASE}/api/reviews`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ booking_id, order_id, rating, text }),
+    headers: authHeaders(), // no Content-Type — fetch sets the multipart boundary itself
+    body: formData,
   });
   return handleResponse(res);
 }
@@ -321,6 +331,21 @@ export async function markAllNotificationsRead() {
   return handleResponse(res);
 }
 
+// Section 11's per-category mute controls.
+export async function getNotificationPreferences() {
+  const res = await fetch(`${API_BASE}/api/notifications/preferences`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function updateNotificationPreferences(preferences) {
+  const res = await fetch(`${API_BASE}/api/notifications/preferences`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ preferences }),
+  });
+  return handleResponse(res);
+}
+
 // --- Support (routes/support.js) ---
 
 export async function openSupportTicket({ subject, message }) {
@@ -366,6 +391,26 @@ export async function sendSOS({ latitude, longitude, island }) {
 
 export async function getMyGroup() {
   const res = await fetch(`${API_BASE}/api/groups/mine`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// --- Chat (routes/messages.js) — generic, shared with the agent portal ---
+// Section 6.5's tourist↔business chat: the backend was already generic and
+// already used by frontend-agent; this is the same client shape, just for
+// a tourist messaging a business (other_role is always 'business' here).
+
+export async function getThread(otherRole, otherId) {
+  const params = new URLSearchParams({ other_role: otherRole, other_id: otherId });
+  const res = await fetch(`${API_BASE}/api/messages/thread?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function sendMessage(otherRole, otherId, text) {
+  const res = await fetch(`${API_BASE}/api/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ other_role: otherRole, other_id: otherId, text }),
+  });
   return handleResponse(res);
 }
 

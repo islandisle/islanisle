@@ -5,7 +5,7 @@ import {
   getBusinessBookings, getBusinessOrders, markOrderStatus,
   getArrivals, checkInBooking, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
-  fileDispute, approveReservation, rejectReservation,
+  fileDispute, approveReservation, rejectReservation, sendEtaUpdate,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
@@ -241,6 +241,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   const [freeDelivery, setFreeDelivery] = useState(false);
   const [accessibilityFeatures, setAccessibilityFeatures] = useState([]);
   const [payAtVisitEnabled, setPayAtVisitEnabled] = useState(false);
+  const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -269,6 +270,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     setFreeDelivery(false);
     setAccessibilityFeatures([]);
     setPayAtVisitEnabled(false);
+    setPhotos([]);
     setOpen(false);
   }
 
@@ -300,6 +302,7 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         type_specific_fields: processedTypeFields,
         accessibility_features: accessibilityFeatures,
         pay_at_visit_enabled: payAtVisitEnabled,
+        photos,
       };
 
       if (businessType === 'shop') {
@@ -352,6 +355,23 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         onChange={(e) => setDescription(e.target.value)}
         style={{ marginBottom: 10 }}
       />
+      <label htmlFor="listing-photos" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Photos (optional, up to 6)
+      </label>
+      <input
+        id="listing-photos"
+        className="input-field"
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => setPhotos(Array.from(e.target.files || []).slice(0, 6))}
+        style={{ marginBottom: 10 }}
+      />
+      {photos.length > 0 && (
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+          {photos.length} photo{photos.length > 1 ? 's' : ''} selected
+        </p>
+      )}
       <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
         <input
           className="input-field"
@@ -635,9 +655,12 @@ function DepartureManifest({ bookings, businessId, onMarkFulfilled }) {
         const totalPax = passengers.reduce((sum, p) => sum + (p.party_size || 1), 0);
         return (
           <div key={slot} className="card" style={{ padding: 12, marginBottom: 8 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 8px' }}>
-              {new Date(slot).toLocaleString()} · {totalPax} passenger{totalPax === 1 ? '' : 's'}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+                {new Date(slot).toLocaleString()} · {totalPax} passenger{totalPax === 1 ? '' : 's'}
+              </p>
+              <EtaUpdateButton listingId={passengers[0].listing_id} slotStart={slot} />
+            </div>
             {passengers.map((p) => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderTop: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -652,6 +675,34 @@ function DepartureManifest({ bookings, businessId, onMarkFulfilled }) {
         );
       })}
     </>
+  );
+}
+
+// Section 6.5's ETA-update — sends one free-text update to every confirmed
+// passenger on this specific departure.
+function EtaUpdateButton({ listingId, slotStart }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleClick() {
+    const message = window.prompt('ETA update to send to all passengers on this departure:');
+    if (!message || !message.trim()) return;
+    setSending(true);
+    try {
+      const res = await sendEtaUpdate(listingId, slotStart, message.trim());
+      window.alert(`Sent to ${res.recipients} passenger${res.recipients === 1 ? '' : 's'}.`);
+      setSent(true);
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <button className="btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }} onClick={handleClick} disabled={sending}>
+      {sending ? 'Sending…' : sent ? 'Update sent' : 'Send ETA update'}
+    </button>
   );
 }
 
