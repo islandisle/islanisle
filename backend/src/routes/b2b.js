@@ -19,14 +19,9 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { notify } from '../services/notifications.js';
+import { insertArrangedBooking } from '../services/bookingCreation.js';
 
 const router = Router();
-
-const BUSINESS_COMMISSION_RATE = 0.01; // same flat rate as bookings.js's checkout
-
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
 
 async function getOwnedBusiness(businessId, userId) {
   const result = await query('SELECT id, owner_user_id FROM businesses WHERE id = $1', [businessId]);
@@ -237,27 +232,21 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
 
     const basePrice = Number(b2bRequest.tourist_price);
     const discountPercent = b2bRequest.discount_percent ? Number(b2bRequest.discount_percent) : 0;
-    const priceCharged = round2(basePrice * (1 - discountPercent / 100));
-    const businessCommission = round2(priceCharged * BUSINESS_COMMISSION_RATE);
-    const payerType = b2bRequest.payer === 'business' ? 'business' : 'tourist';
 
     await client.query('BEGIN');
     const createdBookingIds = [];
     for (const guest of guestsResult.rows) {
-      const bookingResult = await client.query(
-        `INSERT INTO bookings (
-           listing_id, user_id, slot_start, slot_end, base_price, payer_type, payer_business_id,
-           payment_method, business_commission, tourist_commission_applicable, tourist_commission,
-           price_charged, status, escrow_status
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pay_at_visit',$8,false,0,$9,'confirmed','not_applicable')
-         RETURNING id`,
-        [
-          b2bRequest.listing_id, guest.user_id, b2bRequest.slot_start, b2bRequest.slot_end, basePrice,
-          payerType, payerType === 'business' ? b2bRequest.requesting_business_id : null,
-          businessCommission, priceCharged,
-        ]
-      );
-      const bookingId = bookingResult.rows[0].id;
+      const bookingId = await insertArrangedBooking(client, {
+        listingId: b2bRequest.listing_id,
+        userId: guest.user_id,
+        slotStart: b2bRequest.slot_start,
+        slotEnd: b2bRequest.slot_end,
+        basePrice,
+        discountPercent,
+        payer: b2bRequest.payer,
+        businessPayerLabel: 'business',
+        payerBusinessId: b2bRequest.requesting_business_id,
+      });
       createdBookingIds.push(bookingId);
       await client.query('UPDATE b2b_request_guests SET resulting_booking_id = $1 WHERE id = $2', [bookingId, guest.id]);
     }

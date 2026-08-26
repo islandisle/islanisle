@@ -5,6 +5,7 @@ import {
   boardGroupTransferGuestByBooking, boardGroupTransferGuest, markGroupTransferGuestNoShow,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
+import GuestPicker from '../components/GuestPicker';
 
 const BOARDED_STATUS_LABEL = { pending: 'Pending', boarded: 'Boarded', 'no-show': 'No-show' };
 
@@ -13,6 +14,13 @@ const BOARDED_STATUS_LABEL = { pending: 'Pending', boarded: 'Boarded', 'no-show'
 // shared speedboat transfer for its guests; a speedboat operator sees the
 // resulting manifest and boards guests (QR scan for a registered guest's
 // existing booking id, manual for a placeholder guest with no account).
+//
+// Batch 21: guest selection now uses the shared GuestPicker component
+// (also used by B2B.jsx) instead of two separate raw comma-separated
+// text fields (one for user ids, one for plain names) — it sources real
+// guest names from this guesthouse's current guests, with manual-add
+// still available here (unlike B2B) since group_booking_guests.plain_name
+// genuinely supports a no-account guest.
 export default function GroupTransfers() {
   const navigate = useNavigate();
   const [business] = useState(() => {
@@ -61,7 +69,7 @@ function GuesthouseView({ business }) {
 
   return (
     <>
-      <NewTransferForm businessId={business.id} onCreated={load} />
+      <NewTransferForm businessId={business.id} businessType={business.type} onCreated={load} />
 
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
         Your arranged transfers
@@ -88,13 +96,12 @@ function GuesthouseView({ business }) {
   );
 }
 
-function NewTransferForm({ businessId, onCreated }) {
+function NewTransferForm({ businessId, businessType, onCreated }) {
   const [routeId, setRouteId] = useState('');
   const [eta, setEta] = useState('');
   const [payer, setPayer] = useState('guesthouse');
   const [discountPercent, setDiscountPercent] = useState('');
-  const [guestUserIds, setGuestUserIds] = useState('');
-  const [guestNames, setGuestNames] = useState('');
+  const [guests, setGuests] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -104,18 +111,17 @@ function NewTransferForm({ businessId, onCreated }) {
     setSubmitting(true);
     setError('');
     try {
-      const guests = [
-        ...guestUserIds.split(',').map((s) => s.trim()).filter(Boolean).map((user_id) => ({ user_id })),
-        ...guestNames.split(',').map((s) => s.trim()).filter(Boolean).map((plain_name) => ({ plain_name })),
-      ];
+      // Strip the display-only `name` field GuestPicker adds — the
+      // backend only wants user_id/plain_name.
+      const guestPayload = guests.map(({ user_id, plain_name }) => (user_id ? { user_id } : { plain_name }));
       await createGroupTransfer(businessId, {
         route_id: routeId,
         eta: new Date(eta).toISOString(),
         payer,
         discount_percent: discountPercent ? Number(discountPercent) : null,
-        guests,
+        guests: guestPayload,
       });
-      setRouteId(''); setEta(''); setDiscountPercent(''); setGuestUserIds(''); setGuestNames('');
+      setRouteId(''); setEta(''); setDiscountPercent(''); setGuests([]);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -143,12 +149,16 @@ function NewTransferForm({ businessId, onCreated }) {
         <option value="tourist">Guest pays</option>
       </select>
       <input className="input-field" type="number" placeholder="Discount % (optional)" value={discountPercent} onChange={(e) => setDiscountPercent(e.target.value)} />
-      <input className="input-field" placeholder="Registered guest user IDs (comma-separated)" value={guestUserIds} onChange={(e) => setGuestUserIds(e.target.value)} />
-      <input className="input-field" placeholder="Other guest names, no account (comma-separated)" value={guestNames} onChange={(e) => setGuestNames(e.target.value)} />
+      <GuestPicker
+        businessId={businessId}
+        businessType={businessType}
+        selectedGuests={guests}
+        onChange={setGuests}
+      />
       {error && <p className="error-text">{error}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn-secondary" onClick={() => setOpen(false)} disabled={submitting}>Cancel</button>
-        <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submitting || guests.length === 0}>
           {submitting ? 'Arranging…' : 'Arrange transfer'}
         </button>
       </div>

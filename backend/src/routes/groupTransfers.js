@@ -18,14 +18,9 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { notify } from '../services/notifications.js';
+import { insertArrangedBooking } from '../services/bookingCreation.js';
 
 const router = Router();
-
-const BUSINESS_COMMISSION_RATE = 0.01;
-
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
 
 async function getOwnedGuesthouse(businessId, userId) {
   const result = await query('SELECT id, type, owner_user_id FROM businesses WHERE id = $1', [businessId]);
@@ -80,28 +75,21 @@ router.post('/:guesthouseBusinessId', authenticate, async (req, res) => {
     const groupBookingId = groupBookingResult.rows[0].id;
 
     const basePrice = Number(listing.tourist_price);
-    const discountedPrice = round2(basePrice * (1 - (discount_percent || 0) / 100));
-    const businessCommission = round2(discountedPrice * BUSINESS_COMMISSION_RATE);
-    const payerType = payer === 'guesthouse' ? 'business' : 'tourist';
 
     const createdGuests = [];
     for (const guest of guests) {
       let resultingBookingId = null;
       if (guest.user_id) {
-        const bookingResult = await client.query(
-          `INSERT INTO bookings (
-             listing_id, user_id, slot_start, base_price, payer_type, payer_business_id,
-             payment_method, business_commission, tourist_commission_applicable, tourist_commission,
-             price_charged, status, escrow_status
-           ) VALUES ($1,$2,$3,$4,$5,$6,'pay_at_visit',$7,false,0,$8,'confirmed','not_applicable')
-           RETURNING id`,
-          [
-            route_id, guest.user_id, eta, basePrice, payerType,
-            payerType === 'business' ? guesthouseBusinessId : null,
-            businessCommission, discountedPrice,
-          ]
-        );
-        resultingBookingId = bookingResult.rows[0].id;
+        resultingBookingId = await insertArrangedBooking(client, {
+          listingId: route_id,
+          userId: guest.user_id,
+          slotStart: eta,
+          basePrice,
+          discountPercent: discount_percent,
+          payer,
+          businessPayerLabel: 'guesthouse',
+          payerBusinessId: guesthouseBusinessId,
+        });
       }
       const guestResult = await client.query(
         `INSERT INTO group_booking_guests (group_booking_id, user_id, plain_name, resulting_booking_id)

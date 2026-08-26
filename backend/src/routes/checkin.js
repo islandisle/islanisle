@@ -146,6 +146,31 @@ router.get('/business/:businessId/arrivals', authenticate, requireGuesthouseOwne
 });
 
 /**
+ * GET /api/checkin/business/:businessId/current-guests
+ * Batch 21 — the guest source for GuestPicker (frontend-business), used
+ * when arranging a B2B request or a guesthouse group transfer. Unlike
+ * /arrivals above (today's check-ins only, for the front-desk board), this
+ * is anyone currently checked in here or holding any confirmed booking —
+ * the actual "who am I hosting right now" list a guesthouse would want to
+ * pick guests from, not just who's walking in today.
+ */
+router.get('/business/:businessId/current-guests', authenticate, requireGuesthouseOwner, async (req, res) => {
+  const result = await query(
+    `SELECT DISTINCT u.id AS user_id, u.name
+     FROM users u
+     WHERE u.current_stay_business_id = $1
+        OR u.id IN (
+          SELECT b.user_id FROM bookings b
+          JOIN listings l ON l.id = b.listing_id
+          WHERE l.business_id = $1 AND b.status = 'confirmed'
+        )
+     ORDER BY u.name ASC`,
+    [req.params.businessId]
+  );
+  res.json({ guests: result.rows });
+});
+
+/**
  * POST /api/checkin/:bookingId
  * body: { method: 'qr'|'manual', room_number, whole_group?, member_ids? }
  * whole_group checks in every roster member; member_ids checks in just those

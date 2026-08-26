@@ -265,6 +265,12 @@ export async function getArrivals(businessId) {
   return handleResponse(res);
 }
 
+// Batch 21 — the guest source for the shared GuestPicker component.
+export async function getCurrentGuests(businessId) {
+  const res = await fetch(`${API_BASE}/api/checkin/business/${businessId}/current-guests`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 export async function checkInBooking(bookingId, { method, room_number, whole_group, member_ids }) {
   const res = await fetch(`${API_BASE}/api/checkin/${bookingId}`, {
     method: 'POST',

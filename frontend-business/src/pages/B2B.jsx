@@ -5,6 +5,7 @@ import {
   createB2BRequest, getOutgoingB2BRequests, getIncomingB2BRequests,
   acceptB2BRequest, rejectB2BRequest,
 } from '../api/client';
+import GuestPicker from '../components/GuestPicker';
 
 // Batch 19 — B2B requests + standing discounts. [PHASE 2] tables that had
 // no frontend at all before this. Model: one business arranges something
@@ -12,11 +13,13 @@ import {
 // excursion for guests staying with it, most typically), at either a
 // pre-agreed "standing" rate or a one-off negotiated one.
 //
-// Guest selection is a plain comma-separated list of guest user ids here
-// rather than a picker UI — this app has no single "my current guests"
-// endpoint outside the guesthouse check-in flow (checkin.js), and a
-// requesting business isn't necessarily a guesthouse, so a business
-// already knows its guests' ids from its own bookings/arrivals lists.
+// Batch 21: guest selection now uses the shared GuestPicker component
+// (also used by GroupTransfers.jsx) instead of a raw comma-separated
+// user-ID text field — it sources real guest names from this business's
+// current guests when it's a guesthouse (the common case here), with
+// manual-add disabled since b2b_request_guests.user_id is NOT NULL —
+// unlike guesthouse-arranged transfers, B2B only ever deals with
+// registered guests (Section 4.7's "select which guests (users)").
 export default function B2B() {
   const navigate = useNavigate();
   const [business] = useState(() => {
@@ -76,7 +79,7 @@ export default function B2B() {
       {error && <p className="error-text">{error}</p>}
 
       <StandingDiscountsSection businessId={business.id} discounts={discounts} onChanged={loadAll} />
-      <NewRequestSection businessId={business.id} onCreated={loadAll} />
+      <NewRequestSection businessId={business.id} businessType={business.type} onCreated={loadAll} />
 
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
         Incoming requests ({incoming.filter((r) => r.status === 'pending').length} pending)
@@ -189,13 +192,13 @@ function StandingDiscountsSection({ businessId, discounts, onChanged }) {
   );
 }
 
-function NewRequestSection({ businessId, onCreated }) {
+function NewRequestSection({ businessId, businessType, onCreated }) {
   const [receivingBusinessId, setReceivingBusinessId] = useState('');
   const [listingId, setListingId] = useState('');
   const [payer, setPayer] = useState('business');
   const [roomNumber, setRoomNumber] = useState('');
   const [slotStart, setSlotStart] = useState('');
-  const [guestIds, setGuestIds] = useState('');
+  const [guests, setGuests] = useState([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -205,15 +208,19 @@ function NewRequestSection({ businessId, onCreated }) {
     setSubmitting(true);
     setError('');
     try {
+      // B2B only ever deals with registered guests (b2b_request_guests.user_id
+      // is NOT NULL) — GuestPicker is configured below with allowManualAdd
+      // false for this form, but filter defensively anyway.
+      const guestUserIds = guests.map((g) => g.user_id).filter(Boolean);
       await createB2BRequest(businessId, {
         receiving_business_id: receivingBusinessId,
         listing_id: listingId,
         payer,
         room_number: roomNumber || null,
         slot_start: new Date(slotStart).toISOString(),
-        guest_user_ids: guestIds.split(',').map((s) => s.trim()).filter(Boolean),
+        guest_user_ids: guestUserIds,
       });
-      setReceivingBusinessId(''); setListingId(''); setRoomNumber(''); setSlotStart(''); setGuestIds('');
+      setReceivingBusinessId(''); setListingId(''); setRoomNumber(''); setSlotStart(''); setGuests([]);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -242,11 +249,18 @@ function NewRequestSection({ businessId, onCreated }) {
       </select>
       <input className="input-field" placeholder="Room number (optional)" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} />
       <input className="input-field" type="datetime-local" value={slotStart} onChange={(e) => setSlotStart(e.target.value)} />
-      <input className="input-field" placeholder="Guest user IDs (comma-separated)" value={guestIds} onChange={(e) => setGuestIds(e.target.value)} />
+      <GuestPicker
+        businessId={businessId}
+        businessType={businessType}
+        selectedGuests={guests}
+        onChange={setGuests}
+        allowManualAdd={false}
+        manualIdEntry
+      />
       {error && <p className="error-text">{error}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn-secondary" onClick={() => setOpen(false)} disabled={submitting}>Cancel</button>
-        <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={submitting || guests.length === 0}>
           {submitting ? 'Sending…' : 'Send request'}
         </button>
       </div>
