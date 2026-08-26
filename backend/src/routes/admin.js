@@ -21,6 +21,42 @@ async function logAdminAction(adminId, actionType, targetType, targetId, reason)
   );
 }
 
+// Batch 20 fix (Section 7.2: "Guests with existing bookings are notified of
+// the suspension status so they know what to expect") — suspending a
+// business previously only ever notified the business itself. This finds
+// every distinct guest with a still-active booking or order at the
+// business (confirmed/pending_approval bookings; confirmed/ready/
+// out_for_delivery orders — anything not already completed or cancelled)
+// and notifies each one once, even if they have both a booking and an
+// order there. Shared by both suspension paths: the direct admin action
+// below and applyDisputeSuspension's dispute-triggered one.
+async function notifyGuestsOfSuspension(businessId, reason) {
+  const businessResult = await query('SELECT name FROM businesses WHERE id = $1', [businessId]);
+  const businessName = businessResult.rows[0]?.name || 'A business you have a booking with';
+
+  const guestsResult = await query(
+    `SELECT DISTINCT user_id FROM (
+       SELECT b.user_id FROM bookings b
+       JOIN listings l ON l.id = b.listing_id
+       WHERE l.business_id = $1 AND b.status IN ('confirmed', 'pending_approval')
+       UNION
+       SELECT o.user_id FROM orders o
+       WHERE o.business_id = $1 AND o.status IN ('confirmed', 'ready', 'out_for_delivery')
+     ) affected_guests`,
+    [businessId]
+  );
+
+  for (const { user_id } of guestsResult.rows) {
+    await notify({
+      recipientType: 'user',
+      recipientId: user_id,
+      type: 'suspended',
+      title: `${businessName} has been suspended`,
+      body: `${businessName} is temporarily suspended (${reason}). Any existing booking or order you have there is still honored — this only affects new ones.`,
+    });
+  }
+}
+
 /**
  * POST /api/admin/login
  * adminRole (admin_users.role: 'admin'|'moderator') is carried as a second
@@ -336,6 +372,7 @@ router.post('/businesses/:id/suspend', authenticate, requireFullAdmin, async (re
   await query(`UPDATE businesses SET account_status = 'suspended' WHERE id = $1`, [req.params.id]);
   await logAdminAction(req.user.id, 'suspend', 'business', req.params.id, reason);
   await notify({ recipientType: 'business', recipientId: req.params.id, type: 'suspended', title: 'Account suspended', body: reason });
+  await notifyGuestsOfSuspension(req.params.id, reason);
   res.json({ status: 'suspended' });
 });
 
@@ -492,6 +529,7 @@ async function applyDisputeSuspension(dispute, adminId, reason) {
   await query(`UPDATE businesses SET account_status = 'suspended' WHERE id = $1`, [businessId]);
   await logAdminAction(adminId, 'suspend', 'business', businessId, reason);
   await notify({ recipientType: 'business', recipientId: businessId, type: 'suspended', title: 'Account suspended', body: reason });
+  await notifyGuestsOfSuspension(businessId, reason);
 }
 
 /**
