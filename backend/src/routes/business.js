@@ -177,6 +177,23 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
 
     const photoUrls = (req.files || []).map((_, i) => savePhotoPlaceholder(businessId, i));
 
+    // Duplicate-listing detection (Batch 19) — non-blocking. A business
+    // accidentally re-submitting the same room/table/excursion (a common
+    // mistake with the multipart form above — a slow network makes "Create"
+    // look like it didn't register) previously just silently got two
+    // listings counting against its cap. This flags it in the response
+    // rather than rejecting the create, since a genuinely identical title
+    // for a different offering (e.g. two "Sunset Cruise" excursions with
+    // different durations) is a real, valid case the server can't tell
+    // apart from a mistake — the business itself is best placed to decide.
+    const duplicateResult = await query(
+      `SELECT id, title FROM listings
+       WHERE business_id = $1 AND LOWER(TRIM(title)) = LOWER(TRIM($2))
+       LIMIT 1`,
+      [businessId, title]
+    );
+    const duplicateOf = duplicateResult.rows[0] || null;
+
     const result = await query(
       `INSERT INTO listings (
          business_id, title, description, type_specific_fields, tourist_price, local_price,
@@ -195,6 +212,9 @@ router.post('/:businessId/listings', authenticate, requireBusinessOwner, photoUp
     res.status(201).json({
       listing: result.rows[0],
       message: 'Listing created — pending Super Admin approval before it goes live (Section 10.2).',
+      duplicate_warning: duplicateOf
+        ? `You already have a listing titled "${duplicateOf.title}" — check this isn't an accidental duplicate.`
+        : null,
     });
   } catch (err) {
     console.error('Listing creation error:', err);

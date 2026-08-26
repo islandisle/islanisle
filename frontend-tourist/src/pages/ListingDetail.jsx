@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup, getBusinessClosures } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import ChatPanel from '../components/ChatPanel';
+import Hint from '../components/Hint';
+import { useLanguage } from '../i18n';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -39,6 +41,7 @@ export default function ListingDetail() {
 
   const user = getCurrentUser();
   const isLocal = user?.type === 'local';
+  const { t } = useLanguage();
 
   useEffect(() => {
     getListingDetail(id)
@@ -78,7 +81,10 @@ export default function ListingDetail() {
       </div>
 
       {showChat && (
-        <ChatPanel businessId={listing.business_id} businessName={listing.business_name} onClose={() => setShowChat(false)} />
+        <>
+          <Hint id="listing-chat" text={t('hint.chat')} />
+          <ChatPanel businessId={listing.business_id} businessName={listing.business_name} onClose={() => setShowChat(false)} />
+        </>
       )}
 
       <PhotoGallery photos={listing.photos} />

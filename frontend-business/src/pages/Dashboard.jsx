@@ -319,9 +319,14 @@ function AddListingForm({ businessType, businessId, onCreated }) {
         payload.free_delivery = freeDelivery;
       }
 
-      await createListing(businessId, payload);
+      const created = await createListing(businessId, payload);
       resetForm();
       onCreated();
+      // Duplicate-listing detection (Batch 19) — non-blocking, so the
+      // listing is already saved by the time this fires; just a heads-up.
+      if (created.duplicate_warning) {
+        window.alert(created.duplicate_warning);
+      }
     } catch (err) {
       setError(err.message);
     } finally {

@@ -111,6 +111,13 @@ export async function getIslandListings(island, type, accessibilityFeatures) {
   return handleResponse(res);
 }
 
+// Global search (Batch 19) — across every island at once, not just the
+// currently selected one.
+export async function searchListings(q) {
+  const res = await fetch(`${API_BASE}/api/islands/search?q=${encodeURIComponent(q)}`);
+  return handleResponse(res);
+}
+
 export async function getListingDetail(id) {
   const res = await fetch(`${API_BASE}/api/islands/detail/${id}`);
   return handleResponse(res);

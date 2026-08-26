@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { getIslandListings, sendSOS, getNotifications, getWeather } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
+import GlobalSearch from '../components/GlobalSearch';
+import Hint from '../components/Hint';
 import { useLanguage } from '../i18n';
 
 const DEFAULT_ISLAND = 'Maafushi';
@@ -100,6 +102,9 @@ export default function Home() {
             (that's a larger, separate piece), but a real picker rather than
             a plain text field. Reuses the same getIslandListings(island,
             type) call the backend already supports. */}
+        <Hint id="home-search" text={t('hint.search')} />
+        <GlobalSearch />
+
         <div style={{ marginBottom: 14 }}>
           <IslandPicker value={island} onChange={setIsland} id="home-island-picker" />
         </div>

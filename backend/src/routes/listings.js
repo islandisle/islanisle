@@ -82,6 +82,39 @@ router.get('/:island/listings', async (req, res) => {
 });
 
 /**
+ * GET /api/islands/search?q=<text>
+ * Global search (Batch 19) — across every island at once, unlike
+ * GET /:island/listings which is scoped to one. Matches listing title,
+ * listing description, and business name (ILIKE, no full-text index —
+ * the catalog is small enough that this is fine for now). Returns
+ * business_type/location_island alongside so the frontend can jump the
+ * tourist's island picker to wherever the match actually lives.
+ */
+router.get('/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) {
+    return res.json({ query: q, results: [] });
+  }
+
+  const result = await query(
+    `SELECT l.id, l.title, l.tourist_price, l.local_price, l.photos,
+            b.id AS business_id, b.name AS business_name, b.type AS business_type,
+            b.location_island
+     FROM listings l
+     JOIN businesses b ON b.id = l.business_id
+     WHERE l.approval_status = 'approved'
+       AND b.approval_status = 'approved'
+       AND b.account_status = 'active'
+       AND (l.title ILIKE $1 OR l.description ILIKE $1 OR b.name ILIKE $1)
+     ORDER BY l.title ASC
+     LIMIT 30`,
+    [`%${q}%`]
+  );
+
+  res.json({ query: q, results: result.rows });
+});
+
+/**
  * GET /api/listings/:id
  * Full detail for one listing.
  */
