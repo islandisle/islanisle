@@ -239,6 +239,26 @@ function SOSButton({ island }) {
 
   return (
     <>
+      <Link
+        to="/emergency-contacts"
+        style={{
+          position: 'fixed',
+          bottom: 82,
+          right: 16,
+          fontSize: 11,
+          color: 'var(--text-secondary)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-pill)',
+          padding: '4px 10px',
+          textDecoration: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+        }}
+      >
+        Emergency contacts
+      </Link>
+
       <button
         onClick={handleClick}
         disabled={status === 'sending'}

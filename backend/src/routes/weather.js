@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
 import { fetchWeather } from '../services/weather.js';
+import { triggerWeatherCascade } from '../services/weatherCascade.js';
 
 const router = Router();
 
@@ -41,6 +42,19 @@ router.get('/:atoll', async (req, res) => {
      RETURNING atoll, date, condition_type, temperature, wind_speed, conditions_summary`,
     [atoll, date, fetched.condition_type, fetched.temperature, fetched.wind_speed, fetched.conditions_summary]
   );
+
+  // Weather-cancellation cascade (Batch 19) — only reachable here because
+  // this whole branch (the INSERT above ran instead of returning the
+  // `existing` row earlier) only executes once per (atoll, date): the very
+  // first time today's weather for this atoll is fetched. That's exactly
+  // the "just turned severe" moment this should fire on, and guarantees it
+  // can't re-cascade the same already-cancelled bookings on a later request
+  // the same day.
+  if (fetched.condition_type === 'thundery') {
+    triggerWeatherCascade(atoll, date).catch((err) => {
+      console.error(`Weather cascade failed for ${atoll} on ${date}:`, err);
+    });
+  }
 
   res.json({ weather: result.rows[0] });
 });

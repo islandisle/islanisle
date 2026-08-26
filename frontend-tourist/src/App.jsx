@@ -10,6 +10,7 @@ import Transfers from './pages/Transfers';
 import Trips from './pages/Trips';
 import Notifications from './pages/Notifications';
 import Support from './pages/Support';
+import EmergencyContacts from './pages/EmergencyContacts';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/trips" element={<Trips />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/emergency-contacts" element={<EmergencyContacts />} />
         </Routes>
       </BrowserRouter>
     </LanguageProvider>
