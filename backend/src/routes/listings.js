@@ -130,7 +130,8 @@ router.get('/search', async (req, res) => {
  */
 router.get('/detail/:id', async (req, res) => {
   const result = await query(
-    `SELECT l.*, b.name AS business_name, b.type AS business_type, b.verified_badge
+    `SELECT l.*, b.name AS business_name, b.type AS business_type, b.verified_badge,
+            b.refund_fee_business_percent
      FROM listings l JOIN businesses b ON b.id = l.business_id
      WHERE l.id = $1 AND l.approval_status = 'approved'`,
     [req.params.id]

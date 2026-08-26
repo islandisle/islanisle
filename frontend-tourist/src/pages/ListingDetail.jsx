@@ -143,6 +143,8 @@ export default function ListingDetail() {
         </p>
       </div>
 
+      <RefundFeeDisclosure listing={listing} />
+
       {listing.business_type === 'shop' ? (
         <ShopCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
       ) : (
@@ -240,6 +242,29 @@ function LuggageInfo({ listing }) {
         </p>
       )}
     </div>
+  );
+}
+
+// Batch 20 fix — Section 7.1 requires the combined refund-fee percentage
+// (platform's fixed 5% + the business's own configurable share, default
+// 5%) to be disclosed "both at booking time... and again at the point of
+// an actual refund." The cancel-confirmation popup (MyActivity.jsx)
+// already covers the second half with exact computed dollar amounts; this
+// covers the first half, before the tourist ever commits to a booking.
+// PLATFORM_REFUND_FEE_PERCENT is kept in sync manually with the fixed 5%
+// in backend/src/services/refunds.js — same duplication pattern as this
+// file's other spec-derived constants (no shared-constants file yet).
+const PLATFORM_REFUND_FEE_PERCENT = 5;
+
+function RefundFeeDisclosure({ listing }) {
+  const businessPercent = Number(listing.refund_fee_business_percent ?? 5);
+  const combinedPercent = PLATFORM_REFUND_FEE_PERCENT + businessPercent;
+  return (
+    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 0, marginBottom: 20 }}>
+      If you cancel an online-paid booking outside the cancellation window, a combined {combinedPercent}% refund
+      fee applies. This never applies to Pay at Visit bookings, and you always get a full refund if the business
+      is the one who cancels.
+    </p>
   );
 }
 
