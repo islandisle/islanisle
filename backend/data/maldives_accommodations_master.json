@@ -1,0 +1,6100 @@
+{
+  "Alifu Alifu": {
+    "Bodufolhudhoo": [
+      {
+        "name": "Belmar Beach",
+        "type": "Guest House",
+        "phone": "7229919",
+        "email": "info@belmarmaldives.com"
+      },
+      {
+        "name": "Bougan Villea Retreat",
+        "type": "Guest House",
+        "phone": "7698440",
+        "email": "admin@bouganvillearetreat.com"
+      },
+      {
+        "name": "Cocos Beach House",
+        "type": "Guest House",
+        "phone": "7933989",
+        "email": "alidhifau@gmail.com"
+      },
+      {
+        "name": "Lagoon View Maldives",
+        "type": "Guest House",
+        "phone": "7979019",
+        "email": "admin@lagoonviewmaldives.com"
+      }
+    ],
+    "Feridhoo": [
+      {
+        "name": "Asaa View",
+        "type": "Guest House",
+        "phone": "7795713",
+        "email": "ahmedsaana637@gmail.com"
+      },
+      {
+        "name": "Ayira Maldives",
+        "type": "Guest House",
+        "phone": "7973868",
+        "email": "info@ayiramaldives.com"
+      },
+      {
+        "name": "Blue Starfish Maldives",
+        "type": "Guest House",
+        "phone": "7705606",
+        "email": "shi.shix.shizoo@gmail.com"
+      },
+      {
+        "name": "Escapism Maldives",
+        "type": "Guest House",
+        "phone": "7965253",
+        "email": "shuhad.ali@live.com"
+      },
+      {
+        "name": "Feridhoo Beach Villa",
+        "type": "Guest House",
+        "phone": "7781388",
+        "email": "info@feridhoobeachvilla.com"
+      },
+      {
+        "name": "Feridhoo Inn",
+        "type": "Guest House",
+        "phone": "9902305\r\n9970590",
+        "email": "info@feridhooinn.com"
+      },
+      {
+        "name": "Haveyli Grande",
+        "type": "Guest House",
+        "phone": "7773723",
+        "email": "haveyligrande@gmail.com"
+      },
+      {
+        "name": "Isola Alifu",
+        "type": "Guest House",
+        "phone": "7779186",
+        "email": "info@isolaalifu.com"
+      },
+      {
+        "name": "Mamello Beach Club Maldives",
+        "type": "Guest House",
+        "phone": "7984443",
+        "email": "shamhooz60045@gmail.com"
+      },
+      {
+        "name": "Seven Sea's Sea View",
+        "type": "Guest House",
+        "phone": "7920528",
+        "email": "thohirahmed.trevo@gmail.com"
+      },
+      {
+        "name": "Sevinex Inn",
+        "type": "Guest House",
+        "phone": "7907906",
+        "email": "info@sevinexinn.com"
+      },
+      {
+        "name": "Shifa Lodge",
+        "type": "Guest House",
+        "phone": "7344908",
+        "email": "shuaib.naseer1964@gmail.com"
+      },
+      {
+        "name": "The Castaway Retreat",
+        "type": "Guest House",
+        "phone": "9848825",
+        "email": "info@castawayretreat.mv"
+      },
+      {
+        "name": "The Dreamscape Villa",
+        "type": "Guest House",
+        "phone": "7711424",
+        "email": "Info@thedreamscapevilla.com"
+      },
+      {
+        "name": "Villa Rosa",
+        "type": "Guest House",
+        "phone": "7489674",
+        "email": "info@villarosemaldives.com"
+      },
+      {
+        "name": "Ayvana Retreat",
+        "type": "Home Stay",
+        "phone": "7947405",
+        "email": "shinatey141@gmail.com"
+      }
+    ],
+    "Himandhoo": [
+      {
+        "name": "Black Pearl Himandhoo",
+        "type": "Guest House",
+        "phone": "9815497",
+        "email": "riph.ham@gmail.com"
+      },
+      {
+        "name": "Casa De Himandhoo",
+        "type": "Guest House",
+        "phone": "7798777",
+        "email": "fathimath.khalid@gmail.com"
+      },
+      {
+        "name": "Kuri Himandhoo Inn",
+        "type": "Guest House",
+        "phone": "9993949",
+        "email": null
+      },
+      {
+        "name": "Manta Sea View",
+        "type": "Guest House",
+        "phone": "9105437",
+        "email": "bookings@mantaseaview.com"
+      },
+      {
+        "name": "Nika Inn Himandhoo",
+        "type": "Guest House",
+        "phone": "9989626",
+        "email": "athif4xip@gmail.com"
+      },
+      {
+        "name": "Origami Inn",
+        "type": "Guest House",
+        "phone": "9170822",
+        "email": "mohamed75azeez@gmail.com"
+      },
+      {
+        "name": "White Sand Himandhoo",
+        "type": "Guest House",
+        "phone": "7910210",
+        "email": "zainzoyaziyan@gmail.com"
+      }
+    ],
+    "Maalhos": [
+      {
+        "name": "Splendour Grand",
+        "type": "Guest House",
+        "phone": "9926605\r\n7797527",
+        "email": "ganmedhuinvestment@gmail.com"
+      }
+    ],
+    "Mathiveri": [
+      {
+        "name": "Captal Island Villa",
+        "type": "Guest House",
+        "phone": "9982544",
+        "email": "captalislandvilla@gmail.com"
+      },
+      {
+        "name": "Ever Blue Guest House",
+        "type": "Guest House",
+        "phone": "7749203",
+        "email": "everblueguesthouse@gmail.com"
+      },
+      {
+        "name": "Lux Inn Mathiveri",
+        "type": "Guest House",
+        "phone": "7924992",
+        "email": "nawaxam90@gmail.com"
+      },
+      {
+        "name": "Mahchavaru Maldives",
+        "type": "Guest House",
+        "phone": "7782556",
+        "email": "fowzan.maldives@gmail.com"
+      },
+      {
+        "name": "Mathiveri Thundi Inn",
+        "type": "Guest House",
+        "phone": "7784597",
+        "email": "ranfaruhassan@gmail.com"
+      },
+      {
+        "name": "Serenity Reef Maldives",
+        "type": "Guest House",
+        "phone": "7630229",
+        "email": "dispatullp@gmail.com"
+      },
+      {
+        "name": "Sis Tourist Villa",
+        "type": "Guest House",
+        "phone": "9300303",
+        "email": "mail@sistouristvilla.com"
+      },
+      {
+        "name": "Sunset Beach Stay",
+        "type": "Guest House",
+        "phone": "7544080",
+        "email": "mathiverisunset@gmail.com"
+      },
+      {
+        "name": "Vacanza Mathiveri",
+        "type": "Guest House",
+        "phone": "9900809",
+        "email": "vacanza.mathiveri@gmail.com"
+      },
+      {
+        "name": "Velana Vibes",
+        "type": "Guest House",
+        "phone": "9922141",
+        "email": "velanavibes@gmail.com"
+      },
+      {
+        "name": "Velana View",
+        "type": "Guest House",
+        "phone": "9922141",
+        "email": "velanaview@gmail.com"
+      },
+      {
+        "name": "Water Cloud",
+        "type": "Guest House",
+        "phone": "9444415",
+        "email": "info@water-cloud.co"
+      },
+      {
+        "name": "Aquatic Mathiveri",
+        "type": "Home Stay",
+        "phone": "9172173",
+        "email": "mariyam.malsa.mohamed10@gmail.com"
+      }
+    ],
+    "Rasdhoo": [
+      {
+        "name": "Acqua Blu Rasdhoo",
+        "type": "Guest House",
+        "phone": "9528528",
+        "email": "acquablurasdhoo@gmail.com"
+      },
+      {
+        "name": "Arena Blanca",
+        "type": "Guest House",
+        "phone": "7100008",
+        "email": "arenablancarasdhoo@gmail.com"
+      },
+      {
+        "name": "Brickwood Ganduvaru",
+        "type": "Guest House",
+        "phone": "7998512",
+        "email": "shaafiu1991@gmail.com"
+      },
+      {
+        "name": "Brickwood Rasdhoo",
+        "type": "Guest House",
+        "phone": "9158805",
+        "email": "sales@ganduvaru.com"
+      },
+      {
+        "name": "Dhaankolhu Rasdhoo",
+        "type": "Guest House",
+        "phone": "9181110",
+        "email": "info@dhaankolhu.com"
+      },
+      {
+        "name": "Fins Dive and Leisure Inn",
+        "type": "Guest House",
+        "phone": "7943731",
+        "email": "nizar.keyodhoo@gmail.com"
+      },
+      {
+        "name": "Jerrys Dive Lodge",
+        "type": "Guest House",
+        "phone": "7727876",
+        "email": "jerry.diving@gmail.com"
+      },
+      {
+        "name": "Madivaru Kro",
+        "type": "Guest House",
+        "phone": "7778219",
+        "email": "info@madivarukro.com"
+      },
+      {
+        "name": "Quicksand Rasdhoo",
+        "type": "Guest House",
+        "phone": "9778005",
+        "email": "quicksandrasdhoo@gmail.com"
+      },
+      {
+        "name": "Ras Atoll Inn",
+        "type": "Guest House",
+        "phone": "7943566",
+        "email": "ahmedrasheed797979@gmail.com"
+      },
+      {
+        "name": "Ras Grand",
+        "type": "Guest House",
+        "phone": "7773286",
+        "email": "ibrahimamanik@gmail.com"
+      },
+      {
+        "name": "Ras Rana Lodge",
+        "type": "Guest House",
+        "phone": "9786852",
+        "email": "amujah@gmail.com"
+      },
+      {
+        "name": "Rasdhoo Coralville",
+        "type": "Guest House",
+        "phone": "7961606",
+        "email": "rasdhoocoralville@gmail.com"
+      },
+      {
+        "name": "Rasdhoo Island Inn",
+        "type": "Guest House",
+        "phone": "9862014",
+        "email": "info@rasdhooislandinn.com"
+      },
+      {
+        "name": "Rasdhoo Island Inn Beach Front",
+        "type": "Guest House",
+        "phone": "9862014",
+        "email": "info@rasdhooislandinn.com"
+      },
+      {
+        "name": "Rasdhoo Stay",
+        "type": "Guest House",
+        "phone": "7721370",
+        "email": "info@rasdhoostay.com"
+      },
+      {
+        "name": "Rasdu View Inn",
+        "type": "Guest House",
+        "phone": "9949269",
+        "email": "rasduviewinn@gmail.com"
+      },
+      {
+        "name": "Shallow Lagoon Rasdhoo",
+        "type": "Guest House",
+        "phone": "7822680",
+        "email": "mustho_2302@live.com"
+      },
+      {
+        "name": "Summer Vibes Beach Front",
+        "type": "Guest House",
+        "phone": "9522626",
+        "email": "faxun70@gmail.com"
+      },
+      {
+        "name": "The Palm Ray",
+        "type": "Guest House",
+        "phone": "9673339",
+        "email": "hello@thepalmray.com"
+      },
+      {
+        "name": "Unimaa Cottage",
+        "type": "Guest House",
+        "phone": "9801516",
+        "email": "ameelia@gmail.com"
+      },
+      {
+        "name": "Rasdhoo Madi",
+        "type": "Home Stay",
+        "phone": "7739777",
+        "email": "rasdhoo.madi@gmail.com"
+      },
+      {
+        "name": "Rashuthere Maldives",
+        "type": "Home Stay",
+        "phone": "9119017",
+        "email": "hussainsimau@gmail.com"
+      }
+    ],
+    "Thoddoo": [
+      {
+        "name": "Aashaan View",
+        "type": "Guest House",
+        "phone": "9690280",
+        "email": "mohamed.rauhan@outlook.com"
+      },
+      {
+        "name": "Ahola Thoddoo",
+        "type": "Guest House",
+        "phone": "7798066",
+        "email": "sales@aholathoddoo.com"
+      },
+      {
+        "name": "Ale Sara Guest Maldive Thoddu",
+        "type": "Guest House",
+        "phone": "9506015",
+        "email": "hawwaanuher@gmail.com"
+      },
+      {
+        "name": "Amazing View",
+        "type": "Guest House",
+        "phone": "9153344",
+        "email": "view.thoddoo@gmail.com"
+      },
+      {
+        "name": "Ambra Maldives",
+        "type": "Guest House",
+        "phone": "9932002",
+        "email": "fabrishiya@gmail.com"
+      },
+      {
+        "name": "Aqua Blu Thoddoo",
+        "type": "Guest House",
+        "phone": "7902029",
+        "email": "bluescape.mv@gmail.com"
+      },
+      {
+        "name": "Aqua Oasis",
+        "type": "Guest House",
+        "phone": "7634165",
+        "email": "arcipha@gmail.com"
+      },
+      {
+        "name": "Ari Stay Thoddoo",
+        "type": "Guest House",
+        "phone": "7915514",
+        "email": "asif07574@gmail.com"
+      },
+      {
+        "name": "Athiriveli",
+        "type": "Guest House",
+        "phone": "9831683",
+        "email": "bisaprivatelimited@gmail.com\r\ninfo@athirige.com"
+      },
+      {
+        "name": "Avi Guesthouse",
+        "type": "Guest House",
+        "phone": "7778798",
+        "email": "sarfaraz@coralliumtours.com"
+      },
+      {
+        "name": "Babushkha Hospitality",
+        "type": "Guest House",
+        "phone": "7777733",
+        "email": "suntunaholidays@gmail.com"
+      },
+      {
+        "name": "Belena",
+        "type": "Guest House",
+        "phone": "7797771",
+        "email": "info@belenamaldives.com"
+      },
+      {
+        "name": "Belvedere Thoddoo",
+        "type": "Guest House",
+        "phone": "9190901",
+        "email": "belvederethoddoo@gmail.com"
+      },
+      {
+        "name": "Blue Coral Thoddoo",
+        "type": "Guest House",
+        "phone": "9854016",
+        "email": "hassanshimaax@gmail.com"
+      },
+      {
+        "name": "Blue Water Thoddoo Inn",
+        "type": "Guest House",
+        "phone": "9695682",
+        "email": "res.bluewater@gmail.com"
+      },
+      {
+        "name": "Boli Villa",
+        "type": "Guest House",
+        "phone": "9968060",
+        "email": "bolivillathoddoo@gmail.com"
+      },
+      {
+        "name": "Brisa Fresca",
+        "type": "Guest House",
+        "phone": "9194733",
+        "email": "brisafresca.thoddoo@gmail.com"
+      },
+      {
+        "name": "Chillax Thoddoo",
+        "type": "Guest House",
+        "phone": "9969979",
+        "email": "chillaxthoddoo@gmail.com"
+      },
+      {
+        "name": "Coco Villa",
+        "type": "Guest House",
+        "phone": "7787904",
+        "email": "info@coco-villa.com"
+      },
+      {
+        "name": "Dacha Thoddoo White Sand",
+        "type": "Guest House",
+        "phone": "7782862",
+        "email": "dachamaldives@gmail.com"
+      },
+      {
+        "name": "Dhonkamana Stay",
+        "type": "Guest House",
+        "phone": "7888382",
+        "email": "dhonkamanastay@gmail.com"
+      },
+      {
+        "name": "Evilaa Inn Thoddoo",
+        "type": "Guest House",
+        "phone": "9793777",
+        "email": "evilainnthoddoo@gmail.com"
+      },
+      {
+        "name": "Fairytale Inn",
+        "type": "Guest House",
+        "phone": "7339225",
+        "email": "fairytaleinn@gmail.com"
+      },
+      {
+        "name": "Hakuna",
+        "type": "Guest House",
+        "phone": "9394455",
+        "email": "sales@hakunamaldives.com"
+      },
+      {
+        "name": "Heavenly Residence",
+        "type": "Guest House",
+        "phone": "9772949",
+        "email": "reservation.heavenly@gmail.com"
+      },
+      {
+        "name": "Holiday Cottage",
+        "type": "Guest House",
+        "phone": "9790184",
+        "email": "info@holidaycottage.com.mv"
+      },
+      {
+        "name": "Hudhufas Villa",
+        "type": "Guest House",
+        "phone": "7783823\r\n9996557",
+        "email": "hudhufasvilla@gmail.com"
+      },
+      {
+        "name": "Island Vista Thoddoo",
+        "type": "Guest House",
+        "phone": "9787648",
+        "email": "islandvistathoddoo@gmail.com"
+      },
+      {
+        "name": "Jenyva Inn",
+        "type": "Guest House",
+        "phone": "9573886",
+        "email": "thoddoosunriseinn@gmail.com"
+      },
+      {
+        "name": "Jeym Lodge",
+        "type": "Guest House",
+        "phone": "9160614",
+        "email": "jeymlodge@gmail.com"
+      },
+      {
+        "name": "Karaa Village",
+        "type": "Guest House",
+        "phone": "9674895",
+        "email": "karaavillage@gmail.com"
+      },
+      {
+        "name": "Lagoon Villa Thoddoo",
+        "type": "Guest House",
+        "phone": "9922227",
+        "email": "hello@lagoonvillathoddoo.com"
+      },
+      {
+        "name": "Manta Stay",
+        "type": "Guest House",
+        "phone": "9944432",
+        "email": "info@mantastaythoddoo.com"
+      },
+      {
+        "name": "New Breeze Thoddoo Inn",
+        "type": "Guest House",
+        "phone": "9996681",
+        "email": "newbreezthoddhoo@hotmail.com"
+      },
+      {
+        "name": "Noovilu Residence Thoddoo",
+        "type": "Guest House",
+        "phone": "7955950",
+        "email": "thoddoo@gmail.com"
+      },
+      {
+        "name": "Oak Thoddoo",
+        "type": "Guest House",
+        "phone": "9936283",
+        "email": "jinnejinaah@gmail.com"
+      },
+      {
+        "name": "Ocean Vida",
+        "type": "Guest House",
+        "phone": "9654448",
+        "email": "alirishan9964448@gmail.com"
+      },
+      {
+        "name": "Palma de Maldives",
+        "type": "Guest House",
+        "phone": "9505295",
+        "email": "burakcakir@hotmail.fr"
+      },
+      {
+        "name": "Paradise Palms",
+        "type": "Guest House",
+        "phone": "7625864",
+        "email": "adamfayaz.mv@gmail.com"
+      },
+      {
+        "name": "Ramzu Villa",
+        "type": "Guest House",
+        "phone": "9774552",
+        "email": "azmathkhaleel@gmail.com"
+      },
+      {
+        "name": "Reef Shine Thoddoo",
+        "type": "Guest House",
+        "phone": "7887941",
+        "email": "jafffjammm@gmail.com"
+      },
+      {
+        "name": "Relax Lodge",
+        "type": "Guest House",
+        "phone": "9668820",
+        "email": "relaxlodge1759@gmail.com"
+      },
+      {
+        "name": "Relax Villa",
+        "type": "Guest House",
+        "phone": "9725000",
+        "email": "aishatinaza@gmail.com"
+      },
+      {
+        "name": "Rihiveli Residence Thoddoo",
+        "type": "Guest House",
+        "phone": "9572544",
+        "email": "reservations.rihiveliresidence@gmail.com"
+      },
+      {
+        "name": "Riyaludhathuru",
+        "type": "Guest House",
+        "phone": "7844658",
+        "email": "riyaludhathuru@gmail.com"
+      },
+      {
+        "name": "Sands Garden",
+        "type": "Guest House",
+        "phone": "7772159",
+        "email": "res@sandshotelmaldives.com"
+      },
+      {
+        "name": "Serene Sea View",
+        "type": "Guest House",
+        "phone": "7782680",
+        "email": "karam5757@gmail.com"
+      },
+      {
+        "name": "Shams Thoddoo",
+        "type": "Guest House",
+        "phone": "7979011",
+        "email": "stay@shamsthoddoo.com"
+      },
+      {
+        "name": "Shoreline Grand",
+        "type": "Guest House",
+        "phone": "9637345",
+        "email": "hello@shorelinegrand.com"
+      },
+      {
+        "name": "Sosun View Private Villa",
+        "type": "Guest House",
+        "phone": "9999226",
+        "email": "sosunviewprivatevilla@gmail.com"
+      },
+      {
+        "name": "Summer Inn Thoddoo",
+        "type": "Guest House",
+        "phone": "9699993",
+        "email": "summerinnthoddoo@gmail.com"
+      },
+      {
+        "name": "Summer Sky Thoddoo",
+        "type": "Guest House",
+        "phone": "7996653",
+        "email": "summerskythoddoo@gmail.com"
+      },
+      {
+        "name": "Sunny Pavilion",
+        "type": "Guest House",
+        "phone": "7779853",
+        "email": "ibrahim@sunnysuitesinn.com"
+      },
+      {
+        "name": "Sunnyside Inn Thoddoo",
+        "type": "Guest House",
+        "phone": "9923282",
+        "email": "sunnysideinnthoddoo@gmail.com"
+      },
+      {
+        "name": "The Palms Thoddoo",
+        "type": "Guest House",
+        "phone": "7459473",
+        "email": "thepalms.thoddoo@gmail.com"
+      },
+      {
+        "name": "Thila Farm View",
+        "type": "Guest House",
+        "phone": "9933296",
+        "email": "info@thilafarmview.com"
+      },
+      {
+        "name": "Thila Palms Thoddoo",
+        "type": "Guest House",
+        "phone": "9933296",
+        "email": "saifsaitte@gmail.com"
+      },
+      {
+        "name": "Thila Skyview",
+        "type": "Guest House",
+        "phone": "7785324",
+        "email": "saif.saitte@gmail.com"
+      },
+      {
+        "name": "Thoddoo Beach Holiday",
+        "type": "Guest House",
+        "phone": "9724025 / 9994918",
+        "email": "beachholidayinn@gmail.com"
+      },
+      {
+        "name": "Thoddoo Cozy Stay",
+        "type": "Guest House",
+        "phone": "9149393",
+        "email": "aliinash1112@gmail.com"
+      },
+      {
+        "name": "Thoddoo Dive Villa",
+        "type": "Guest House",
+        "phone": "9763007",
+        "email": "nooraaneecom@gmail.com"
+      },
+      {
+        "name": "Thoddoo Garden Inn",
+        "type": "Guest House",
+        "phone": "9199940",
+        "email": "adammoosa9199940@gmail.com"
+      },
+      {
+        "name": "Thoddoo Haisha Inn",
+        "type": "Guest House",
+        "phone": "7407768",
+        "email": "janbeyadam@gmail.com"
+      },
+      {
+        "name": "Thoddoo Inn",
+        "type": "Guest House",
+        "phone": "7947040",
+        "email": "reservations.thoddooinn@gmail.com"
+      },
+      {
+        "name": "Thoddoo Island Holiday",
+        "type": "Guest House",
+        "phone": "9994918",
+        "email": "beach.holidayinn@gmail.com"
+      },
+      {
+        "name": "Thoddoo7startropics",
+        "type": "Guest House",
+        "phone": "9538783",
+        "email": "7startropics.mv@gmail.com"
+      },
+      {
+        "name": "Tropica Thoddoo Inn",
+        "type": "Guest House",
+        "phone": "9183508",
+        "email": "zaffanahmed8204@gmail.com"
+      },
+      {
+        "name": "Tropicana Villas",
+        "type": "Guest House",
+        "phone": "9999355",
+        "email": "ismail.isaam@gmail.com"
+      },
+      {
+        "name": "Vegas Thoddoo Maldives",
+        "type": "Guest House",
+        "phone": "9793440",
+        "email": "ako@ihavandhoo.com"
+      },
+      {
+        "name": "Veli Garden Thoddoo",
+        "type": "Guest House",
+        "phone": "9930120",
+        "email": "veligardenthoddoo@gmail.com"
+      },
+      {
+        "name": "White Rock Thoddoo",
+        "type": "Guest House",
+        "phone": "9192340",
+        "email": "whiterockthoddoo@gmail.com"
+      },
+      {
+        "name": "Naseema Hiya",
+        "type": "Home Stay",
+        "phone": "7330387\r\n9960880",
+        "email": "razeema7@gmail.com"
+      }
+    ],
+    "Ukulhas": [
+      {
+        "name": "Aria Beach",
+        "type": "Guest House",
+        "phone": "9988668",
+        "email": "ariabeachukulhas@gmail.com"
+      },
+      {
+        "name": "Arista Villa",
+        "type": "Guest House",
+        "phone": "7783171",
+        "email": "abdulla.fathuma@gmail.com"
+      },
+      {
+        "name": "Beach Veli",
+        "type": "Guest House",
+        "phone": "7776458\r\n9685446",
+        "email": "info@beachveli.com"
+      },
+      {
+        "name": "Casa Paradiso",
+        "type": "Guest House",
+        "phone": "7429998",
+        "email": "reservations@casaparadisoukulhas.com"
+      },
+      {
+        "name": "Coral Queen Villa Ukulhas",
+        "type": "Guest House",
+        "phone": "7773805",
+        "email": "coralqueenvilla@gmail.com"
+      },
+      {
+        "name": "Ganduvaru Villa",
+        "type": "Guest House",
+        "phone": "7778248",
+        "email": "info@ganduvaruhotels.com"
+      },
+      {
+        "name": "Holiday Haven Ukulhas",
+        "type": "Guest House",
+        "phone": "7776765",
+        "email": "info@holidayhavenukulhas.com"
+      },
+      {
+        "name": "La Palma Suites",
+        "type": "Guest House",
+        "phone": "7744008",
+        "email": "info@lapalmavillahotel.com"
+      },
+      {
+        "name": "Nala Veli Beach Villa",
+        "type": "Guest House",
+        "phone": "9120088",
+        "email": "info@nalaveli-villa.com"
+      },
+      {
+        "name": "Nala Veli Villa",
+        "type": "Guest House",
+        "phone": "7772440",
+        "email": "info@nalaveli-villa.com"
+      },
+      {
+        "name": "Ostrov",
+        "type": "Guest House",
+        "phone": "9989899",
+        "email": "ostrovmaldives@gmail.com"
+      },
+      {
+        "name": "Paguro Beach Inn",
+        "type": "Guest House",
+        "phone": "7777221",
+        "email": "info@paguromaldives.com"
+      },
+      {
+        "name": "Paguro Villa",
+        "type": "Guest House",
+        "phone": "7777221",
+        "email": "paguromaldives@gmail.com"
+      },
+      {
+        "name": "Sealavie Inn",
+        "type": "Guest House",
+        "phone": "7779439",
+        "email": "info@sealavieinn.com"
+      },
+      {
+        "name": "Sunway Ukulhas",
+        "type": "Guest House",
+        "phone": "7716804",
+        "email": "sunwayukulhas@gmail.com"
+      },
+      {
+        "name": "Trip Villa",
+        "type": "Guest House",
+        "phone": "7787864",
+        "email": "tripvillaukulhas@gmail.com"
+      },
+      {
+        "name": "Tropico Villa",
+        "type": "Guest House",
+        "phone": "9113001",
+        "email": "Info@tropicovilla.com"
+      },
+      {
+        "name": "Ukulhas Beach Villa",
+        "type": "Guest House",
+        "phone": "7774225",
+        "email": "eclipsemaldives@gmail.com"
+      },
+      {
+        "name": "Ukulhas Sands",
+        "type": "Guest House",
+        "phone": "7770306",
+        "email": "ukulhassands@gmail.com"
+      },
+      {
+        "name": "Villa Crescenta",
+        "type": "Guest House",
+        "phone": "9964600",
+        "email": "villacrescenta@gmail.com"
+      },
+      {
+        "name": "West Sands Ukulhas",
+        "type": "Guest House",
+        "phone": "9651515",
+        "email": "info@westsandsukulhas.com"
+      },
+      {
+        "name": "Coco Ukulhas Villa",
+        "type": "Home Stay",
+        "phone": "9668506",
+        "email": "mohamedn685@gmail.com"
+      },
+      {
+        "name": "Maafolhey Han'dhaan",
+        "type": "Home Stay",
+        "phone": "7737302",
+        "email": "adhunasir7373@gmail.com"
+      },
+      {
+        "name": "Pearls Apartments",
+        "type": "Home Stay",
+        "phone": "7903727 / 7953326",
+        "email": "info@pearlsapeartments.com"
+      },
+      {
+        "name": "Villa Boheme Maldives",
+        "type": "Home Stay",
+        "phone": "9662299",
+        "email": "Yakkoyasir@gmail.com"
+      }
+    ]
+  },
+  "Alifu Dhaalu": {
+    "Dhangethi": [
+      {
+        "name": "Antares Dhangethi",
+        "type": "Guest House",
+        "phone": "7773128\r\n9459191",
+        "email": "antaresdhangethi@gmail.com"
+      },
+      {
+        "name": "Aqua Luna Dhangethi",
+        "type": "Guest House",
+        "phone": "9986505",
+        "email": "maanu4as@gmail.com"
+      },
+      {
+        "name": "Ari Grand",
+        "type": "Guest House",
+        "phone": "9952524",
+        "email": "arali.pvt@outlook.com"
+      },
+      {
+        "name": "Atoll Residence Dhangethi",
+        "type": "Guest House",
+        "phone": "7917711",
+        "email": "info@atollresidence.com"
+      },
+      {
+        "name": "Banyan Villa",
+        "type": "Guest House",
+        "phone": "3339669\r\n7770256",
+        "email": "info@banyanvillamaldives.com"
+      },
+      {
+        "name": "Dhangethi Retreat",
+        "type": "Guest House",
+        "phone": "7622711",
+        "email": "nadeyz@live.com"
+      },
+      {
+        "name": "Handhu Runba Inn",
+        "type": "Guest House",
+        "phone": "7789556",
+        "email": "themehotels24@gmail.com"
+      },
+      {
+        "name": "Handhuveli Dhangethi",
+        "type": "Guest House",
+        "phone": "7773842",
+        "email": "abdhamydh@gmail.com"
+      },
+      {
+        "name": "Havaa Inn Dhangethi",
+        "type": "Guest House",
+        "phone": "7998815",
+        "email": "havainndhangethi@gmail.com"
+      },
+      {
+        "name": "Manta Dhangethi",
+        "type": "Guest House",
+        "phone": "7953434 / 7434561",
+        "email": "naaifx4910@gmail.com, aminathnathasha56@gmail.com"
+      },
+      {
+        "name": "Night Star Dhangethi",
+        "type": "Guest House",
+        "phone": "9165655",
+        "email": "nightstardhangethi@gmail.com"
+      },
+      {
+        "name": "Ocean Sunset",
+        "type": "Guest House",
+        "phone": "7708078",
+        "email": "molio7708078@gmail.com"
+      },
+      {
+        "name": "Paradise Found",
+        "type": "Guest House",
+        "phone": "9999912",
+        "email": "bestpricehardware@live.com"
+      },
+      {
+        "name": "Perla Dhangethi",
+        "type": "Guest House",
+        "phone": "7944229",
+        "email": "info@perladhangethi.com"
+      },
+      {
+        "name": "Raalhu Dhangethi",
+        "type": "Guest House",
+        "phone": "7443777",
+        "email": "rewavemaldives@outlook.com"
+      },
+      {
+        "name": "Royal Village",
+        "type": "Guest House",
+        "phone": "7917800",
+        "email": "haleem3102@gmail.com"
+      },
+      {
+        "name": "Sky View",
+        "type": "Guest House",
+        "phone": "7913746",
+        "email": "Vilasaboutique2021@gmail.com"
+      },
+      {
+        "name": "Thilavaru Inn",
+        "type": "Guest House",
+        "phone": "9555535",
+        "email": "fayyax00@outlook.com"
+      }
+    ],
+    "Dhidhdhoo": [
+      {
+        "name": "Alma Maldiva Guesthouse",
+        "type": "Guest House",
+        "phone": "9115225",
+        "email": "info@indicosecret.com"
+      },
+      {
+        "name": "Coconut Palm Dhidhoo",
+        "type": "Guest House",
+        "phone": "7726278",
+        "email": "rilley-2011@hotmail.com"
+      },
+      {
+        "name": "Dhontakuru Guest House",
+        "type": "Guest House",
+        "phone": "7688132",
+        "email": "haaaa198383@gmail.com: dhonthakuruge@gmail.com"
+      },
+      {
+        "name": "Dive and Sleep Retreat",
+        "type": "Guest House",
+        "phone": "7757088",
+        "email": "Info@diveandsleep.com"
+      },
+      {
+        "name": "Waterside Maldives",
+        "type": "Guest House",
+        "phone": "7774003",
+        "email": "stay@watersidemaldives.com"
+      }
+    ],
+    "Dhiffushi": [
+      {
+        "name": "Holiday Crib",
+        "type": "Guest House",
+        "phone": "7756789",
+        "email": "yourholidaycrib@gmail.com"
+      },
+      {
+        "name": "Holiday Home Dhiffushi",
+        "type": "Guest House",
+        "phone": "9933315",
+        "email": "holidayhomedhiffushi@gmail.com"
+      },
+      {
+        "name": "Island Serenity",
+        "type": "Guest House",
+        "phone": "7987552",
+        "email": "fathy-22@hotmail.com"
+      },
+      {
+        "name": "Maldivine Stay",
+        "type": "Guest House",
+        "phone": "7913075",
+        "email": "maldivinestay@gmail.com"
+      },
+      {
+        "name": "Moro Dhiffushi Maldives",
+        "type": "Guest House",
+        "phone": "7874096",
+        "email": "moromaldives@gmail.com"
+      },
+      {
+        "name": "Navaya Dhiffushi",
+        "type": "Guest House",
+        "phone": "7770465",
+        "email": "hello@navayadhiffushi.com"
+      },
+      {
+        "name": "Ruka Maldives",
+        "type": "Guest House",
+        "phone": "7994988",
+        "email": "rukamaldives@gmail.com"
+      }
+    ],
+    "Dhigurah": [
+      {
+        "name": "Akiri Dhigurah",
+        "type": "Guest House",
+        "phone": "9400098",
+        "email": "akiridhigurah@gmail.com"
+      },
+      {
+        "name": "Athiri Beach",
+        "type": "Guest House",
+        "phone": "9993510",
+        "email": "ali@athiri-beach.com"
+      },
+      {
+        "name": "Azul Retreat",
+        "type": "Guest House",
+        "phone": "7773479",
+        "email": "mamdhoon@gmail.com"
+      },
+      {
+        "name": "BB Island House",
+        "type": "Guest House",
+        "phone": "9739663",
+        "email": "bookings@boutiquebeach.club"
+      },
+      {
+        "name": "Beach Hot Dhigurah",
+        "type": "Guest House",
+        "phone": "7732900",
+        "email": "samee@atollkey.com"
+      },
+      {
+        "name": "Beach Lily Dhigurah",
+        "type": "Guest House",
+        "phone": "9999906",
+        "email": "noesiss.mv@outlook.com"
+      },
+      {
+        "name": "Bliss Dhigurah",
+        "type": "Guest House",
+        "phone": "7970123\r\n7201234",
+        "email": "info@bliss.mv"
+      },
+      {
+        "name": "Boutique Beach Guest House",
+        "type": "Guest House",
+        "phone": "9739663",
+        "email": "bookings@boutiquebeach.club"
+      },
+      {
+        "name": "Dhigurah Beach Inn",
+        "type": "Guest House",
+        "phone": "7606933",
+        "email": "dhigurahbeachinn@gmail.com"
+      },
+      {
+        "name": "Dhigurah Cottage ZamaaneeUfa",
+        "type": "Guest House",
+        "phone": "9398801",
+        "email": "dhigurahcottage@gmail.com"
+      },
+      {
+        "name": "Dhigurah Dhonveli Boutique",
+        "type": "Guest House",
+        "phone": "7800644",
+        "email": "dhigurahdhonveli@gmail.com"
+      },
+      {
+        "name": "Dhiguveli",
+        "type": "Guest House",
+        "phone": "7406000 / 7653732",
+        "email": "welcome@dhiguveli.com"
+      },
+      {
+        "name": "Dhiguveli Breeze",
+        "type": "Guest House",
+        "phone": "7994346",
+        "email": "info@macrosix.com"
+      },
+      {
+        "name": "Dhonfalhu Dhigurah",
+        "type": "Guest House",
+        "phone": "9400062",
+        "email": "dhonfalhudhigurah@gmail.com"
+      },
+      {
+        "name": "Finolhu Dhigurah",
+        "type": "Guest House",
+        "phone": "9867636",
+        "email": "Finolhudhigurah@gmail.com"
+      },
+      {
+        "name": "Haven Dhigurah",
+        "type": "Guest House",
+        "phone": "7988694",
+        "email": "info@empress.mv"
+      },
+      {
+        "name": "Horizon Dhigurah",
+        "type": "Guest House",
+        "phone": "9443233",
+        "email": "ahupalhey@gmail.com"
+      },
+      {
+        "name": "Infinity Beach Dhigurah",
+        "type": "Guest House",
+        "phone": "9885528",
+        "email": "infinitydhigurah@gmail.com"
+      },
+      {
+        "name": "Ithaa Dhigurah",
+        "type": "Guest House",
+        "phone": "9498880",
+        "email": "ithaadhigurah@gmail.com"
+      },
+      {
+        "name": "Loft Maldives",
+        "type": "Guest House",
+        "phone": "9826222",
+        "email": "maldivesloft@gmail.com"
+      },
+      {
+        "name": "Lofts by Bliss",
+        "type": "Guest House",
+        "phone": "7201234",
+        "email": "info@bliss.mv"
+      },
+      {
+        "name": "Lonuhiri",
+        "type": "Guest House",
+        "phone": "7992701",
+        "email": "info@lonuhiri.com"
+      },
+      {
+        "name": "Muraka Dhigurah",
+        "type": "Guest House",
+        "phone": "7884410",
+        "email": "stay@murakadhigurah.com"
+      },
+      {
+        "name": "Naares Inn Dhigurah",
+        "type": "Guest House",
+        "phone": "9123320",
+        "email": "admin@naaresinn.com"
+      },
+      {
+        "name": "Nikabliss",
+        "type": "Guest House",
+        "phone": "9103200",
+        "email": "info@nika-bliss.com"
+      },
+      {
+        "name": "Oasis Dhigurah",
+        "type": "Guest House",
+        "phone": "9980155",
+        "email": "oasisdhigurah@gmail.com"
+      },
+      {
+        "name": "Pearl Dhigurah",
+        "type": "Guest House",
+        "phone": "9799866 \r\n9867158",
+        "email": "pearldhigurah@gmail.com"
+      },
+      {
+        "name": "Raakani Dhigurah",
+        "type": "Guest House",
+        "phone": "7477222",
+        "email": "raakanidhigurah@gmail.com"
+      },
+      {
+        "name": "Ranveli Dhigurah",
+        "type": "Guest House",
+        "phone": "9881707",
+        "email": "usamathgasim@gmail.com"
+      },
+      {
+        "name": "Sands Grand",
+        "type": "Guest House",
+        "phone": "7772159",
+        "email": "yazeed@maldives-inc.com"
+      },
+      {
+        "name": "Seascape Retreats Dhigurah",
+        "type": "Guest House",
+        "phone": "9662023",
+        "email": "hello@seascapedhigurah.com"
+      },
+      {
+        "name": "Seaside Dhigurah",
+        "type": "Guest House",
+        "phone": "7824741",
+        "email": "stay@seasidedhigurah.com"
+      },
+      {
+        "name": "Serene Dhigurah",
+        "type": "Guest House",
+        "phone": "9490215",
+        "email": "serenedhigurah@gmail.com"
+      },
+      {
+        "name": "Sun Beach Dhigurah",
+        "type": "Guest House",
+        "phone": "7745277",
+        "email": "info@sunbeachdhigurah.com"
+      },
+      {
+        "name": "Sunny Stay Dhigurah",
+        "type": "Guest House",
+        "phone": "9702783",
+        "email": "hudhaa003@gmail.com"
+      },
+      {
+        "name": "Sunrise by White Sand Dhigurah",
+        "type": "Guest House",
+        "phone": "7931474",
+        "email": "reehan@whitesanddhigurah.com"
+      },
+      {
+        "name": "Sunwave Dhigurah",
+        "type": "Guest House",
+        "phone": "9192916",
+        "email": "sunwavedhigurah@gmail.com"
+      },
+      {
+        "name": "The Wave Dhigurah",
+        "type": "Guest House",
+        "phone": "7443777",
+        "email": "mohamednashidhassan@gmail.com"
+      },
+      {
+        "name": "Tides Dhigurah",
+        "type": "Guest House",
+        "phone": "7745277",
+        "email": "siyam031405@gmail.com"
+      },
+      {
+        "name": "TME Retreats Dhigurah",
+        "type": "Guest House",
+        "phone": "7949169",
+        "email": "reservations@tme.mv"
+      },
+      {
+        "name": "TME Retreats Dhigurah, Noovilu",
+        "type": "Guest House",
+        "phone": "6680890",
+        "email": "reservation@tme.mv"
+      },
+      {
+        "name": "Unwind Dhigurah",
+        "type": "Guest House",
+        "phone": "7988694",
+        "email": "unwind.dhigurah@gmail.com"
+      },
+      {
+        "name": "Whale Shark Beach",
+        "type": "Guest House",
+        "phone": "7909994",
+        "email": "shaheed@pneumatic.mv"
+      },
+      {
+        "name": "White Sand Dhigurah Guesthouse",
+        "type": "Guest House",
+        "phone": "7931474",
+        "email": "stay@whitesanddhigurah.com"
+      },
+      {
+        "name": "Boli Dhigurah",
+        "type": "Home Stay",
+        "phone": "7945848",
+        "email": "bolidhigurah@gmail.com"
+      },
+      {
+        "name": "Lagoon Dhigurah",
+        "type": "Home Stay",
+        "phone": "7993153",
+        "email": "lagoondhigurah@gmail.com"
+      },
+      {
+        "name": "TME Retreats Dhigurah Beach House",
+        "type": "Home Stay",
+        "phone": "6680890",
+        "email": "fayaz@tme.mv"
+      }
+    ],
+    "Fenfushi": [
+      {
+        "name": "Fushi Beach",
+        "type": "Guest House",
+        "phone": "7722222",
+        "email": "fushibeach@gmail.com"
+      },
+      {
+        "name": "Ocean Stay",
+        "type": "Guest House",
+        "phone": "9741444",
+        "email": "coralpointmv@gmail.com"
+      },
+      {
+        "name": "Whale Shark Boutique",
+        "type": "Guest House",
+        "phone": "7905165",
+        "email": "hatthu@gmail.com"
+      },
+      {
+        "name": "Whale Shark Villa",
+        "type": "Guest House",
+        "phone": "7905165",
+        "email": "hatthu@gmail.com"
+      },
+      {
+        "name": "White Tern Maldives",
+        "type": "Guest House",
+        "phone": "9498300",
+        "email": "reservations@whiteternmaldives.com"
+      }
+    ],
+    "Hangnaameedhoo": [
+      {
+        "name": "Ari Paradise",
+        "type": "Guest House",
+        "phone": "9553929\r\n7973929",
+        "email": "iqbal9553929@gmail.com"
+      },
+      {
+        "name": "Asia Inn",
+        "type": "Guest House",
+        "phone": "7415310\r\n9996632",
+        "email": "info@asiainn.com"
+      },
+      {
+        "name": "Beach Star Maldives",
+        "type": "Guest House",
+        "phone": "7638936",
+        "email": "beachstarmaldives@gmail.com"
+      },
+      {
+        "name": "Beach Vita Maldives",
+        "type": "Guest House",
+        "phone": "7638936",
+        "email": "beachvitamaldives@gmail.com"
+      },
+      {
+        "name": "By The Shade",
+        "type": "Guest House",
+        "phone": "7454443",
+        "email": "bytheshademv@gmail.com"
+      },
+      {
+        "name": "Detour Beach View",
+        "type": "Guest House",
+        "phone": "9993530",
+        "email": "info@detourmaldives.com"
+      },
+      {
+        "name": "Island Grand Maldives",
+        "type": "Guest House",
+        "phone": "9728781",
+        "email": "islandgrandmaldives@gmail.com"
+      },
+      {
+        "name": "Island Pavilion Adh. Hangnaameedhoo",
+        "type": "Guest House",
+        "phone": "7788041",
+        "email": "info@island-pavilion.com"
+      },
+      {
+        "name": "Local Travel Beach Maldives",
+        "type": "Guest House",
+        "phone": "9571801",
+        "email": "info.localtravel@gmail.com"
+      },
+      {
+        "name": "Ocean Beach Inn - Maldives",
+        "type": "Guest House",
+        "phone": "9710193",
+        "email": "book@oceanbeachmv.com"
+      },
+      {
+        "name": "Ocean Lilly Inn",
+        "type": "Guest House",
+        "phone": "7914643",
+        "email": "oceanlillyinn@gmail.com"
+      },
+      {
+        "name": "Solo Beach",
+        "type": "Guest House",
+        "phone": "7998695",
+        "email": "solobeach2024@gmail.com"
+      },
+      {
+        "name": "Sunset View Inn",
+        "type": "Guest House",
+        "phone": "9158572",
+        "email": "sunsetviewinn2021@gmail.com"
+      },
+      {
+        "name": "Tropical Escape Inn",
+        "type": "Guest House",
+        "phone": "9994319",
+        "email": "tropicalescapeinn@gmail.com"
+      },
+      {
+        "name": "VIVA Beach and Spa Maldives",
+        "type": "Guest House",
+        "phone": "7796938",
+        "email": "vivabeachmaldives@gmail.com"
+      },
+      {
+        "name": "Hikifas Beach Maldives",
+        "type": "Home Stay",
+        "phone": "9932981",
+        "email": "m.aslam81@hotmail.com"
+      }
+    ],
+    "Kunburudhoo": [
+      {
+        "name": "Suvaasa Inn",
+        "type": "Guest House",
+        "phone": "7884333",
+        "email": "suvaasainn@gmail.com"
+      }
+    ],
+    "Maamigili": [
+      {
+        "name": "Ari Residence",
+        "type": "Guest House",
+        "phone": "3333300 / 3344777",
+        "email": "info@villa.com.mv"
+      },
+      {
+        "name": "Hiyalee Inn",
+        "type": "Guest House",
+        "phone": "7759680",
+        "email": "hiyaleeinn@gmail.com"
+      },
+      {
+        "name": "Maaniya Palace",
+        "type": "Guest House",
+        "phone": "3333300 / 3344777",
+        "email": "info@villa.com.mv"
+      },
+      {
+        "name": "Oren",
+        "type": "Guest House",
+        "phone": "7952234",
+        "email": "oren.maldives@gmail.com"
+      },
+      {
+        "name": "Ranfaru Inn",
+        "type": "Guest House",
+        "phone": "7771060",
+        "email": "hirigazahir@gmail.com"
+      },
+      {
+        "name": "Shamar Guest House",
+        "type": "Guest House",
+        "phone": "7933404",
+        "email": "shamar.dive@gmail.com"
+      },
+      {
+        "name": "Tranquil by La Cabana Mamigili",
+        "type": "Guest House",
+        "phone": "9720115",
+        "email": "mohamed11322@gmail.com"
+      },
+      {
+        "name": "Vilu Residence @ Maamigili",
+        "type": "Guest House",
+        "phone": "7770974",
+        "email": "viluresidence@gmail.com"
+      },
+      {
+        "name": "White Sand Inn",
+        "type": "Guest House",
+        "phone": "7908821",
+        "email": "umarzahir1779@gmail.com"
+      },
+      {
+        "name": "Wish Maamigili",
+        "type": "Guest House",
+        "phone": "9777234",
+        "email": "info@wishmaamigili.com\r\nwishmaamigili@gmail.com"
+      }
+    ],
+    "Mahibadhoo": [
+      {
+        "name": "Dhamana Beach",
+        "type": "Guest House",
+        "phone": "7329228",
+        "email": "dhamanabeach@gmail.com"
+      },
+      {
+        "name": "Goby Lodge",
+        "type": "Guest House",
+        "phone": "9787073\r\n7787073",
+        "email": "goby777@gmail.com"
+      },
+      {
+        "name": "Karanka Villas",
+        "type": "Guest House",
+        "phone": "7772125",
+        "email": "kvillasmaldives@gmail.com"
+      },
+      {
+        "name": "Noovilu Suites",
+        "type": "Guest House",
+        "phone": "9119938",
+        "email": "noovilusuites@gmail.com"
+      },
+      {
+        "name": "Oceanvine",
+        "type": "Guest House",
+        "phone": "7916775",
+        "email": "info@oceanvinemaldives.com"
+      },
+      {
+        "name": "Raalhu Fonu Maldives",
+        "type": "Guest House",
+        "phone": "9942372",
+        "email": "raalhufonu@gmail.com"
+      },
+      {
+        "name": "Vilu Thari Inn Maldives",
+        "type": "Guest House",
+        "phone": "7715383",
+        "email": "viluthari-maldives@gmail.com"
+      }
+    ],
+    "Mandhoo": [
+      {
+        "name": "Infinite Lagoon Guest House",
+        "type": "Guest House",
+        "phone": "7839239",
+        "email": "infinitelagoon@gmail.com"
+      },
+      {
+        "name": "Fiyavalhu Maldives",
+        "type": "Hotel",
+        "phone": "6680066",
+        "email": "info@fiyavalhumaldives.com\r\n\r\nWebsite: https://fiyavalhumaldives.com/"
+      }
+    ],
+    "Omadhoo": [
+      {
+        "name": "Ahi Maldives",
+        "type": "Guest House",
+        "phone": "7907558",
+        "email": "ahimaldives@gmail.com"
+      },
+      {
+        "name": "Avenly Omadhoo",
+        "type": "Guest House",
+        "phone": "7776496",
+        "email": "hello@avenlymaldives.com"
+      },
+      {
+        "name": "Bird Beak Beach",
+        "type": "Guest House",
+        "phone": "7950013",
+        "email": "birdbeakbeach@gmail.com"
+      },
+      {
+        "name": "Green Leaf Omadhoo",
+        "type": "Guest House",
+        "phone": "9759909",
+        "email": "h.naaif.scott@gmail.com"
+      },
+      {
+        "name": "Hitha Maldives",
+        "type": "Guest House",
+        "phone": "9175075",
+        "email": "hithamaldives@gmail.com"
+      },
+      {
+        "name": "Kashiveli Omadhoo",
+        "type": "Guest House",
+        "phone": "7933222",
+        "email": "reservations@kashiveli.mv"
+      },
+      {
+        "name": "Kirulhiya Maldives",
+        "type": "Guest House",
+        "phone": "9621313",
+        "email": "kirulhiyamaldives@gmail.com"
+      },
+      {
+        "name": "Kuri Beach View Inn",
+        "type": "Guest House",
+        "phone": "7416965",
+        "email": "kuribeachvilla@gmail.com"
+      },
+      {
+        "name": "Kuri Inn",
+        "type": "Guest House",
+        "phone": "7416965\r\n7914119",
+        "email": "info@kuriinn.net\r\nkuriinngh@gmail.com"
+      },
+      {
+        "name": "Nemo Inn",
+        "type": "Guest House",
+        "phone": "9187555",
+        "email": "info@nemoinn.com"
+      },
+      {
+        "name": "Noomuraka Inn",
+        "type": "Guest House",
+        "phone": "7914628",
+        "email": "noomurakainn@gmail.com"
+      },
+      {
+        "name": "Omadhoo Coral View Inn",
+        "type": "Guest House",
+        "phone": "7751175 / 7745155",
+        "email": "info@coralviewinn.com"
+      },
+      {
+        "name": "Omadhoo Inn Grand",
+        "type": "Guest House",
+        "phone": "7779966",
+        "email": "info@omadhooinn.com"
+      },
+      {
+        "name": "Rayva Inn",
+        "type": "Guest House",
+        "phone": "9944978",
+        "email": "loince1234@gmail.com"
+      },
+      {
+        "name": "Sorenzo Maldives",
+        "type": "Guest House",
+        "phone": "7950013",
+        "email": "birdbeakbeach@gmail.com"
+      },
+      {
+        "name": "Swims Maldives",
+        "type": "Guest House",
+        "phone": "9905771",
+        "email": "swimsmaldives@gmail.com"
+      },
+      {
+        "name": "Turtle Maldives",
+        "type": "Guest House",
+        "phone": "7887979\r\n7904456\r\n9999197",
+        "email": "info@turtlemaldives.com"
+      },
+      {
+        "name": "Luma Boutique Stay",
+        "type": "Home Stay",
+        "phone": "9558888",
+        "email": "ibrahimnabyh@gmail.com"
+      },
+      {
+        "name": "Reethi Stay Omadhoo",
+        "type": "Home Stay",
+        "phone": "9713237",
+        "email": "reethistayomadhoo@gmail.com"
+      }
+    ]
+  },
+  "Baa": {
+    "Dharavandhoo": [
+      {
+        "name": "Aire Dharavandhoo",
+        "type": "Guest House",
+        "phone": "7774813",
+        "email": "asifriza@gmail.com"
+      },
+      {
+        "name": "Athirige",
+        "type": "Guest House",
+        "phone": "7792206",
+        "email": "ahmedrasheed26@live.com\r\nbisaprivatelimited@gmail.com"
+      },
+      {
+        "name": "Bageecha Stay",
+        "type": "Guest House",
+        "phone": "7771526",
+        "email": "bageechaguest@gmail.com"
+      },
+      {
+        "name": "Biosphere Beach",
+        "type": "Guest House",
+        "phone": "7904902",
+        "email": "hamdan.kendo@gmail.com"
+      },
+      {
+        "name": "Biosphere Inn",
+        "type": "Guest House",
+        "phone": "7792206",
+        "email": "info@biosphereinn.com"
+      },
+      {
+        "name": "Blue World Dharavandhoo",
+        "type": "Guest House",
+        "phone": "7778733",
+        "email": "info@blueworlddharavandhoo.com"
+      },
+      {
+        "name": "Chak'z 1964 Beach",
+        "type": "Guest House",
+        "phone": "9998391",
+        "email": "liminospvt@gmail.com"
+      },
+      {
+        "name": "Dharavandhoo Fishing Club",
+        "type": "Guest House",
+        "phone": "7991712",
+        "email": "drvfishingclub@gmail.com"
+      },
+      {
+        "name": "Faima Fishing Lodge",
+        "type": "Guest House",
+        "phone": "7776838\r\n7946494",
+        "email": "faimainvestments@gmail.com"
+      },
+      {
+        "name": "Fen Villa",
+        "type": "Guest House",
+        "phone": "9688999",
+        "email": "shuhailahmed@gmail.com"
+      },
+      {
+        "name": "Hanifaru Transit Inn",
+        "type": "Guest House",
+        "phone": "9857344\r\n7778238",
+        "email": "info@hanifarutransitinn.com"
+      },
+      {
+        "name": "Island Ufaa Dharavandhoo",
+        "type": "Guest House",
+        "phone": "9229966",
+        "email": "info@islandufaa.com"
+      },
+      {
+        "name": "Kiha Beach",
+        "type": "Guest House",
+        "phone": "7796699\r\n7761495",
+        "email": "info@kihabeach.com"
+      },
+      {
+        "name": "L.V.I.S Blancura",
+        "type": "Guest House",
+        "phone": "7793646",
+        "email": "info@lvishotels.com"
+      },
+      {
+        "name": "L.V.I.S Pool Villa",
+        "type": "Guest House",
+        "phone": "7793646",
+        "email": "info@lvishotels.com"
+      },
+      {
+        "name": "L.V.I.S Village",
+        "type": "Guest House",
+        "phone": "7793646",
+        "email": "info@lvishotels.com"
+      },
+      {
+        "name": "Manta Sky Inn",
+        "type": "Guest House",
+        "phone": "9884988",
+        "email": "mantaskyinn@gmail.com"
+      },
+      {
+        "name": "Oceara Dharavandhoo",
+        "type": "Guest House",
+        "phone": "9339772",
+        "email": "oceara2025@gmail.com"
+      },
+      {
+        "name": "Reposo View",
+        "type": "Guest House",
+        "phone": "7892951",
+        "email": "info@bellmaldives.com"
+      },
+      {
+        "name": "Turtle Inn Dharavandhoo",
+        "type": "Guest House",
+        "phone": "7772570",
+        "email": "imthiyaz@turtleinn.mv"
+      },
+      {
+        "name": "Anam Villa",
+        "type": "Home Stay",
+        "phone": "9556017",
+        "email": "stay@anamvilla.co"
+      }
+    ],
+    "Dhonfanu": [
+      {
+        "name": "Fehi Velaa Stay",
+        "type": "Guest House",
+        "phone": "7891917",
+        "email": "hu.ramyx@gmail.com"
+      },
+      {
+        "name": "Hudhu Velaa",
+        "type": "Guest House",
+        "phone": "9868282",
+        "email": "novinox@gmail.com"
+      }
+    ],
+    "Eydhafushi": [
+      {
+        "name": "Ale Sara Guest (Baa)",
+        "type": "Guest House",
+        "phone": "7416222",
+        "email": "alesarabaa@gmail.com"
+      }
+    ],
+    "Fehendhoo": [
+      {
+        "name": "Atholhu Residence",
+        "type": "Guest House",
+        "phone": "7422422",
+        "email": "hello@atholhuresidence.mv"
+      },
+      {
+        "name": "Coconut Drift Maldives",
+        "type": "Guest House",
+        "phone": "9565713",
+        "email": "coconutdriftmaldives@gmail.com"
+      },
+      {
+        "name": "Isla Retreat",
+        "type": "Guest House",
+        "phone": "7755900",
+        "email": "hello@islaretreat.com"
+      },
+      {
+        "name": "Scenic Grand",
+        "type": "Guest House",
+        "phone": "7776893",
+        "email": "inthi18@gmail.com"
+      },
+      {
+        "name": "Sky Village",
+        "type": "Guest House",
+        "phone": "7905342",
+        "email": "naeemu.mohamed@gmail.com"
+      },
+      {
+        "name": "Tropical Tree",
+        "type": "Guest House",
+        "phone": "7779293",
+        "email": "lirar9293@gmail.com"
+      },
+      {
+        "name": "Villa Soulmate",
+        "type": "Guest House",
+        "phone": "9651880",
+        "email": "merkulova-tatiana@yandex.ru \r\nInfo.mohamedsiyam@gmail.com"
+      },
+      {
+        "name": "Cove Fehendhoo",
+        "type": "Home Stay",
+        "phone": "7778720",
+        "email": "feedm@hotmail.com"
+      },
+      {
+        "name": "Magic Paradise Garden",
+        "type": "Home Stay",
+        "phone": "9745608",
+        "email": "info.mpgfehendhoo@gmail.com"
+      }
+    ],
+    "Finolhas": [
+      {
+        "name": "Amilla Fushi",
+        "type": "Hotel",
+        "phone": "6606444",
+        "email": "reserve@amilla.com\r\n\r\nWebsite: https://amilla.com/"
+      }
+    ],
+    "Fulhadhoo": [
+      {
+        "name": "Ahiva Village",
+        "type": "Guest House",
+        "phone": "9365914\r\n7783316",
+        "email": "info@ahivavillage.com"
+      },
+      {
+        "name": "Azoush Tourist Guesthouse",
+        "type": "Guest House",
+        "phone": "7976862 / 7776862",
+        "email": "azoushtours@gmail.com"
+      },
+      {
+        "name": "Faana Inn",
+        "type": "Guest House",
+        "phone": "7696569",
+        "email": "faanainn@gmail.com"
+      },
+      {
+        "name": "Island Luxury Dive",
+        "type": "Guest House",
+        "phone": "7772458",
+        "email": "ziyad@secretparadise.mv"
+      },
+      {
+        "name": "Island Luxury Fulhadhoo",
+        "type": "Guest House",
+        "phone": "7772458",
+        "email": "ziyad@islandluxury·mv"
+      },
+      {
+        "name": "Palms Retreat",
+        "type": "Guest House",
+        "phone": "7540793",
+        "email": "palmsretreat@gmail.com"
+      },
+      {
+        "name": "Three Heart Guest House",
+        "type": "Guest House",
+        "phone": "7783316",
+        "email": "threeheartsmaldives@yahoo.com"
+      },
+      {
+        "name": "Zen Inn Fulhadhoo",
+        "type": "Guest House",
+        "phone": "9998296",
+        "email": "sara@zeninnmaldives.com"
+      },
+      {
+        "name": "Aaru Inn",
+        "type": "Home Stay",
+        "phone": "7563242",
+        "email": "maumoon70@gmail.com"
+      },
+      {
+        "name": "Ahiva Suites",
+        "type": "Home Stay",
+        "phone": "9365914",
+        "email": "info@ahivavillage.com"
+      },
+      {
+        "name": "Baltic",
+        "type": "Home Stay",
+        "phone": "7783501 / 7781508",
+        "email": "ixnmaldives@gmail.com"
+      },
+      {
+        "name": "Beach Inn Fulhadhoo",
+        "type": "Home Stay",
+        "phone": "7772595",
+        "email": "beach.inn@outlook.com"
+      },
+      {
+        "name": "Frangipani Fulhadhoo",
+        "type": "Home Stay",
+        "phone": "7787992",
+        "email": "ahmedasif.7787992@gmail.com"
+      },
+      {
+        "name": "Gaskara Inn",
+        "type": "Home Stay",
+        "phone": "7782267",
+        "email": "mshainee@hotmail.com"
+      },
+      {
+        "name": "Jazeera Beach",
+        "type": "Home Stay",
+        "phone": "7716394",
+        "email": "saifullahrasheed57@gmail.com"
+      },
+      {
+        "name": "Lemuria Fulhadhoo",
+        "type": "Home Stay",
+        "phone": "7775808",
+        "email": "baafulhadhoo@gmail.com"
+      },
+      {
+        "name": "Marvel Stay Fulhadhoo",
+        "type": "Home Stay",
+        "phone": "7631323",
+        "email": "marvelstayfulhadhoo@gmail.com"
+      },
+      {
+        "name": "Pearl Villa",
+        "type": "Home Stay",
+        "phone": "7592543",
+        "email": "mojemalediwy@gmail.com"
+      },
+      {
+        "name": "The Fulhadhoo Beach Cottage",
+        "type": "Home Stay",
+        "phone": "7744825",
+        "email": "mohamed.m.adnan@hotmail.com"
+      },
+      {
+        "name": "Three Hearts Villas",
+        "type": "Home Stay",
+        "phone": "7783316",
+        "email": "threeheartsmaldives@yahoo.com"
+      },
+      {
+        "name": "Villa Laguna Maldives",
+        "type": "Home Stay",
+        "phone": "7950795",
+        "email": "faidha.saeed@gmail.com"
+      },
+      {
+        "name": "Villa Mia",
+        "type": "Home Stay",
+        "phone": "7792653",
+        "email": "ibrahim@medical-swiss.mv"
+      }
+    ],
+    "Goidhoo": [
+      {
+        "name": "Athiri Residence Goidhoo",
+        "type": "Guest House",
+        "phone": "9997535",
+        "email": "athiriresidences@gmail.com"
+      },
+      {
+        "name": "Island Zephyr",
+        "type": "Guest House",
+        "phone": "7795264",
+        "email": "senjpvtltd@gmail.com"
+      },
+      {
+        "name": "The Corbin Guest House",
+        "type": "Guest House",
+        "phone": "7655243",
+        "email": "imanfaisal10@outlook.com"
+      },
+      {
+        "name": "Ahiva Suites Goidhoo",
+        "type": "Home Stay",
+        "phone": "9365914",
+        "email": "info@ahivavillage.com"
+      },
+      {
+        "name": "Kinbi Private Villa",
+        "type": "Home Stay",
+        "phone": "7771651",
+        "email": "majid1037@gmail.com"
+      }
+    ],
+    "Hithaadhoo": [
+      {
+        "name": "Hithaa Inn & Spa",
+        "type": "Guest House",
+        "phone": "9811400",
+        "email": "ginamaamaldives@gmail.com"
+      },
+      {
+        "name": "Rindhali Stay",
+        "type": "Guest House",
+        "phone": "9966772",
+        "email": "hasybu@gmail.com"
+      }
+    ],
+    "Kadarikilu": [
+      {
+        "name": "Baa Sand Maldives",
+        "type": "Guest House",
+        "phone": "7777754",
+        "email": "info@baasand.mv"
+      },
+      {
+        "name": "Nihaali Maldives",
+        "type": "Guest House",
+        "phone": "7788035\r\n7788039",
+        "email": "nihaalimaldives@gmail.com"
+      }
+    ],
+    "Kamadhoo": [
+      {
+        "name": "Akomadoo",
+        "type": "Guest House",
+        "phone": "7791232",
+        "email": "hrmanager@fantasy.com.mv"
+      },
+      {
+        "name": "Biosphere by Hawks",
+        "type": "Guest House",
+        "phone": "7779133",
+        "email": "info@thehawks.biz\r\nhussainaman@thehawks.biz"
+      },
+      {
+        "name": "Cher Maldives",
+        "type": "Guest House",
+        "phone": "7775153",
+        "email": "info@chermaldives.com"
+      },
+      {
+        "name": "Go Kamadhoo",
+        "type": "Guest House",
+        "phone": "7915389",
+        "email": "themeinvestmv@gmail.com"
+      },
+      {
+        "name": "Hanifaru Beach Inn",
+        "type": "Guest House",
+        "phone": "7783265",
+        "email": "info@hanifarubeachinn.com"
+      },
+      {
+        "name": "Ithaa Inn Kamadhoo",
+        "type": "Guest House",
+        "phone": "9572244",
+        "email": "ithaainn.kamadhoo@gmail.com"
+      },
+      {
+        "name": "Kamadhoo Inn",
+        "type": "Guest House",
+        "phone": "7989721",
+        "email": "info@kamadhooinn.com"
+      },
+      {
+        "name": "La Plage Maldives",
+        "type": "Guest House",
+        "phone": "7598021",
+        "email": "islandtrevally@gmail.com"
+      },
+      {
+        "name": "Nest by Hawks",
+        "type": "Guest House",
+        "phone": "9680806",
+        "email": "info@mafhaa.com"
+      },
+      {
+        "name": "Seagrove Inn",
+        "type": "Guest House",
+        "phone": "7992048",
+        "email": "peace0177@gmail.com"
+      },
+      {
+        "name": "Silver Bay Kamadhoo",
+        "type": "Guest House",
+        "phone": "7777456",
+        "email": "shafeeq@theocean4.com"
+      },
+      {
+        "name": "Swarn By Hawks",
+        "type": "Guest House",
+        "phone": "7414324",
+        "email": "hussainaman@thehawks.biz\r\ninfo@mafhaa.com"
+      },
+      {
+        "name": "View Kamadhoo",
+        "type": "Guest House",
+        "phone": "7996612",
+        "email": "havaasme@gmail.com"
+      },
+      {
+        "name": "Wings by Hawks",
+        "type": "Guest House",
+        "phone": "9680806",
+        "email": "info@mafhaa.com"
+      },
+      {
+        "name": "White Tulip Inn",
+        "type": "Home Stay",
+        "phone": "7868114",
+        "email": "amji.amee@gmail.com"
+      }
+    ],
+    "Kendhoo": [
+      {
+        "name": "Dhoani Maldives Guesthouse",
+        "type": "Guest House",
+        "phone": "9839977",
+        "email": "contact@dhoanimaldives.com"
+      },
+      {
+        "name": "Fasdheythere Inn",
+        "type": "Guest House",
+        "phone": "9532599",
+        "email": "fasdheytheremaldives@gmail.com"
+      },
+      {
+        "name": "Kendhoo Holidays",
+        "type": "Guest House",
+        "phone": "7974432",
+        "email": "kendhooholidays@gmail.com"
+      },
+      {
+        "name": "The Blue Cave",
+        "type": "Guest House",
+        "phone": "7224327",
+        "email": "admin@alkahfmv.com"
+      }
+    ],
+    "Kihaadhoo": [
+      {
+        "name": "Amaria Maldives",
+        "type": "Guest House",
+        "phone": "9140788",
+        "email": "amariamaldives@gmail.com"
+      },
+      {
+        "name": "Kihaa Holiday Home",
+        "type": "Guest House",
+        "phone": "7795883",
+        "email": "reservations@kihaaholidays.com"
+      }
+    ],
+    "Maalhos": [
+      {
+        "name": "Fiya Inn",
+        "type": "Guest House",
+        "phone": "9994365",
+        "email": "fiyamaldives6@gmail.com"
+      },
+      {
+        "name": "Island Luxury Retreat",
+        "type": "Guest House",
+        "phone": "7772458",
+        "email": "info@islandluxury.mv"
+      },
+      {
+        "name": "Madi Giri",
+        "type": "Guest House",
+        "phone": "7250046",
+        "email": "madihotels@gmail.com"
+      },
+      {
+        "name": "Manta Reserve",
+        "type": "Guest House",
+        "phone": "7288881",
+        "email": "stay@mantareserve.com"
+      },
+      {
+        "name": "Moonshell Residence",
+        "type": "Guest House",
+        "phone": "7994931",
+        "email": "sales@opulencemaldives.com"
+      },
+      {
+        "name": "Thundi by Biosphere",
+        "type": "Guest House",
+        "phone": "7904902",
+        "email": "reservation1@thundivillage.com"
+      },
+      {
+        "name": "Thundi Ocean View",
+        "type": "Guest House",
+        "phone": "7757232",
+        "email": "oceanview@thundihotels.com"
+      },
+      {
+        "name": "Thundi Villa",
+        "type": "Guest House",
+        "phone": "7757232",
+        "email": "villa@thundihotles.com"
+      }
+    ]
+  },
+  "Dhaalu": {
+    "Bandidhoo": [
+      {
+        "name": "Dhonveli Inn",
+        "type": "Guest House",
+        "phone": "7970180",
+        "email": "info@dhonveliinn.com"
+      }
+    ],
+    "Hulhudheli": [
+      {
+        "name": "Hide Inn Blue",
+        "type": "Guest House",
+        "phone": "9187636",
+        "email": "hideinn.mv@gmail.com"
+      },
+      {
+        "name": "Hulhudheli Inn",
+        "type": "Guest House",
+        "phone": "9911774",
+        "email": "info@hulhudheli.com"
+      }
+    ],
+    "Kudahuvadhoo": [
+      {
+        "name": "Blue Wave Guest House",
+        "type": "Guest House",
+        "phone": "9999249",
+        "email": "shamyym@gmail.com"
+      },
+      {
+        "name": "Dhaalu Inn Kudahuvadhoo",
+        "type": "Guest House",
+        "phone": "7650653",
+        "email": "dhaaluinn@gmail.com"
+      },
+      {
+        "name": "Oceana Inn Maldives",
+        "type": "Guest House",
+        "phone": "7775998",
+        "email": "oceanamaldives@gmail.com"
+      }
+    ],
+    "Maaenboodhoo": [
+      {
+        "name": "Green Inn",
+        "type": "Guest House",
+        "phone": "7492422",
+        "email": "irfnnn@gmail.com"
+      },
+      {
+        "name": "Kokaa Villaa Maaenboodhoo",
+        "type": "Guest House",
+        "phone": "7774624",
+        "email": "sinaan111@gmail.com"
+      }
+    ],
+    "Ribidhoo": [
+      {
+        "name": "Villa Delfino",
+        "type": "Guest House",
+        "phone": "7783979",
+        "email": "admin@travel360maldives.com"
+      }
+    ]
+  },
+  "Faafu": {
+    "Feeali": [
+      {
+        "name": "Feeali Buddies Inn",
+        "type": "Guest House",
+        "phone": "9825191",
+        "email": "feealibuddieshotel@gmail.com"
+      }
+    ],
+    "Magoodhoo": [
+      {
+        "name": "Palm Rest - Magoodhoo",
+        "type": "Guest House",
+        "phone": "9992313 / 9559111",
+        "email": "ahmedshakir777@gmail.com\r\nzmisag@gmail.com"
+      }
+    ],
+    "Nilandhoo": [
+      {
+        "name": "Balma Beach Inn",
+        "type": "Guest House",
+        "phone": "9774115",
+        "email": "balmabeachinn@gmail.com"
+      },
+      {
+        "name": "Dhebanveli",
+        "type": "Guest House",
+        "phone": "7774649",
+        "email": "info@rhmaldives.com"
+      },
+      {
+        "name": "Orchid Inn Guest House",
+        "type": "Guest House",
+        "phone": "7979290",
+        "email": "jalyl.projects@gmail.com"
+      },
+      {
+        "name": "Remora by Magdalena",
+        "type": "Guest House",
+        "phone": "9711066",
+        "email": "info@magdalenatravels.com"
+      },
+      {
+        "name": "Remora Summer House",
+        "type": "Guest House",
+        "phone": "9711066",
+        "email": "info@magdalenatravels.com"
+      }
+    ]
+  },
+  "Gaafu Alifu": {
+    "Gemanafushi": [
+      {
+        "name": "Bougain Villa Guest House",
+        "type": "Guest House",
+        "phone": "7881313",
+        "email": "asimgem@gmail.com"
+      },
+      {
+        "name": "Coral Shine",
+        "type": "Guest House",
+        "phone": "9997735",
+        "email": "m.mubyyn@gmail.com"
+      },
+      {
+        "name": "Equator Sandy Beach",
+        "type": "Guest House",
+        "phone": "9830631",
+        "email": "equatorsandybeach@gmail.com"
+      }
+    ],
+    "Kolamaafushi": [
+      {
+        "name": "Oceanic Inn",
+        "type": "Guest House",
+        "phone": "7788401",
+        "email": "sales.elegantstream@gmail.com"
+      }
+    ],
+    "Kondey": [
+      {
+        "name": "Kondey Garden Villa",
+        "type": "Guest House",
+        "phone": "7773529",
+        "email": "ahmedjinahu@gmail.com"
+      },
+      {
+        "name": "Suncoral Maldives",
+        "type": "Guest House",
+        "phone": "7972220",
+        "email": "blackplanet3481@gmail.com"
+      }
+    ],
+    "Kooddoo": [
+      {
+        "name": "Mercure Maldives Kooddoo",
+        "type": "Hotel",
+        "phone": "6820003",
+        "email": "emmanuel.marion@accor.com"
+      }
+    ],
+    "Maamendhoo": [
+      {
+        "name": "Fishing Maldives Residence",
+        "type": "Guest House",
+        "phone": "9555255",
+        "email": "asadhullarasheed143@gmail.com"
+      },
+      {
+        "name": "Huvadhoo Lodge",
+        "type": "Guest House",
+        "phone": "9954903",
+        "email": "concave.maldives@gmail.com"
+      },
+      {
+        "name": "Village Life",
+        "type": "Guest House",
+        "phone": "7779924",
+        "email": "info@villagelifemaldives.com"
+      },
+      {
+        "name": "Village Life Residence",
+        "type": "Guest House",
+        "phone": "7779924",
+        "email": "info@villagelifemaldives.com"
+      }
+    ],
+    "Nilandhoo": [
+      {
+        "name": "Thigo Dreams",
+        "type": "Guest House",
+        "phone": "7638623",
+        "email": "thaaddey@gmail.com"
+      }
+    ],
+    "Villingili": [
+      {
+        "name": "Ekefaru Inn",
+        "type": "Guest House",
+        "phone": "7600945",
+        "email": "ekefaruinn@gmail.com"
+      },
+      {
+        "name": "Fathikoyhe",
+        "type": "Guest House",
+        "phone": "7514680",
+        "email": "syedbe1151@gmail.com"
+      },
+      {
+        "name": "Vision Inn",
+        "type": "Guest House",
+        "phone": "9991523",
+        "email": "visioninnn@gmail.com"
+      },
+      {
+        "name": "Blossom Inn",
+        "type": "Home Stay",
+        "phone": "9752424",
+        "email": "share.ishaan@gmail.com"
+      },
+      {
+        "name": "Vashi Inn",
+        "type": "Home Stay",
+        "phone": "9145243 / 9793206",
+        "email": "info@vashi.mv"
+      }
+    ]
+  },
+  "Gaafu Dhaalu": {
+    "Faresmaathodaa": [
+      {
+        "name": "Small Island Lodge",
+        "type": "Guest House",
+        "phone": "7933664",
+        "email": "smallislandlodge@gmail.com"
+      }
+    ],
+    "Fiyoaree": [
+      {
+        "name": "Sunset Private Villa",
+        "type": "Guest House",
+        "phone": "9996817",
+        "email": "kappi6817@gmail.com"
+      }
+    ],
+    "Gadhdhoo": [
+      {
+        "name": "Surf House By Konalle",
+        "type": "Guest House",
+        "phone": "7910215",
+        "email": "info@konalle.com"
+      }
+    ],
+    "Hoandehdhoo": [
+      {
+        "name": "FSS Residence",
+        "type": "Guest House",
+        "phone": "9655380",
+        "email": "fssmaldives@gmail.com"
+      },
+      {
+        "name": "Vaaruge Residence",
+        "type": "Guest House",
+        "phone": "9997411",
+        "email": "vaavugeresidence@gmail.com"
+      }
+    ],
+    "Rathafandhoo": [
+      {
+        "name": "Palm Tree Tourist Village",
+        "type": "Guest House",
+        "phone": "7990714",
+        "email": "palmtreerathafandhoo@gmail.com"
+      }
+    ],
+    "Vaadhoo": [
+      {
+        "name": "Alocasia Villa",
+        "type": "Guest House",
+        "phone": "7998903",
+        "email": "ahseyrialocasia@gmail.com"
+      },
+      {
+        "name": "Avanti Vaadhoo",
+        "type": "Guest House",
+        "phone": "9111190\r\n9774131",
+        "email": "sales@avantivaadhoo.com"
+      },
+      {
+        "name": "Laguna Retreat",
+        "type": "Guest House",
+        "phone": "9181227 / 9163634",
+        "email": "info@thelagunaretreat.com\r\nfunamabrothers@gmail.com"
+      }
+    ]
+  },
+  "Gnaviyani": {
+    "Fuvahmulah": [
+      {
+        "name": "Aariyaa View",
+        "type": "Guest House",
+        "phone": "7781629",
+        "email": "ibrahimdidi1629@gmail.com"
+      },
+      {
+        "name": "AIG Grand",
+        "type": "Guest House",
+        "phone": "7998195",
+        "email": "fortuneclasspvtltd@gmail.com"
+      },
+      {
+        "name": "Apex Fuvahmulah",
+        "type": "Guest House",
+        "phone": "7900966",
+        "email": "inah@pelagicdiversfuvahmulah.com"
+      },
+      {
+        "name": "Ataraxis Grand and Spa",
+        "type": "Guest House",
+        "phone": "7798390",
+        "email": "meenizar@gmail.com"
+      },
+      {
+        "name": "Calyx Boutique and Spa",
+        "type": "Guest House",
+        "phone": "7775078",
+        "email": "farzad.calyx@gmail.com"
+      },
+      {
+        "name": "Endhaa Divers Home",
+        "type": "Guest House",
+        "phone": "7783233",
+        "email": "mujura74@hotmail.com"
+      },
+      {
+        "name": "Equator Retreat",
+        "type": "Guest House",
+        "phone": "7796753",
+        "email": "equatorretreat@gmail.com"
+      },
+      {
+        "name": "Fuvahmulah Central",
+        "type": "Guest House",
+        "phone": "7970010",
+        "email": "info@fuvahmulahcentralhotel.com"
+      },
+      {
+        "name": "Hedheykuri Residence",
+        "type": "Guest House",
+        "phone": "7779208 / 7978495",
+        "email": "aan12342001@gmail.com"
+      },
+      {
+        "name": "Hikers Villa",
+        "type": "Guest House",
+        "phone": "7770611",
+        "email": "hikersvilla@gmail.com\r\natollhikers@gmail.com"
+      },
+      {
+        "name": "Isle Inn",
+        "type": "Guest House",
+        "phone": "9990392",
+        "email": "issayoh@gmail.com"
+      },
+      {
+        "name": "Isle Royal Inn",
+        "type": "Guest House",
+        "phone": "9511223",
+        "email": "isleroyalmv@gmail.com"
+      },
+      {
+        "name": "Maa Thundi",
+        "type": "Guest House",
+        "phone": "7783740",
+        "email": "dhimohd@gmail.com"
+      },
+      {
+        "name": "Ocean Pearl FVM",
+        "type": "Guest House",
+        "phone": "7557584",
+        "email": "Marketing@oceanpearlfvm.com"
+      },
+      {
+        "name": "Ocean Shark Inn",
+        "type": "Guest House",
+        "phone": "9711119",
+        "email": "dhimohd@gmail.com"
+      },
+      {
+        "name": "Sameydhaan Inn Fuvahmulah",
+        "type": "Guest House",
+        "phone": "7440702",
+        "email": "sameydhaan01gmail.com\r\nhello@sameydhaaninn.com"
+      },
+      {
+        "name": "Shark Lounge",
+        "type": "Guest House",
+        "phone": "7787360",
+        "email": "hello@sharkslounge.com."
+      },
+      {
+        "name": "Silver County",
+        "type": "Guest House",
+        "phone": "7665476",
+        "email": "hello@silvercountymv.com"
+      },
+      {
+        "name": "Suffix Retreat",
+        "type": "Guest House",
+        "phone": "7901719",
+        "email": "suffixretreat@outlook.com"
+      },
+      {
+        "name": "The Sandscape",
+        "type": "Guest House",
+        "phone": "7799363",
+        "email": "info@sandscape.mv"
+      },
+      {
+        "name": "Tiger Shark Retreat",
+        "type": "Guest House",
+        "phone": "9321001",
+        "email": "kevin@i-xsports.com"
+      },
+      {
+        "name": "Wanderlust Fuvahmulah",
+        "type": "Guest House",
+        "phone": "6865656",
+        "email": "kurimaa@outlook.com"
+      },
+      {
+        "name": "Zero Degree Residence",
+        "type": "Guest House",
+        "phone": "7610676 / 7657363",
+        "email": "info@zerodegree-residence.com"
+      },
+      {
+        "name": "Extreme Dive Inn Fuvahmulah",
+        "type": "Home Stay",
+        "phone": "7788130",
+        "email": "extremediveinn@gmail.com"
+      },
+      {
+        "name": "Holiday Home Fuvahmulah",
+        "type": "Home Stay",
+        "phone": "7775754",
+        "email": "holidayhomefvm@gmail.com"
+      },
+      {
+        "name": "Nasreenu Villa",
+        "type": "Home Stay",
+        "phone": "7269978",
+        "email": "zurarath.wafir@gmail.com"
+      },
+      {
+        "name": "Noya Inn",
+        "type": "Home Stay",
+        "phone": "7922500",
+        "email": "shafeenaadam3@gmail.com"
+      },
+      {
+        "name": "We 7 Stay",
+        "type": "Home Stay",
+        "phone": "7773894",
+        "email": "a.azeezismail@gmail.com"
+      }
+    ]
+  },
+  "Haa Alifu": {
+    "Dhidhdhoo": [
+      {
+        "name": "Dhidhdhooinn Beachview",
+        "type": "Guest House",
+        "phone": "9441491",
+        "email": "dhidhdhooinn@gmail.com"
+      },
+      {
+        "name": "Udhares Inn",
+        "type": "Guest House",
+        "phone": "7656766",
+        "email": "udaresinnmaldives@gmail.com"
+      }
+    ],
+    "Hoarafushi": [
+      {
+        "name": "Annama Lodge and Dive",
+        "type": "Guest House",
+        "phone": "7965140",
+        "email": "annamalodge@gmail.com"
+      },
+      {
+        "name": "Araaik Beach Village",
+        "type": "Guest House",
+        "phone": "9996064",
+        "email": "thowfeeq@gmail.com"
+      },
+      {
+        "name": "Manaam Residence",
+        "type": "Guest House",
+        "phone": "9999890",
+        "email": "aminathali672@gmail.com"
+      }
+    ],
+    "Kelaa": [
+      {
+        "name": "Beach Home Kelaa",
+        "type": "Guest House",
+        "phone": "7992882",
+        "email": "info@beachhomekelaa.com"
+      },
+      {
+        "name": "Holiday Home Kelaa",
+        "type": "Guest House",
+        "phone": "7917976",
+        "email": "info@holidayhomekelaa.mv"
+      },
+      {
+        "name": "Kokaa Residence",
+        "type": "Guest House",
+        "phone": "9975956",
+        "email": "kokaaresidences@gmail.com"
+      },
+      {
+        "name": "Shades of Blue",
+        "type": "Guest House",
+        "phone": "7783978",
+        "email": "ziyamysterio@gmail.com"
+      },
+      {
+        "name": "Summer Home",
+        "type": "Guest House",
+        "phone": "7793338",
+        "email": "info@summerhomekelaa.com"
+      },
+      {
+        "name": "Thooru Stay",
+        "type": "Guest House",
+        "phone": "7773470",
+        "email": "info@thooru.com"
+      }
+    ],
+    "Uligan": [
+      {
+        "name": "Uligan Marina Beach Maldives",
+        "type": "Guest House",
+        "phone": "7772100",
+        "email": "saleem@ctnt.com"
+      }
+    ],
+    "Utheemu": [
+      {
+        "name": "Utheemu Bahaaru Inn",
+        "type": "Guest House",
+        "phone": "7925060",
+        "email": "asrar.adam@gmail.com"
+      }
+    ],
+    "Vashafaru": [
+      {
+        "name": "Aquavilla by Aquaholic",
+        "type": "Guest House",
+        "phone": "7788088",
+        "email": "info@aquaholicmaldives.com"
+      },
+      {
+        "name": "Beach Inn Vashafaru",
+        "type": "Guest House",
+        "phone": "7795071",
+        "email": "scubagearmaldives@gmail.com"
+      },
+      {
+        "name": "Blue Coral Vashafaru Maldives",
+        "type": "Guest House",
+        "phone": "7329091",
+        "email": "bluecoralmaldives@gmail.com"
+      },
+      {
+        "name": "Casa Mia Inn Vashafaru",
+        "type": "Guest House",
+        "phone": "9896214",
+        "email": "casamiainn.vashafaru@gmail.com"
+      },
+      {
+        "name": "Oceano Beach Vashafaru",
+        "type": "Guest House",
+        "phone": "9900915",
+        "email": "info.oceanbeach@gmail.com"
+      },
+      {
+        "name": "Stay Vashafaru",
+        "type": "Guest House",
+        "phone": "9800524",
+        "email": "stayvashafaru.mv@gmail.com"
+      },
+      {
+        "name": "Vashafaru Inn",
+        "type": "Guest House",
+        "phone": "7798002",
+        "email": "stay@vashafaru.com"
+      },
+      {
+        "name": "Vashafaru Inn 2",
+        "type": "Guest House",
+        "phone": "7798002",
+        "email": "stay@vashafaru.com"
+      }
+    ]
+  },
+  "Haa Dhaalu": {
+    "Finey": [
+      {
+        "name": "Turtle Nest",
+        "type": "Guest House",
+        "phone": "9795351",
+        "email": "amjadabdul979@gmail.com"
+      }
+    ],
+    "Hanimaadhoo": [
+      {
+        "name": "Cerulean View",
+        "type": "Guest House",
+        "phone": "7691234",
+        "email": "reservations@ceruleanviewresidence.com"
+      },
+      {
+        "name": "Himeyn Beach Inn Maldives",
+        "type": "Guest House",
+        "phone": "9700041",
+        "email": "info@himeynbeach.com"
+      },
+      {
+        "name": "Tropical Lodge",
+        "type": "Guest House",
+        "phone": "7936133",
+        "email": "tropical.lodge.gt@gmail.com"
+      },
+      {
+        "name": "Vilu Veli Holiday Retreat",
+        "type": "Guest House",
+        "phone": "7283033",
+        "email": "info@viluveli.com"
+      },
+      {
+        "name": "The Barefoot Eco Hotel",
+        "type": "Hotel",
+        "phone": "6529000",
+        "email": "info@thebarefoot.com\r\n\r\nWebsite: https://www.thebarefoot.com/"
+      }
+    ],
+    "Kulhudhuffushi": [
+      {
+        "name": "Bahee Residence",
+        "type": "Home Stay",
+        "phone": "7771009",
+        "email": "ooba1009@gmail.com"
+      },
+      {
+        "name": "Beachside Homestay",
+        "type": "Home Stay",
+        "phone": "9882329",
+        "email": "luveyzaa@gmail.com"
+      }
+    ],
+    "Makunudhoo": [
+      {
+        "name": "Vinca Bloom",
+        "type": "Guest House",
+        "phone": "7904977",
+        "email": "ahmedrazy3702@gmail.com"
+      }
+    ],
+    "Naivaadhoo": [
+      {
+        "name": "Araam Inn",
+        "type": "Guest House",
+        "phone": "9728336",
+        "email": "manchali75@gmail.com"
+      }
+    ],
+    "Nolhivaranfaru": [
+      {
+        "name": "Ocean Voice Beach",
+        "type": "Guest House",
+        "phone": "7771322",
+        "email": "trips.maldives@icloud.com"
+      }
+    ],
+    "Vaikaradhoo": [
+      {
+        "name": "Boegas View",
+        "type": "Guest House",
+        "phone": "9445151",
+        "email": "waddy1981@yahoo.co.uk"
+      }
+    ]
+  },
+  "Kaafu": {
+    "Dhiffushi": [
+      {
+        "name": "Ameera Guest House",
+        "type": "Guest House",
+        "phone": "9648473",
+        "email": "info@ameeramaldives.com"
+      },
+      {
+        "name": "Araamu Holidays and Spa",
+        "type": "Guest House",
+        "phone": "6644554\r\n7991606\r\n7793437",
+        "email": "info@araamuholidays.com"
+      },
+      {
+        "name": "Athiri Residence Dhiffushi",
+        "type": "Guest House",
+        "phone": "9123388",
+        "email": "athiriresidences@gmail.com"
+      },
+      {
+        "name": "Club Kaafu",
+        "type": "Guest House",
+        "phone": "7779277",
+        "email": "clubkaafu@gmail.com"
+      },
+      {
+        "name": "Comfy Cool Breeze by eMzaz",
+        "type": "Guest House",
+        "phone": "7941001",
+        "email": "admin@emzaz.com"
+      },
+      {
+        "name": "Crown Beach Maldives",
+        "type": "Guest House",
+        "phone": "9123456",
+        "email": "hello@crownbeachhotel.com"
+      },
+      {
+        "name": "Dhiffushi Inn",
+        "type": "Guest House",
+        "phone": "9133958",
+        "email": "dhiffushi.inn@gmail.com"
+      },
+      {
+        "name": "Dhiffushi Inn Sea View",
+        "type": "Guest House",
+        "phone": "9985488",
+        "email": "dhiffushi.inn@gmail.com"
+      },
+      {
+        "name": "Dhiffushi Island Villa",
+        "type": "Guest House",
+        "phone": "7362179\r\n9835557",
+        "email": "dhiffushiislandvilla@gmail.com"
+      },
+      {
+        "name": "Dhiffushi Reef & Beach",
+        "type": "Guest House",
+        "phone": "7755965",
+        "email": "mairmaldives@gmail.com"
+      },
+      {
+        "name": "Dhiffushi Tourist",
+        "type": "Guest House",
+        "phone": "7774749",
+        "email": "dhiffushihotel@gmail.com"
+      },
+      {
+        "name": "Endorphins Beach Villa",
+        "type": "Guest House",
+        "phone": "9490215",
+        "email": "endorphinshotelspvtltd@gmail.com"
+      },
+      {
+        "name": "Heron Beach Dhiffushi",
+        "type": "Guest House",
+        "phone": "9906624 / 7777277",
+        "email": "sales@heronmaldives.com"
+      },
+      {
+        "name": "Isla Dhiffushi",
+        "type": "Guest House",
+        "phone": "7670100",
+        "email": "isla.dhiffushi@gmail.com"
+      },
+      {
+        "name": "Noorani Retreat",
+        "type": "Guest House",
+        "phone": "7774365",
+        "email": "maisoonfirag@gmail.com"
+      },
+      {
+        "name": "Ocean Villa",
+        "type": "Guest House",
+        "phone": "9123456",
+        "email": "hello@oceanvilladhiffushi.com"
+      },
+      {
+        "name": "Portia and Spa",
+        "type": "Guest House",
+        "phone": "7996163",
+        "email": "portiahotel@gmail.com"
+      },
+      {
+        "name": "Rashu Hiyaa",
+        "type": "Guest House",
+        "phone": "3326787\r\n7954904\r\n9667505",
+        "email": "info@rashuhiyaa.mv"
+      },
+      {
+        "name": "Seaside Beach Villa",
+        "type": "Guest House",
+        "phone": "7969197",
+        "email": "habeeb@fasfinntravel.com"
+      },
+      {
+        "name": "Si Beach House",
+        "type": "Guest House",
+        "phone": "3016669",
+        "email": "nabeel@edelweissventures.net"
+      },
+      {
+        "name": "Sky Beach Dhiffushi",
+        "type": "Guest House",
+        "phone": "6641001",
+        "email": "info@skybeach.com"
+      },
+      {
+        "name": "Stone Beach Club",
+        "type": "Guest House",
+        "phone": "9993411",
+        "email": "info@stonehotels.mv"
+      },
+      {
+        "name": "The Sunset Villa",
+        "type": "Guest House",
+        "phone": "7789197",
+        "email": "habeeb@fasfinntravel.com"
+      },
+      {
+        "name": "Velaa Vani Dhiffushi",
+        "type": "Guest House",
+        "phone": "9562271",
+        "email": "Velaavanidhiffushi@gmail.com"
+      },
+      {
+        "name": "Veli Vilaa",
+        "type": "Guest House",
+        "phone": "7781702",
+        "email": "info@velivilaa.com"
+      },
+      {
+        "name": "VillaBlu Dhiffushi",
+        "type": "Guest House",
+        "phone": "7864707",
+        "email": "hello@villablumaldives.com"
+      },
+      {
+        "name": "Stone Hotels Dhiffushi",
+        "type": "Hotel",
+        "phone": "3328888",
+        "email": "reservation@stonehotels.mv\r\npaul.benedict@stonehotels.com"
+      }
+    ],
+    "Gaafaru": [
+      {
+        "name": "Futtaru Sands",
+        "type": "Guest House",
+        "phone": "7834152",
+        "email": "mohamedsanih15@gmail.com"
+      },
+      {
+        "name": "Gaafaru View Inn Maldives",
+        "type": "Guest House",
+        "phone": "9417717",
+        "email": "gaafaruviewinn05@gmail.com"
+      },
+      {
+        "name": "Mariana Inn",
+        "type": "Guest House",
+        "phone": "9929926",
+        "email": "marketing@marianasafari.com"
+      },
+      {
+        "name": "Niru Isle Maldives",
+        "type": "Guest House",
+        "phone": "7999806",
+        "email": "niruislemaldives@gmail.com"
+      },
+      {
+        "name": "Old Town Inn",
+        "type": "Guest House",
+        "phone": "7775282 / 7786547",
+        "email": "oldtowninn.gaafaru@gmail.com"
+      },
+      {
+        "name": "Pavona Maldives",
+        "type": "Guest House",
+        "phone": "9171738",
+        "email": "hello@pavonamaldives.com"
+      },
+      {
+        "name": "Pearl Stay",
+        "type": "Guest House",
+        "phone": "7588232",
+        "email": "firaz1992@gmail.com"
+      },
+      {
+        "name": "Stay Salty",
+        "type": "Guest House",
+        "phone": "9169060",
+        "email": "staysaltymaldives@gmail.com"
+      },
+      {
+        "name": "Sunrise Lagoon",
+        "type": "Guest House",
+        "phone": "9589688",
+        "email": "riyattey009@gamil.com"
+      },
+      {
+        "name": "The Palm Retreat",
+        "type": "Guest House",
+        "phone": "9707335",
+        "email": "thepalmretreat23@gmail.com"
+      },
+      {
+        "name": "TideViewInn",
+        "type": "Guest House",
+        "phone": "7399969",
+        "email": "Coconutcovepvtltd@gmail.com"
+      },
+      {
+        "name": "Sunshine Stay @ Gaafaru",
+        "type": "Home Stay",
+        "phone": "9664080",
+        "email": "burulu180@gmail.com"
+      }
+    ],
+    "Gulhi": [
+      {
+        "name": "Aimi Beach",
+        "type": "Guest House",
+        "phone": "7793992",
+        "email": "aimibeachmv@gmail.com"
+      },
+      {
+        "name": "Aqua Gulhi",
+        "type": "Guest House",
+        "phone": "7779936",
+        "email": "Aquadigitalmediamv@gmail.com"
+      },
+      {
+        "name": "Aqua Sunset",
+        "type": "Guest House",
+        "phone": "7776931",
+        "email": "aquaholdingsmv@gmail.com"
+      },
+      {
+        "name": "Arrival Beach and Spa",
+        "type": "Guest House",
+        "phone": "7774965",
+        "email": "accounts@vtravelsmaldives.com"
+      },
+      {
+        "name": "Arrival Seaview",
+        "type": "Guest House",
+        "phone": "7774965",
+        "email": "accounts@vtravelsmaldives.com"
+      },
+      {
+        "name": "Avyanna Gulhi Beach",
+        "type": "Guest House",
+        "phone": "9988828",
+        "email": "marketing@avyannamaldives.com"
+      },
+      {
+        "name": "Ayala Homely",
+        "type": "Guest House",
+        "phone": "9664412",
+        "email": "sales@ayalamaldives.com"
+      },
+      {
+        "name": "Ayala Ocean View",
+        "type": "Guest House",
+        "phone": "9664412/6648001",
+        "email": "sales@ayalamaldives.com"
+      },
+      {
+        "name": "Beach Stone",
+        "type": "Guest House",
+        "phone": "7955002",
+        "email": "greatergomv@gmail.com"
+      },
+      {
+        "name": "Beach Walk Villa",
+        "type": "Guest House",
+        "phone": "9995111/7774664",
+        "email": "hamdhun@gmail.com\r\nbeachwalkmaldives@gmail.com"
+      },
+      {
+        "name": "Coquillage Inn",
+        "type": "Guest House",
+        "phone": "7778913",
+        "email": "mrashafeeq@gmail.com\r\nsearidemv@gmail.com"
+      },
+      {
+        "name": "Pearlshine Retreat Maldives",
+        "type": "Guest House",
+        "phone": "7373292",
+        "email": "pearlshinemaldives@gmail.com"
+      },
+      {
+        "name": "Premier Beach",
+        "type": "Guest House",
+        "phone": "9799866 / 9867157",
+        "email": "info@premierbeach.com.mv"
+      },
+      {
+        "name": "Sandy Heaven Maldives",
+        "type": "Guest House",
+        "phone": "7622582",
+        "email": "booking@sandyheavenmaldives.com"
+      },
+      {
+        "name": "Tropic Tree",
+        "type": "Guest House",
+        "phone": "7776483",
+        "email": "info@tropicxmaldives.com"
+      }
+    ],
+    "Guraidhoo": [
+      {
+        "name": "29.9",
+        "type": "Guest House",
+        "phone": "7941897",
+        "email": "laughf@gmail.com"
+      },
+      {
+        "name": "Adroit Sunset View",
+        "type": "Guest House",
+        "phone": "7776257",
+        "email": "adroitbeachinn@hotmail.com"
+      },
+      {
+        "name": "Athens View",
+        "type": "Guest House",
+        "phone": "7566353\r\n7786333",
+        "email": "athensviewmaldives@outlook.com"
+      },
+      {
+        "name": "Beach Heaven Guraidhoo",
+        "type": "Guest House",
+        "phone": "7877784",
+        "email": "ceo@silverlandinvestment.com"
+      },
+      {
+        "name": "Chambao Maldives",
+        "type": "Guest House",
+        "phone": "7372999",
+        "email": "info@chambaomaldives.com"
+      },
+      {
+        "name": "Coco Cottage Local Style",
+        "type": "Guest House",
+        "phone": "7720940",
+        "email": "cococottagemv@gmail.com"
+      },
+      {
+        "name": "Endheri Residence",
+        "type": "Guest House",
+        "phone": "7765214",
+        "email": "endheri.residence@gmail.com"
+      },
+      {
+        "name": "h78 Guraidhoo",
+        "type": "Guest House",
+        "phone": "7681686",
+        "email": "admin@hotel78maldives.com"
+      },
+      {
+        "name": "Hireath Island Home",
+        "type": "Guest House",
+        "phone": "9834373",
+        "email": "hassanshuhau55@gmail.com"
+      },
+      {
+        "name": "Iris Beach Residence",
+        "type": "Guest House",
+        "phone": "7784519",
+        "email": "info@irisbeachresidence.com"
+      },
+      {
+        "name": "Ithaa Beach",
+        "type": "Guest House",
+        "phone": "7772768",
+        "email": "ithaabeachmaldives@gmail.com"
+      },
+      {
+        "name": "Ithaa Seaview",
+        "type": "Guest House",
+        "phone": "7772768",
+        "email": "ithaabeachmaldives@gmail.com / hamdhaan888@gmail.com"
+      },
+      {
+        "name": "Kaafu Inn",
+        "type": "Guest House",
+        "phone": "9797991",
+        "email": "kaafuinn@gmail.com"
+      },
+      {
+        "name": "Lumeire Sands",
+        "type": "Guest House",
+        "phone": "7906446",
+        "email": "lumeireholidays@gmail.com"
+      },
+      {
+        "name": "Moodhumaa Inn",
+        "type": "Guest House",
+        "phone": "7941127",
+        "email": "moodhumaainn@gmail.com"
+      },
+      {
+        "name": "Ninos",
+        "type": "Guest House",
+        "phone": "9591724",
+        "email": "ninos.kguraidhoo@gmail.com"
+      },
+      {
+        "name": "Ocean Retreat and Spa",
+        "type": "Guest House",
+        "phone": "7777137\r\n7909137",
+        "email": "sales@oceanretreatandspa.com"
+      },
+      {
+        "name": "Palm Lagoon",
+        "type": "Guest House",
+        "phone": "7933326",
+        "email": "yoosufshareefhussain@gmail.com"
+      },
+      {
+        "name": "Rosy Villa",
+        "type": "Guest House",
+        "phone": "7870001\r\n7900999",
+        "email": "rosyvillapvtltd@gmail.com"
+      },
+      {
+        "name": "Rustic Villa",
+        "type": "Guest House",
+        "phone": "7772177",
+        "email": "shaax1977@gmail.com"
+      },
+      {
+        "name": "Valley Palm Seaview",
+        "type": "Guest House",
+        "phone": "7754042",
+        "email": "valleypalmseaview@gmail.com"
+      },
+      {
+        "name": "Mujavaz Studio Homes",
+        "type": "Home Stay",
+        "phone": "7423700",
+        "email": "dive@mujavazscuba.com"
+      }
+    ],
+    "Himmafushi": [
+      {
+        "name": "Aloha Beach Inn",
+        "type": "Guest House",
+        "phone": "9807713",
+        "email": "axxam1990@gmail.com"
+      },
+      {
+        "name": "Bahaaru Villa Himmafushi",
+        "type": "Guest House",
+        "phone": "9860550",
+        "email": "msarimrasheed@gmail.com"
+      },
+      {
+        "name": "Beach Coral Stay",
+        "type": "Guest House",
+        "phone": "9690074",
+        "email": "md.dreamadventure@gmail.com"
+      },
+      {
+        "name": "Bito's G.H",
+        "type": "Guest House",
+        "phone": "7979615",
+        "email": "reservations.bitos@gmail.com"
+      },
+      {
+        "name": "Cocomo Maldives",
+        "type": "Guest House",
+        "phone": "7757876",
+        "email": "info@cocomomaldives.com"
+      },
+      {
+        "name": "Funplace Beach",
+        "type": "Guest House",
+        "phone": "9890009",
+        "email": "funplacemaldives@gmail.com"
+      },
+      {
+        "name": "Grande Maldives Inn",
+        "type": "Guest House",
+        "phone": "7779615",
+        "email": "rvadevelop@gmail.com"
+      },
+      {
+        "name": "Heyleez Inn",
+        "type": "Guest House",
+        "phone": "7775357",
+        "email": "siraaj5357@gmail.com"
+      },
+      {
+        "name": "Hulha'ngu Lodge",
+        "type": "Guest House",
+        "phone": "7778453",
+        "email": "hulhangulodge@gmail.com"
+      },
+      {
+        "name": "Keveli Guesthouse",
+        "type": "Guest House",
+        "phone": "7416033",
+        "email": "mnashid2012@gmail.com"
+      },
+      {
+        "name": "Maavaharu Guest House",
+        "type": "Guest House",
+        "phone": "7793117",
+        "email": "ahmedabdullajameel@gmail.com"
+      },
+      {
+        "name": "Mango Stay",
+        "type": "Guest House",
+        "phone": "7727929\r\n7776604",
+        "email": "igu@techiereeef.com"
+      },
+      {
+        "name": "Moodhu Guest House",
+        "type": "Guest House",
+        "phone": "7925263",
+        "email": "hello@moodhumaldives.com"
+      },
+      {
+        "name": "Natural Vibe House",
+        "type": "Guest House",
+        "phone": "9805533",
+        "email": "obbmshiraan@gmail.com"
+      },
+      {
+        "name": "Noah Beach House",
+        "type": "Guest House",
+        "phone": "7750180",
+        "email": "info@noahbeachhouse.com"
+      },
+      {
+        "name": "Oya Maldives",
+        "type": "Guest House",
+        "phone": "9697543",
+        "email": "zimam@kleventi.com"
+      },
+      {
+        "name": "Serenity Inn",
+        "type": "Guest House",
+        "phone": "7674727",
+        "email": "twosense.tt@gmail.com"
+      },
+      {
+        "name": "Village Waves",
+        "type": "Guest House",
+        "phone": "7796696",
+        "email": "villagewaves.himmafushi@gmail.com"
+      },
+      {
+        "name": "Vilu Himmafushi",
+        "type": "Guest House",
+        "phone": "7772838",
+        "email": "vilumaldives@gmail.com"
+      },
+      {
+        "name": "Wave by Fazims",
+        "type": "Guest House",
+        "phone": "9470007",
+        "email": "info@wavebyfazims.com"
+      },
+      {
+        "name": "Yuvi Blue",
+        "type": "Guest House",
+        "phone": "7877784",
+        "email": "addmoh@gmail.com"
+      },
+      {
+        "name": "Avi Cabana",
+        "type": "Home Stay",
+        "phone": "4003050 / 7939601",
+        "email": "sales@localturemaldives.com"
+      },
+      {
+        "name": "Island Life Home Stay",
+        "type": "Home Stay",
+        "phone": "9756515",
+        "email": "usraibrahim@gmail.com"
+      }
+    ],
+    "Hulhule": [
+      {
+        "name": "Hulhule Island Hotel",
+        "type": "Hotel",
+        "phone": "3330888",
+        "email": "sales@hih.com.mv"
+      }
+    ],
+    "Huraa": [
+      {
+        "name": "Courtyard",
+        "type": "Guest House",
+        "phone": "7778277",
+        "email": "info@ikadmaldives.com"
+      },
+      {
+        "name": "Golden Turtle",
+        "type": "Guest House",
+        "phone": "9781010",
+        "email": "mochimochimaldives@gmail.com"
+      },
+      {
+        "name": "Green Villa Guest House Maldives",
+        "type": "Guest House",
+        "phone": "7709364",
+        "email": "abdul9364@gmail.com"
+      },
+      {
+        "name": "Kanbulo House Maldives",
+        "type": "Guest House",
+        "phone": "7841843",
+        "email": "kanbulohotelsmv@gmail.com"
+      },
+      {
+        "name": "Lukinn",
+        "type": "Guest House",
+        "phone": "7792896",
+        "email": "matheen2896@gmail.com\r\ninfo.lukinn@gmail.com"
+      },
+      {
+        "name": "Mangrove Inn Hura",
+        "type": "Guest House",
+        "phone": "7781704",
+        "email": "greengold.maldives@gmail.com"
+      },
+      {
+        "name": "Pearl Sands at Huraa",
+        "type": "Guest House",
+        "phone": "7785131",
+        "email": "ibbesaid2@gmail.com"
+      },
+      {
+        "name": "Sandy Stay",
+        "type": "Guest House",
+        "phone": "9955595",
+        "email": "mujuthabam@gmail.com"
+      },
+      {
+        "name": "Sea Breeze View",
+        "type": "Guest House",
+        "phone": "7789197",
+        "email": "habeeb@fasfinntravel.com"
+      },
+      {
+        "name": "Seaside Drift Maldives",
+        "type": "Guest House",
+        "phone": "9113355",
+        "email": "imuawiyath.adam@gmail.com"
+      },
+      {
+        "name": "Serenity Stay",
+        "type": "Guest House",
+        "phone": "9922285",
+        "email": "serenitystay2025@gmail.com"
+      },
+      {
+        "name": "Silver Oasis",
+        "type": "Guest House",
+        "phone": "9936629",
+        "email": "ali.sarumad@silveroasismaldives.com"
+      },
+      {
+        "name": "The Bilimbi",
+        "type": "Guest House",
+        "phone": "7721112\r\n9997489",
+        "email": "shafeu@icloud.com"
+      },
+      {
+        "name": "The R 1 Huraa",
+        "type": "Guest House",
+        "phone": "7791752",
+        "email": "megacorpt@gmail.com"
+      },
+      {
+        "name": "The Sunrise Huraa",
+        "type": "Guest House",
+        "phone": "7777080",
+        "email": "info.sunrisehuraa@gmail.com"
+      },
+      {
+        "name": "Treasure Island Lodge",
+        "type": "Guest House",
+        "phone": "9666366",
+        "email": "milhafathmath@gmail.com"
+      },
+      {
+        "name": "Valhali Guesthouse",
+        "type": "Guest House",
+        "phone": "7903479",
+        "email": "bookings@valhaliguesthouse.com"
+      },
+      {
+        "name": "Wish Guesthouse",
+        "type": "Guest House",
+        "phone": "7839660",
+        "email": "wishhotelhuraa@gmail.com"
+      }
+    ],
+    "Kaashidhoo": [
+      {
+        "name": "Bahaari Lodge",
+        "type": "Guest House",
+        "phone": "7794983",
+        "email": "ashraf7041@gmail.com"
+      },
+      {
+        "name": "Fari Lodge",
+        "type": "Guest House",
+        "phone": "9990592",
+        "email": "farilodge@gmail.com"
+      },
+      {
+        "name": "Happy Feet Inn",
+        "type": "Guest House",
+        "phone": "7209797",
+        "email": "haa-fix@hotmail.com"
+      },
+      {
+        "name": "K Inn",
+        "type": "Guest House",
+        "phone": "7922272 / 9999912",
+        "email": "bestpricehardware@live.com"
+      },
+      {
+        "name": "Palm Rest",
+        "type": "Guest House",
+        "phone": "7845212",
+        "email": "unsuenaas@gmail.com"
+      },
+      {
+        "name": "Sun View Residence",
+        "type": "Guest House",
+        "phone": "7725427",
+        "email": "sunviewresidence2021@gmail.com"
+      }
+    ],
+    "Maafushi": [
+      {
+        "name": "Alaika Maafushi",
+        "type": "Guest House",
+        "phone": "7791133",
+        "email": "alaila.pvt@gmail.com"
+      },
+      {
+        "name": "Arena Beach",
+        "type": "Guest House",
+        "phone": "7933231 / 7778599",
+        "email": "samih@arenabeachmaldives.com"
+      },
+      {
+        "name": "Arena Fushi Seaview",
+        "type": "Guest House",
+        "phone": "7778599",
+        "email": "samih@arenabeachmaldives.com"
+      },
+      {
+        "name": "Arena Grand Beach",
+        "type": "Guest House",
+        "phone": "7933231\r\n7778599",
+        "email": "samih@arenabeachmaldives.com"
+      },
+      {
+        "name": "Arena Veli Seaview",
+        "type": "Guest House",
+        "phone": "7778599",
+        "email": "samih@arenabeachmaldives.com"
+      },
+      {
+        "name": "Arora Inn",
+        "type": "Guest House",
+        "phone": "7999800",
+        "email": "arorainn@gmail.com"
+      },
+      {
+        "name": "Arora View",
+        "type": "Guest House",
+        "phone": "7998940",
+        "email": "arorainn@gmail.com"
+      },
+      {
+        "name": "Bliss Haven",
+        "type": "Guest House",
+        "phone": "9884417",
+        "email": "blisshavenmaldives@gmail.com"
+      },
+      {
+        "name": "Crystal Sands",
+        "type": "Guest House",
+        "phone": "3314350\r\n7790660",
+        "email": "stay@crystalsands.mv"
+      },
+      {
+        "name": "Fazaa View Inn",
+        "type": "Guest House",
+        "phone": "7776316",
+        "email": "zakittey161@gmail.com"
+      },
+      {
+        "name": "Four Coral",
+        "type": "Guest House",
+        "phone": "9228886",
+        "email": "reservations@fourcoral.com"
+      },
+      {
+        "name": "Green Vista",
+        "type": "Guest House",
+        "phone": "7428018",
+        "email": "badheeumaldives@gmail.com"
+      },
+      {
+        "name": "Icom Blue Seaview",
+        "type": "Guest House",
+        "phone": "7771931",
+        "email": "alirameez@icomtours.com"
+      },
+      {
+        "name": "iCom Marina Sea View",
+        "type": "Guest House",
+        "phone": "7771931",
+        "email": "info@icomtours.com"
+      },
+      {
+        "name": "Island Ambience",
+        "type": "Guest House",
+        "phone": "7730842",
+        "email": "cognitive.islands@gmail.com"
+      },
+      {
+        "name": "Kaani Beach",
+        "type": "Guest House",
+        "phone": "9889090",
+        "email": "info@kaanihotels.com"
+      },
+      {
+        "name": "Kaani Grand Seaview",
+        "type": "Guest House",
+        "phone": "9889090",
+        "email": "info@kaanihotels@.com"
+      },
+      {
+        "name": "Kaani Palm Beach",
+        "type": "Guest House",
+        "phone": "7771187\r\n7778493\r\n7988553",
+        "email": "info@kaanimaldives.com"
+      },
+      {
+        "name": "Kaani Village",
+        "type": "Guest House",
+        "phone": "9113626 / 3004838",
+        "email": "info@kaanibeach.com"
+      },
+      {
+        "name": "Kue Maafushi",
+        "type": "Guest House",
+        "phone": "9131623",
+        "email": "raidwaleed@gmail.com"
+      },
+      {
+        "name": "Kuredhi Beach Inn",
+        "type": "Guest House",
+        "phone": "9655500",
+        "email": "kuredhibeachinn@gmail.com"
+      },
+      {
+        "name": "Lagoona Sunset",
+        "type": "Guest House",
+        "phone": "9997657\r\n9552090",
+        "email": "haisham@gmail.com"
+      },
+      {
+        "name": "Lea Spa Maafushi",
+        "type": "Guest House",
+        "phone": "9911116",
+        "email": "asim@maafushidive.com"
+      },
+      {
+        "name": "Leisure Boutique",
+        "type": "Guest House",
+        "phone": "7776146",
+        "email": "admin@leisureboutiquehotel.com"
+      },
+      {
+        "name": "Merijaan Maldives",
+        "type": "Guest House",
+        "phone": "9799997",
+        "email": "merijaanmaldives@gmail.com"
+      },
+      {
+        "name": "Nala Island Village",
+        "type": "Guest House",
+        "phone": "7977702",
+        "email": "nalaislandvillage@gmail.com"
+      },
+      {
+        "name": "Ocean Vista",
+        "type": "Guest House",
+        "phone": "9897889",
+        "email": "oceanvistamaldives@gmail.com; ganyiynag@gmail.com"
+      },
+      {
+        "name": "Palm Grove Beach",
+        "type": "Guest House",
+        "phone": "7626631",
+        "email": "mvgladius@gmail.com"
+      },
+      {
+        "name": "Palmcasa",
+        "type": "Guest House",
+        "phone": "7332221",
+        "email": "reservations@palmcasa.com"
+      },
+      {
+        "name": "Pelican Beach Maafushi",
+        "type": "Guest House",
+        "phone": "7699914",
+        "email": "pelicanbeachmaldives@gmail.com"
+      },
+      {
+        "name": "Rehendhi Villa",
+        "type": "Guest House",
+        "phone": "7999798",
+        "email": "rehendhihotels@gmail.com"
+      },
+      {
+        "name": "Rosemary Boutique",
+        "type": "Guest House",
+        "phone": "7394401",
+        "email": "rosemarymaafushi@gmail.com"
+      },
+      {
+        "name": "Santorini Maafushi Maldives",
+        "type": "Guest House",
+        "phone": "7631128",
+        "email": "ahumdhu@hotmail.com"
+      },
+      {
+        "name": "SeasunBeach Maafushi",
+        "type": "Guest House",
+        "phone": "9784613",
+        "email": "seasunbeachmaldives@gmail.com"
+      },
+      {
+        "name": "Shadowpalm House Maldives",
+        "type": "Guest House",
+        "phone": "9822727 / 7199299",
+        "email": "rizkhaan.mohamed@gmail.com"
+      },
+      {
+        "name": "Solunar Maldives",
+        "type": "Guest House",
+        "phone": "7781557",
+        "email": "ashraf@mai-emi.com"
+      },
+      {
+        "name": "Stingray Beach Inn",
+        "type": "Guest House",
+        "phone": "7776806",
+        "email": "info@stingraybeachinn.com"
+      },
+      {
+        "name": "Summer Villa Guest House",
+        "type": "Guest House",
+        "phone": "7773087",
+        "email": "summervillamaldives@gmail.com"
+      },
+      {
+        "name": "Sunrise Beach",
+        "type": "Guest House",
+        "phone": "7360606",
+        "email": "info@sunrisebeachmaldives.com"
+      },
+      {
+        "name": "Sunshine View",
+        "type": "Guest House",
+        "phone": "7917504",
+        "email": "sunshineviewmaldives@gmail.com"
+      },
+      {
+        "name": "Triton Beach",
+        "type": "Guest House",
+        "phone": "7745448",
+        "email": "info@tritonbeachhotel.com"
+      },
+      {
+        "name": "Triton Exotica",
+        "type": "Guest House",
+        "phone": "7701273",
+        "email": "info@tritonmaldives.com"
+      },
+      {
+        "name": "Triton Prestige",
+        "type": "Guest House",
+        "phone": "7701273",
+        "email": "info@tritonhotelsandtours.com"
+      },
+      {
+        "name": "Velana Beach",
+        "type": "Guest House",
+        "phone": "7777765",
+        "email": "hello@visitvelana.com"
+      },
+      {
+        "name": "Velana Blu",
+        "type": "Guest House",
+        "phone": "7777765",
+        "email": "hello@visitvelana.com"
+      },
+      {
+        "name": "Water Seven",
+        "type": "Guest House",
+        "phone": "7793893",
+        "email": "watersevenmv@gmail.com"
+      },
+      {
+        "name": "Zinnia",
+        "type": "Guest House",
+        "phone": "7727227",
+        "email": "omniamaldivespvtltd@gmail.com"
+      }
+    ],
+    "Male'": [
+      {
+        "name": "Acacia Beach",
+        "type": "Guest House",
+        "phone": "7706696",
+        "email": "admin@acacia.mv"
+      },
+      {
+        "name": "Aina Residency",
+        "type": "Guest House",
+        "phone": "9322251",
+        "email": "hello@ainaresidency.mv"
+      },
+      {
+        "name": "Amber Beach",
+        "type": "Guest House",
+        "phone": "7789499",
+        "email": "huvan.maldives@gmail.com"
+      },
+      {
+        "name": "Amber Seaside",
+        "type": "Guest House",
+        "phone": "7784281",
+        "email": "hello@hotelamberseaside.com"
+      },
+      {
+        "name": "Avoca Inn",
+        "type": "Guest House",
+        "phone": "7773637",
+        "email": "info@avocainn.mv"
+      },
+      {
+        "name": "Beach Albatross",
+        "type": "Guest House",
+        "phone": "7764313",
+        "email": "huley0@gmail.com"
+      },
+      {
+        "name": "Beach Arena Inn",
+        "type": "Guest House",
+        "phone": "7771124",
+        "email": "bai@echzed.com"
+      },
+      {
+        "name": "Beach Breeze and Spa",
+        "type": "Guest House",
+        "phone": "7776360",
+        "email": "iwmaldives@gmail.com"
+      },
+      {
+        "name": "Beach Grand & Spa Premium",
+        "type": "Guest House",
+        "phone": "3351777\r\n7774411",
+        "email": "info@beachgrand.mv"
+      },
+      {
+        "name": "Beach Palace",
+        "type": "Guest House",
+        "phone": "3358898",
+        "email": "reservations@beachpalacemaldives.com"
+      },
+      {
+        "name": "Beehive Premier",
+        "type": "Guest House",
+        "phone": "4008004",
+        "email": "info@teatreehotels.mv"
+      },
+      {
+        "name": "Blue Sky Beach",
+        "type": "Guest House",
+        "phone": "7796655",
+        "email": "jelly_maldives@live.com"
+      },
+      {
+        "name": "Captains Inn and Spa",
+        "type": "Guest House",
+        "phone": "9178881",
+        "email": "clubvacaymaldives@gmail.com"
+      },
+      {
+        "name": "Cinque Retreat",
+        "type": "Guest House",
+        "phone": "9492512",
+        "email": "mariyamshameema786@gmail.com"
+      },
+      {
+        "name": "Club Blu",
+        "type": "Guest House",
+        "phone": "3350707",
+        "email": "reservations@clubblu.mv"
+      },
+      {
+        "name": "Coconut Tree Hulhuvilla Beach",
+        "type": "Guest House",
+        "phone": "3350929\r\n7772020",
+        "email": "reservations@coconuttreemaldives.com"
+      },
+      {
+        "name": "Cocotier Inn",
+        "type": "Guest House",
+        "phone": "9991232",
+        "email": "cocotierinvestments@gmail.com"
+      },
+      {
+        "name": "Dhimyaath Stay",
+        "type": "Guest House",
+        "phone": "3328920\r\n3322392\r\n3324381",
+        "email": "info@dhimyaath.mv"
+      },
+      {
+        "name": "Dream Sunset Beach and Spa",
+        "type": "Guest House",
+        "phone": "3356668",
+        "email": "dreamsunsetmv@outlook.com\r\nrifau8968@hotmail.com"
+      },
+      {
+        "name": "Express Inn",
+        "type": "Guest House",
+        "phone": "3354044",
+        "email": "expressinmv@gmail.com"
+      },
+      {
+        "name": "Flora Inn",
+        "type": "Guest House",
+        "phone": "3313412",
+        "email": "info.floradevelopers@gmail.com; reservations@florainnmale.com"
+      },
+      {
+        "name": "H78",
+        "type": "Guest House",
+        "phone": "3357878",
+        "email": "info@hotel78maldives.com"
+      },
+      {
+        "name": "H78 Iru",
+        "type": "Guest House",
+        "phone": "7459683",
+        "email": "info@hotel78maldives.com"
+      },
+      {
+        "name": "H78 Veli",
+        "type": "Guest House",
+        "phone": "3357878",
+        "email": "info@hotel78maldives.com"
+      },
+      {
+        "name": "Hathaa Beach Maldives",
+        "type": "Guest House",
+        "phone": "3352007/ 9981171",
+        "email": "hathaabeach@gmail.com"
+      },
+      {
+        "name": "HS Miracle Grand",
+        "type": "Guest House",
+        "phone": "3356009",
+        "email": "sales@hsmiracles.com"
+      },
+      {
+        "name": "HS Miracle View",
+        "type": "Guest House",
+        "phone": "3356058",
+        "email": "sales@hsmirales.com"
+      },
+      {
+        "name": "Huvan Beach",
+        "type": "Guest House",
+        "phone": "7784281",
+        "email": "huvan.maldives@gmail.com"
+      },
+      {
+        "name": "LemonRock Comfort",
+        "type": "Guest House",
+        "phone": "7771051",
+        "email": "cyryxshareef@hotmail.com"
+      },
+      {
+        "name": "Lonuveli",
+        "type": "Guest House",
+        "phone": "3350097\r\n7792701",
+        "email": "info@lonuveli.com \r\ninfo@ifcmv.com"
+      },
+      {
+        "name": "Marine Holiday",
+        "type": "Guest House",
+        "phone": "7937277",
+        "email": "dreamxmaldives@gmail.com"
+      },
+      {
+        "name": "Marukab Plaza",
+        "type": "Guest House",
+        "phone": "3314531",
+        "email": "sales@marukabplaza.com"
+      },
+      {
+        "name": "Moodhu Koe",
+        "type": "Guest House",
+        "phone": "7777859",
+        "email": "moodhukoe.mv@gmail.com"
+      },
+      {
+        "name": "Naaboli Inn",
+        "type": "Guest House",
+        "phone": "9958831",
+        "email": "hammanhassan88@gmail.com"
+      },
+      {
+        "name": "New Town Inn",
+        "type": "Guest House",
+        "phone": "3358696",
+        "email": "sales@newtowninn.com"
+      },
+      {
+        "name": "Niu Inn and Spa",
+        "type": "Guest House",
+        "phone": "9407777",
+        "email": "eurekamaldives@gmail.com"
+      },
+      {
+        "name": "Noo Moo",
+        "type": "Guest House",
+        "phone": "3355548",
+        "email": "reservations@itawtravels.com"
+      },
+      {
+        "name": "Noovila Grand",
+        "type": "Guest House",
+        "phone": "7776637",
+        "email": "khathim.hassan@gmail.com"
+      },
+      {
+        "name": "Ocean Grand",
+        "type": "Guest House",
+        "phone": "3355077 / 3355088",
+        "email": "operations@oceangrandmaldives.com"
+      },
+      {
+        "name": "Octave",
+        "type": "Guest House",
+        "phone": "3013030\r\n7783652",
+        "email": "reservations@hotel-octave-maldives.com"
+      },
+      {
+        "name": "Off Day Inn",
+        "type": "Guest House",
+        "phone": "3304838\r\n7738484",
+        "email": "info@offdaymaldives.com"
+      },
+      {
+        "name": "Orange Beach House",
+        "type": "Guest House",
+        "phone": "9889083",
+        "email": "ibrahialex36@gmail.com"
+      },
+      {
+        "name": "Palmscape",
+        "type": "Guest House",
+        "phone": "3352053 / 9800086",
+        "email": "nittte@gmail.com"
+      },
+      {
+        "name": "Paralian Hulhumale'",
+        "type": "Guest House",
+        "phone": "3359911",
+        "email": "manager@paralian.mv\r\nreservations@paralian.mv"
+      },
+      {
+        "name": "Pine Lodge Maldives",
+        "type": "Guest House",
+        "phone": "7970065",
+        "email": "office.pinemaldives@gmail.com"
+      },
+      {
+        "name": "Rara HM",
+        "type": "Guest House",
+        "phone": "7777753",
+        "email": "hulhumalerara@gmail.com"
+      },
+      {
+        "name": "Reagal Gardens",
+        "type": "Guest House",
+        "phone": "7774086",
+        "email": "mailto:saudulla4086@gmail.com"
+      },
+      {
+        "name": "Rij Hulhumale",
+        "type": "Guest House",
+        "phone": "3357788",
+        "email": "info@rijhotels.com"
+      },
+      {
+        "name": "Ripple Beach Inn",
+        "type": "Guest House",
+        "phone": "3352012\n7902012",
+        "email": "sales@ripplebeachinn.com"
+      },
+      {
+        "name": "Rise & Shine Lodge",
+        "type": "Guest House",
+        "phone": "7774222",
+        "email": "mirsaad@gmail.com"
+      },
+      {
+        "name": "Rivethi Beach Boutique",
+        "type": "Guest House",
+        "phone": "3352610",
+        "email": "reservations@rivethibeach.com"
+      },
+      {
+        "name": "Sala Boutique Residence",
+        "type": "Guest House",
+        "phone": "3345959",
+        "email": "info@salafamilymaldives.com"
+      },
+      {
+        "name": "Samann Blue",
+        "type": "Guest House",
+        "phone": "7728026",
+        "email": "admin@samann.com"
+      },
+      {
+        "name": "Samann Grand",
+        "type": "Guest House",
+        "phone": "7728026",
+        "email": "info@samanngrand.com"
+      },
+      {
+        "name": "Samann Host",
+        "type": "Guest House",
+        "phone": "3356688",
+        "email": "info@samannhost.com"
+      },
+      {
+        "name": "Seasalter Maldives Guest House",
+        "type": "Guest House",
+        "phone": "3350350\r\n7244000",
+        "email": "info@seasaltermaldives.com"
+      },
+      {
+        "name": "Season Holidays",
+        "type": "Guest House",
+        "phone": "3356681",
+        "email": "sh@luminousmaldives.com"
+      },
+      {
+        "name": "Six in Lodge",
+        "type": "Guest House",
+        "phone": "9669041",
+        "email": "aishath24277@gmail.com"
+      },
+      {
+        "name": "Skai Lodge",
+        "type": "Guest House",
+        "phone": "7791207",
+        "email": "manager@skailodge.com"
+      },
+      {
+        "name": "Star Shell",
+        "type": "Guest House",
+        "phone": "7790102",
+        "email": "fazal@mustore.mv"
+      },
+      {
+        "name": "Starry Beach Inn",
+        "type": "Guest House",
+        "phone": "9199555",
+        "email": "shifau00@gmail.com"
+      },
+      {
+        "name": "Summer Beach",
+        "type": "Guest House",
+        "phone": "3335550/ 7959592",
+        "email": "summerbeachmv@gmail.com"
+      },
+      {
+        "name": "Sunny Canopy",
+        "type": "Guest House",
+        "phone": "7999317",
+        "email": "info@sunnycanopy.com"
+      },
+      {
+        "name": "Sunny Suites Inn",
+        "type": "Guest House",
+        "phone": "7779853",
+        "email": "reservations@sunnysuitesinn.com"
+      },
+      {
+        "name": "Tenglong",
+        "type": "Guest House",
+        "phone": "9269187",
+        "email": "tenglonghotel01@gmail.com"
+      },
+      {
+        "name": "Terminal 27 Inn",
+        "type": "Guest House",
+        "phone": "7516485",
+        "email": "keystarmv@gmail.com"
+      },
+      {
+        "name": "The G Ten Holiday Inn",
+        "type": "Guest House",
+        "phone": "3350500\r\n7713481\r\n7777136",
+        "email": "eumax.mail@gmail.com"
+      },
+      {
+        "name": "The Grand View",
+        "type": "Guest House",
+        "phone": "3313338 / 3313339",
+        "email": "info@thegrandhotel.com.mv"
+      },
+      {
+        "name": "The Park House",
+        "type": "Guest House",
+        "phone": "3305501\r\n7774862",
+        "email": "INFO@THEPARKHOUSE.COM.MV"
+      },
+      {
+        "name": "The R One",
+        "type": "Guest House",
+        "phone": "7791752",
+        "email": "megacorpt@gmail.com"
+      },
+      {
+        "name": "The Somerset Guesthouse",
+        "type": "Guest House",
+        "phone": "3009090",
+        "email": "info@thesomerset.com.mv; reservations@thesomerset.com.mv"
+      },
+      {
+        "name": "The White Harp Inn",
+        "type": "Guest House",
+        "phone": "3355674\r\n7776678",
+        "email": "accounts@vtravelsmaldives.com"
+      },
+      {
+        "name": "Three Inn",
+        "type": "Guest House",
+        "phone": "3350303",
+        "email": "Res@threeinn.com"
+      },
+      {
+        "name": "Tour Inn",
+        "type": "Guest House",
+        "phone": "3004040",
+        "email": "infor@touristinnmaldives.com"
+      },
+      {
+        "name": "Tourist Inn",
+        "type": "Guest House",
+        "phone": "7860882",
+        "email": "info@touristinnmaldives.com"
+      },
+      {
+        "name": "Tourist Inn Grand",
+        "type": "Guest House",
+        "phone": "3319090",
+        "email": "info@touristinnmaldives.com"
+      },
+      {
+        "name": "Turquoise Residence",
+        "type": "Guest House",
+        "phone": "9862522",
+        "email": "mailto:info@uihotels.com"
+      },
+      {
+        "name": "Umet Seaview",
+        "type": "Guest House",
+        "phone": "3301005",
+        "email": "info@umetseaview.com\r\nadmin@umet.com.mv"
+      },
+      {
+        "name": "Unima Grand",
+        "type": "Guest House",
+        "phone": "4005005",
+        "email": "info@unimagrand.com\r\nreservation@unimagrand.com"
+      },
+      {
+        "name": "Vilu Central",
+        "type": "Guest House",
+        "phone": "7772838",
+        "email": "vilumaldives@gmail.com"
+      },
+      {
+        "name": "Vilu Rest",
+        "type": "Guest House",
+        "phone": "3352838",
+        "email": "sales@vilurest.com"
+      },
+      {
+        "name": "Vinorva",
+        "type": "Guest House",
+        "phone": "3399933\n7788595",
+        "email": "mv@vinorvamaldives.com"
+      },
+      {
+        "name": "Vista Beach Retreat",
+        "type": "Guest House",
+        "phone": "3350955",
+        "email": "manager@vistabeachretreat.com"
+      },
+      {
+        "name": "White Beach Holiday",
+        "type": "Guest House",
+        "phone": "7774149",
+        "email": "wbeachholiday@gmail.com"
+      },
+      {
+        "name": "White Tern Residence",
+        "type": "Guest House",
+        "phone": "3357711",
+        "email": "aslam@insideout.mv"
+      },
+      {
+        "name": "Astria Homes",
+        "type": "Home Stay",
+        "phone": "7910686",
+        "email": "shadhuu@gmail.com"
+      },
+      {
+        "name": "Beach Stay by Wahuj Maldives",
+        "type": "Home Stay",
+        "phone": "9925925",
+        "email": "beachstay.wahujmaldives@gmail.com"
+      },
+      {
+        "name": "Biosphere Haus",
+        "type": "Home Stay",
+        "phone": "7904902",
+        "email": "hamdan.kendo@gmail.com"
+      },
+      {
+        "name": "Blue Crystal View",
+        "type": "Home Stay",
+        "phone": "7782294 / 7776884",
+        "email": "shassan@antracholding.com"
+      },
+      {
+        "name": "Bodu Ashi Maldives",
+        "type": "Home Stay",
+        "phone": "7776725",
+        "email": "fathmathnasheeda@gmail.com"
+      },
+      {
+        "name": "Dhonveli Stay",
+        "type": "Home Stay",
+        "phone": "9980815",
+        "email": "info@luckycool.org"
+      },
+      {
+        "name": "Lazzlla Apartments",
+        "type": "Home Stay",
+        "phone": "9905927 / 9910999",
+        "email": "lazzllamaldives@gmail.com"
+      },
+      {
+        "name": "Leviq Inn",
+        "type": "Home Stay",
+        "phone": "7239222",
+        "email": "abaaaibrahim@gmail.com"
+      },
+      {
+        "name": "Mundoo Stay",
+        "type": "Home Stay",
+        "phone": "7773097",
+        "email": "mohamed.naiph@gmail.com"
+      },
+      {
+        "name": "Nala Host",
+        "type": "Home Stay",
+        "phone": "7994322",
+        "email": "aish191@gmail.com"
+      },
+      {
+        "name": "Nashee Home Stay",
+        "type": "Home Stay",
+        "phone": "7772035",
+        "email": "natuaboo@gmail.com"
+      },
+      {
+        "name": "Oceanlux Maldives",
+        "type": "Home Stay",
+        "phone": "9747454, 7706655",
+        "email": "oceanluxmaldives@gmail.com"
+      },
+      {
+        "name": "Ontrack Home Stay",
+        "type": "Home Stay",
+        "phone": "3323493",
+        "email": "cruises@ontrack.com.mv"
+      },
+      {
+        "name": "Pulsera Beach Residences",
+        "type": "Home Stay",
+        "phone": "7848877\r\n7962705",
+        "email": "sales@circleshospitality.com"
+      },
+      {
+        "name": "Reef House by Sibia Maldives",
+        "type": "Home Stay",
+        "phone": "7988991",
+        "email": "sibiamaldives@gmail.com"
+      },
+      {
+        "name": "Resting View",
+        "type": "Home Stay",
+        "phone": "7788612",
+        "email": "soby1_hotty@hotmail.com"
+      },
+      {
+        "name": "Riviera Cove",
+        "type": "Home Stay",
+        "phone": "7786988",
+        "email": "abdullashihanyoosuf@gmail.com"
+      },
+      {
+        "name": "RizqInn 2",
+        "type": "Home Stay",
+        "phone": "9522896\r\n7792031\r\n7942896",
+        "email": "booking@rizqinmaldives.com"
+      },
+      {
+        "name": "Rooftop Inn",
+        "type": "Home Stay",
+        "phone": "7915555",
+        "email": "inventiveconsultingmv@gmail.com"
+      },
+      {
+        "name": "Seasera Home",
+        "type": "Home Stay",
+        "phone": "7901994 / 9544459",
+        "email": "hello@seaserahomes.com\r\nemboss.mv@gmail.com"
+      },
+      {
+        "name": "Sunrise Stay",
+        "type": "Home Stay",
+        "phone": "9141404",
+        "email": "hello@digitalcoral.mv"
+      },
+      {
+        "name": "Tripto Inn",
+        "type": "Home Stay",
+        "phone": "7774390",
+        "email": "zaainvestment2014@gmail.com"
+      },
+      {
+        "name": "Urban Stays By Empress",
+        "type": "Home Stay",
+        "phone": "7772673 / 7789669",
+        "email": "urbanstays.empress@gmail.com"
+      },
+      {
+        "name": "Wait N Sea",
+        "type": "Home Stay",
+        "phone": "7301312",
+        "email": "m_solution@maldives.com.mv"
+      },
+      {
+        "name": "Wind Stay",
+        "type": "Home Stay",
+        "phone": "7771254",
+        "email": "windstay.mv@gmail.com"
+      },
+      {
+        "name": "Yanaya Stay",
+        "type": "Home Stay",
+        "phone": "7907475 / 7773983",
+        "email": "yanaya0890@gmail.com"
+      },
+      {
+        "name": "Barcelo Nasandhura Male'",
+        "type": "Hotel",
+        "phone": "3313000",
+        "email": "nasandhuramale.info@barcelo.com"
+      },
+      {
+        "name": "Champa Central Hotel",
+        "type": "Hotel",
+        "phone": "3317766",
+        "email": "reservations@champacentralhotel.com"
+      },
+      {
+        "name": "Hotel Flora",
+        "type": "Hotel",
+        "phone": "7775041 / 7517552",
+        "email": "info.floradevelopers@gmail.com /\r\nwww.hotelfloramale.com"
+      },
+      {
+        "name": "Hotel Jen Male', Maldives",
+        "type": "Hotel",
+        "phone": "3321378",
+        "email": "saud.abdullah@shangri-la.com"
+      },
+      {
+        "name": "Maagiri Hotel",
+        "type": "Hotel",
+        "phone": "3318484\r\n7944146\r\n7710309",
+        "email": "info@maagirihotel.com"
+      },
+      {
+        "name": "Manhattan Business Hotel",
+        "type": "Hotel",
+        "phone": "3009777 / 3317770",
+        "email": "reservations@manhattanbusinesshotel.com\r\nibr.naeem@gmail.com"
+      },
+      {
+        "name": "Mookai Hotel",
+        "type": "Hotel",
+        "phone": "3338811",
+        "email": "mookai@dhivehinet.net.mv"
+      }
+    ],
+    "Thulusdhoo": [
+      {
+        "name": "Aasna Inn",
+        "type": "Guest House",
+        "phone": "7938180",
+        "email": "aasnainn-maldives@gmail.com"
+      },
+      {
+        "name": "Amazonite Guesthouse",
+        "type": "Guest House",
+        "phone": "7945432",
+        "email": "aminathusama1@gmail.com"
+      },
+      {
+        "name": "Batuta Maldives Surf View",
+        "type": "Guest House",
+        "phone": "7999084",
+        "email": "batutamaldivessurfview@gmail.com"
+      },
+      {
+        "name": "Blissview Maldives",
+        "type": "Guest House",
+        "phone": "7776480",
+        "email": "sales@blissviewmaldives.com"
+      },
+      {
+        "name": "Blue Haven Retreat",
+        "type": "Guest House",
+        "phone": "7710123",
+        "email": "bluehavenretreat7@gmail.com"
+      },
+      {
+        "name": "Canopus Retreat Thulusdhoo",
+        "type": "Guest House",
+        "phone": "9878833",
+        "email": "thulusdhoo@canopusretreats.com"
+      },
+      {
+        "name": "Coconut Surf",
+        "type": "Guest House",
+        "phone": "7481149",
+        "email": "hello@coconutsurfmaldives.com"
+      },
+      {
+        "name": "Coral Inn",
+        "type": "Guest House",
+        "phone": "7657056",
+        "email": "coralinn.mv@gmail.com\r\nhello@coralinn.mv"
+      },
+      {
+        "name": "Dhoadhi Retreat",
+        "type": "Guest House",
+        "phone": "7715322",
+        "email": "dhoadhi.retreat@gmail.com"
+      },
+      {
+        "name": "Dream Inn @ Thulusdhoo",
+        "type": "Guest House",
+        "phone": "7927971 / 7775044",
+        "email": "hello@dreaminn.mv"
+      },
+      {
+        "name": "Eden Blue",
+        "type": "Guest House",
+        "phone": "7779317",
+        "email": "vacanzaexpressmaldives@gmail.com"
+      },
+      {
+        "name": "Empyrean Stay",
+        "type": "Guest House",
+        "phone": "7943221/7830790",
+        "email": "empyreanstay@gmail.com"
+      },
+      {
+        "name": "Iru Guest House",
+        "type": "Guest House",
+        "phone": "9807987",
+        "email": "irumaldives@outlook.com"
+      },
+      {
+        "name": "Kudhi Boli Beach House",
+        "type": "Guest House",
+        "phone": "7976651",
+        "email": "ayazu79@gmail.com"
+      },
+      {
+        "name": "Kuredhi View",
+        "type": "Guest House",
+        "phone": "7778614",
+        "email": "asalym304@gmail.com"
+      },
+      {
+        "name": "La Due Thulusdhoo",
+        "type": "Guest House",
+        "phone": "9746423",
+        "email": "craxy143@gmail.com"
+      },
+      {
+        "name": "Ocean Blue Lagoon",
+        "type": "Guest House",
+        "phone": "9988828",
+        "email": "contact@oceanspheremaldives.com"
+      },
+      {
+        "name": "Palm Gate",
+        "type": "Guest House",
+        "phone": "7798641",
+        "email": "nalabadhi@gmail.com"
+      },
+      {
+        "name": "Reef Edge",
+        "type": "Guest House",
+        "phone": "7803678",
+        "email": "info@plankton.com.mv"
+      },
+      {
+        "name": "Reinforce Residence",
+        "type": "Guest House",
+        "phone": "7974477",
+        "email": "reinforceresidence@gmail.com"
+      },
+      {
+        "name": "Samaik Thulusdhoo Inn",
+        "type": "Guest House",
+        "phone": "7321554",
+        "email": "hello@samaik.mv"
+      },
+      {
+        "name": "Samura Maldives",
+        "type": "Guest House",
+        "phone": "9732922",
+        "email": "samuramaldives@gmail.com"
+      },
+      {
+        "name": "Samura Panorama",
+        "type": "Guest House",
+        "phone": "7602232",
+        "email": "samurapanorama@gmail.com"
+      },
+      {
+        "name": "Season Paradise",
+        "type": "Guest House",
+        "phone": "9555889",
+        "email": "info@seasonparadise.mv"
+      },
+      {
+        "name": "Sun and Surf",
+        "type": "Guest House",
+        "phone": "7955410",
+        "email": "raalhu.im@gmail.com"
+      },
+      {
+        "name": "Surf Trip Maldives",
+        "type": "Guest House",
+        "phone": "7778955",
+        "email": "marketing@canopusmaldives.com"
+      },
+      {
+        "name": "Tropical Stay",
+        "type": "Guest House",
+        "phone": "7987770",
+        "email": "tropcal.stay@gmail.com"
+      },
+      {
+        "name": "Twin Palms Beach House",
+        "type": "Guest House",
+        "phone": "9285602",
+        "email": "info@twinpalmssurfhouse.com"
+      },
+      {
+        "name": "Twin Palms Surfhouse",
+        "type": "Guest House",
+        "phone": "9700034",
+        "email": "info@twinpalmssurfhouse.com"
+      },
+      {
+        "name": "Villa Kudi Maldives",
+        "type": "Guest House",
+        "phone": "9565713",
+        "email": "villakudi@gmail.com"
+      },
+      {
+        "name": "Wave Crest Residence",
+        "type": "Guest House",
+        "phone": "7792522",
+        "email": "nasih@uimaldives.com"
+      },
+      {
+        "name": "Wave Crest Retreat",
+        "type": "Guest House",
+        "phone": "7792522",
+        "email": "nasih@uimaldives.com"
+      }
+    ]
+  },
+  "Laamu": {
+    "Gan": [
+      {
+        "name": "Clouds Beach Retreat Laamu",
+        "type": "Guest House",
+        "phone": "7997220",
+        "email": "ismailamir3@gmail.com"
+      },
+      {
+        "name": "Long Beach Laamu",
+        "type": "Guest House",
+        "phone": "7786859",
+        "email": "longbeachlaamu@gmail.com"
+      },
+      {
+        "name": "Nazaki Residences",
+        "type": "Guest House",
+        "phone": "7958855\r\n9660011",
+        "email": "nazaki@nazaki.com; admin@nazaki.com"
+      },
+      {
+        "name": "Reveries Diving Village",
+        "type": "Guest House",
+        "phone": "6808866",
+        "email": "info@reveriesmaldives.com"
+      },
+      {
+        "name": "Sunsetvilla",
+        "type": "Guest House",
+        "phone": "7668022",
+        "email": "maagahainvestment@gmail.com"
+      },
+      {
+        "name": "Calm Beach Inn",
+        "type": "Home Stay",
+        "phone": "7944347",
+        "email": "calmbeachinn@gmail.com"
+      }
+    ],
+    "Kalaidhoo": [
+      {
+        "name": "Holiday Villa",
+        "type": "Guest House",
+        "phone": "7788699",
+        "email": "hipoint009@ gmail.com"
+      }
+    ]
+  },
+  "Lhaviyani": {
+    "Naifaru": [
+      {
+        "name": "Aqua Inn",
+        "type": "Guest House",
+        "phone": "7789330",
+        "email": "kanmathee@gmail.com"
+      },
+      {
+        "name": "One The Island",
+        "type": "Guest House",
+        "phone": "7789330",
+        "email": "kanmathee@gmail.com"
+      },
+      {
+        "name": "SeasunBeach",
+        "type": "Guest House",
+        "phone": "9784613",
+        "email": "seasunbeachmaldives@gmail.com"
+      }
+    ]
+  },
+  "Meemu": {
+    "Maduvvari": [
+      {
+        "name": "Maduvvaree Waterfront Sands",
+        "type": "Guest House",
+        "phone": "9999389",
+        "email": "natture@hotmail.com"
+      }
+    ],
+    "Mulah": [
+      {
+        "name": "Kandoofa Village",
+        "type": "Guest House",
+        "phone": "9775529",
+        "email": "kandoofa.village@gmail.com"
+      }
+    ],
+    "Muli": [
+      {
+        "name": "EQ Surf Retreat",
+        "type": "Guest House",
+        "phone": "9182594",
+        "email": "franck@eq-france.com"
+      },
+      {
+        "name": "Muli Wave",
+        "type": "Guest House",
+        "phone": "9993836",
+        "email": "sales@sunglobe.co"
+      },
+      {
+        "name": "White Water Inn",
+        "type": "Guest House",
+        "phone": "7574888 / 9590888",
+        "email": "whitewaterinnmv@gmail.com"
+      },
+      {
+        "name": "Eco Wave Retreat",
+        "type": "Home Stay",
+        "phone": "7997278",
+        "email": "ecowavemv@gmail.com"
+      },
+      {
+        "name": "Hudhuveli Residence",
+        "type": "Home Stay",
+        "phone": "7440238",
+        "email": "fathah1418@gmail.com"
+      }
+    ],
+    "Veyvah": [
+      {
+        "name": "Mirusmaa Inn",
+        "type": "Guest House",
+        "phone": "7706990",
+        "email": "samahathu@hotmail.com"
+      },
+      {
+        "name": "Veyvah Inn Maldives",
+        "type": "Guest House",
+        "phone": "7595939",
+        "email": "veyvahinn@gmail.com"
+      }
+    ]
+  },
+  "Noonu": {
+    "Fodhdhoo": [
+      {
+        "name": "Paradisola Maldives",
+        "type": "Guest House",
+        "phone": "9117393",
+        "email": "paradisolamaldives@gmail.com"
+      },
+      {
+        "name": "Priv Fodhdhoo",
+        "type": "Guest House",
+        "phone": "7505906",
+        "email": "mail@eusoph.com"
+      },
+      {
+        "name": "Sabba Beach Suite",
+        "type": "Guest House",
+        "phone": "7779610\r\n7784645",
+        "email": "info@sabbatravels.com"
+      },
+      {
+        "name": "Sabba Beach Villas and Spa",
+        "type": "Guest House",
+        "phone": "7918910\r\n7784645",
+        "email": "info@sabbatravels.com"
+      },
+      {
+        "name": "Sabba Summer Suite",
+        "type": "Guest House",
+        "phone": "7918910",
+        "email": "info@sabbatravels.com"
+      },
+      {
+        "name": "The Happiness Sun Suites",
+        "type": "Guest House",
+        "phone": "7787800",
+        "email": "mfayaz@icmplmaldives.com"
+      },
+      {
+        "name": "Velaa Garden View",
+        "type": "Guest House",
+        "phone": "7868318 / 7926431",
+        "email": "booking@velaagardenview.com"
+      }
+    ],
+    "Lhohi": [
+      {
+        "name": "Lhohi Inn",
+        "type": "Guest House",
+        "phone": "7605072",
+        "email": "lhohiinn@gmail.com"
+      },
+      {
+        "name": "Lhohi White Sand",
+        "type": "Guest House",
+        "phone": "7999982",
+        "email": "lhohiwhitesand@gmail.com"
+      }
+    ],
+    "Maafaru": [
+      {
+        "name": "Fini Palace",
+        "type": "Guest House",
+        "phone": "9711755",
+        "email": "risk.aluminium@gmail.com"
+      }
+    ],
+    "Magoodhoo": [
+      {
+        "name": "Bon Abri Maldives",
+        "type": "Guest House",
+        "phone": "7599667",
+        "email": "shaamil.saleem@gmail.com"
+      },
+      {
+        "name": "Islandlifemaldives Retreat & Spa",
+        "type": "Guest House",
+        "phone": "7457972",
+        "email": "admin@islandlifemaldives.info"
+      },
+      {
+        "name": "Mathige Retreat",
+        "type": "Guest House",
+        "phone": "9792156",
+        "email": "mathige.islandlife@gmail.com"
+      }
+    ],
+    "Manadhoo": [
+      {
+        "name": "Seashine Guesthouse",
+        "type": "Guest House",
+        "phone": "7892045",
+        "email": "seashine.manadhoo@gmail.com"
+      },
+      {
+        "name": "Sunny Day Inn Maldives",
+        "type": "Guest House",
+        "phone": "9996892",
+        "email": null
+      }
+    ],
+    "Velidhoo": [
+      {
+        "name": "Ikhfa Guest House",
+        "type": "Guest House",
+        "phone": "7255787",
+        "email": "ikhfamaldives@gmail.com"
+      },
+      {
+        "name": "Kazu Inn",
+        "type": "Guest House",
+        "phone": "7429444",
+        "email": "kazuinn786@gmail.com"
+      },
+      {
+        "name": "Palm Villa",
+        "type": "Guest House",
+        "phone": "7789197",
+        "email": "habeeb@fasfinntravel.com"
+      },
+      {
+        "name": "The Kaleyfaan Inn",
+        "type": "Guest House",
+        "phone": "7684030",
+        "email": "kaleyfaaninn@gmail.com"
+      },
+      {
+        "name": "Island Pearl Escape",
+        "type": "Home Stay",
+        "phone": "7779397",
+        "email": "imoosaf@gmail.com"
+      },
+      {
+        "name": "Lonu View",
+        "type": "Home Stay",
+        "phone": "9996317",
+        "email": "lonuview@gmail.com"
+      }
+    ]
+  },
+  "Raa": {
+    "Alifushi": [
+      {
+        "name": "Tropica Inn & Guest House",
+        "type": "Guest House",
+        "phone": "9495656 / 9965656",
+        "email": "tropica.alifushi@gmail.com"
+      }
+    ],
+    "Ifuru": [
+      {
+        "name": "Ifuru Island Maldives",
+        "type": "Hotel",
+        "phone": "6582800 / 3332822",
+        "email": "surprise@ifuruisland.com"
+      }
+    ],
+    "Inguraidhoo": [
+      {
+        "name": "Inguraidhoo Beach Inn",
+        "type": "Guest House",
+        "phone": "7994548",
+        "email": "mary404504@gmail.com"
+      }
+    ],
+    "Maakurathu": [
+      {
+        "name": "Waves Inn",
+        "type": "Guest House",
+        "phone": "7786683",
+        "email": "stay@wavesinn.com;\r\nwavesinnmaldives@gmail.com"
+      }
+    ],
+    "Maduvvari": [
+      {
+        "name": "Aquaraa",
+        "type": "Guest House",
+        "phone": "7792556",
+        "email": "info@aquaraa.com"
+      },
+      {
+        "name": "Yan Inn Guest House",
+        "type": "Guest House",
+        "phone": "7793721",
+        "email": "hamyd_h@hotmail.com"
+      }
+    ],
+    "Vaadhoo": [
+      {
+        "name": "Vaadhoo View Inn",
+        "type": "Home Stay",
+        "phone": "7743479",
+        "email": "isseyvd@gmail.com"
+      }
+    ]
+  },
+  "Seenu": {
+    "Feydhoo": [
+      {
+        "name": "Equatorial Inn",
+        "type": "Guest House",
+        "phone": "7979789",
+        "email": "zareer7979789@gmail.com"
+      },
+      {
+        "name": "Muladdu Inn",
+        "type": "Guest House",
+        "phone": "7777288",
+        "email": "bookings@muladdu.com"
+      },
+      {
+        "name": "Fiyala HomeStay",
+        "type": "Home Stay",
+        "phone": "7762926",
+        "email": "Fiyalamaldives@gmail.com"
+      }
+    ],
+    "Gan": [
+      {
+        "name": "Equator Village",
+        "type": "Hotel",
+        "phone": "6899000",
+        "email": "reservations@equatorvillage.com\r\n\r\nWebsite: \thttps://www.equatorvillage.com/"
+      }
+    ],
+    "Hithadhoo": [
+      {
+        "name": "Abuharee Grand",
+        "type": "Guest House",
+        "phone": "9393666",
+        "email": "afza@abuharee.com"
+      },
+      {
+        "name": "Clove Beach",
+        "type": "Guest House",
+        "phone": "7899445",
+        "email": "info@clovebeach.com"
+      },
+      {
+        "name": "Lagoon Lodge",
+        "type": "Guest House",
+        "phone": "7675585",
+        "email": "lagoonlodges2@gmail.com"
+      },
+      {
+        "name": "Rekidhiye Inn",
+        "type": "Guest House",
+        "phone": "7773098",
+        "email": "bushree@hotmail.com"
+      },
+      {
+        "name": "Roava Beach Escape",
+        "type": "Guest House",
+        "phone": "7472019",
+        "email": "stays@roavabeachescape.com"
+      },
+      {
+        "name": "Kilavethi Retreat",
+        "type": "Home Stay",
+        "phone": "9732091",
+        "email": "reservations@maafendhoo-mv.com"
+      },
+      {
+        "name": "The Rose Garden House",
+        "type": "Home Stay",
+        "phone": "7815533",
+        "email": "therosegardenhouse@gmail.com"
+      }
+    ],
+    "Maradhoo": [
+      {
+        "name": "One On Inn",
+        "type": "Guest House",
+        "phone": "7774342",
+        "email": "1on.inhotel@gmail.com"
+      },
+      {
+        "name": "Raivara Maldives",
+        "type": "Guest House",
+        "phone": "9199719",
+        "email": "salason@gmail.com"
+      },
+      {
+        "name": "True South",
+        "type": "Guest House",
+        "phone": "7415750",
+        "email": "regeneration.mv@gmail.com"
+      }
+    ],
+    "Maradhoo Feydhoo": [
+      {
+        "name": "Asseyri Guest House",
+        "type": "Guest House",
+        "phone": "9921216",
+        "email": "reservations@asseyriguesthouse.com"
+      },
+      {
+        "name": "Lodger Guest House",
+        "type": "Guest House",
+        "phone": "6891779\r\n7616905",
+        "email": "maazsharafulla@gmail.com\r\nanmaaz8898@gmail.com"
+      },
+      {
+        "name": "Transit Tower",
+        "type": "Home Stay",
+        "phone": "7941314",
+        "email": "adhamshamoon@gmail.com"
+      }
+    ],
+    "Meedhoo": [
+      {
+        "name": "Charming Holiday Lodge",
+        "type": "Guest House",
+        "phone": "6895018 \r\n7943884",
+        "email": "reservations@charmingholidaylodge.com"
+      },
+      {
+        "name": "Coral Crown",
+        "type": "Guest House",
+        "phone": "7776968",
+        "email": "coralcrownmaldives@gmail.com"
+      },
+      {
+        "name": "Manta Beach Retreat",
+        "type": "Guest House",
+        "phone": "7916005",
+        "email": "info@mantabeachretreat.com"
+      },
+      {
+        "name": "Pinewood Hideaway",
+        "type": "Guest House",
+        "phone": "9166699",
+        "email": "mohamedalihussain@hotmail.com"
+      }
+    ]
+  },
+  "Shaviyani": {
+    "Bilehfahi": [
+      {
+        "name": "Coral Stone Haven",
+        "type": "Home Stay",
+        "phone": "7641164",
+        "email": "coralstonehaven@gmail.com"
+      }
+    ],
+    "Funadhoo": [
+      {
+        "name": "Hello Ocean View",
+        "type": "Guest House",
+        "phone": "7948425",
+        "email": "hello.ocean.view@gmail.com"
+      }
+    ],
+    "Goidhoo": [
+      {
+        "name": "Stay Sh. Goidhoo",
+        "type": "Guest House",
+        "phone": "9833886",
+        "email": "stayshgoidhoo@gmail.com"
+      },
+      {
+        "name": "Turtle Retreat",
+        "type": "Guest House",
+        "phone": "7905588",
+        "email": "turtleretreat.mv@gmail.com"
+      },
+      {
+        "name": "3 in 1 Oasis",
+        "type": "Home Stay",
+        "phone": "7772553",
+        "email": "kuday2000@gmail.com"
+      }
+    ],
+    "Kanditheemu": [
+      {
+        "name": "Beachwalk Kanditheemu",
+        "type": "Guest House",
+        "phone": "7956090",
+        "email": "mauroofahmed@gmail.com"
+      }
+    ],
+    "Lhaimagu": [
+      {
+        "name": "Kethi Stay",
+        "type": "Guest House",
+        "phone": "9990457",
+        "email": "uhahs@icloud.com"
+      }
+    ],
+    "Maroshi": [
+      {
+        "name": "Gaskara Guesthouse",
+        "type": "Guest House",
+        "phone": "9715855",
+        "email": "ahmedwah.gaskara@gmail.com"
+      }
+    ],
+    "Milandhoo": [
+      {
+        "name": "2020 Sandhaa",
+        "type": "Guest House",
+        "phone": "7914888",
+        "email": "2020sandha@gmail.com"
+      },
+      {
+        "name": "Handhuvaru Maldives Sh.Milandhoo",
+        "type": "Guest House",
+        "phone": "799-9356",
+        "email": "mohamedsimal7@gmail.com"
+      }
+    ]
+  },
+  "Thaa": {
+    "Buruni": [
+      {
+        "name": "On The Beach Maldives",
+        "type": "Guest House",
+        "phone": "9791777",
+        "email": "alyf.19@gmail.com"
+      },
+      {
+        "name": "Villa Buruni Maldives",
+        "type": "Guest House",
+        "phone": "7211043",
+        "email": "info@villaburuni.com"
+      },
+      {
+        "name": "Villa Buruni Maldives Beach",
+        "type": "Guest House",
+        "phone": "7211043",
+        "email": "hassanhabeebvs@gmail.com"
+      }
+    ],
+    "Gaadhiffushi": [
+      {
+        "name": "Bambukeyo Villa",
+        "type": "Guest House",
+        "phone": "7976646",
+        "email": "rageeb1304@gmail.com"
+      }
+    ],
+    "Guraidhoo": [
+      {
+        "name": "Vaadhee Homestay",
+        "type": "Home Stay",
+        "phone": "7751594 / 7656662",
+        "email": "hellotradepass@outlook.com"
+      }
+    ],
+    "Kinbidhoo": [
+      {
+        "name": "Rihiveli Inn",
+        "type": "Guest House",
+        "phone": "7500675",
+        "email": "rihiveliinn@gmail.com"
+      }
+    ],
+    "Omadhoo": [
+      {
+        "name": "Dhoadhi Beach Maldives",
+        "type": "Guest House",
+        "phone": "9835888",
+        "email": "dhoadhibeachinn@gmail.com"
+      },
+      {
+        "name": "Sky Inn Omadhoo",
+        "type": "Guest House",
+        "phone": "9730271",
+        "email": "info.skyinnomadhoo@gmail.com\r\nreservations@skyinnomadhoo.com"
+      }
+    ],
+    "Thimarafushi": [
+      {
+        "name": "Breeze Haven Surf Retreat",
+        "type": "Guest House",
+        "phone": "9995707",
+        "email": "wave.centralmaldives.pvtltd@gmail.com"
+      },
+      {
+        "name": "Finimas Residence",
+        "type": "Guest House",
+        "phone": "9111878\r\n9980117",
+        "email": "finimasresidence@gmail.com"
+      },
+      {
+        "name": "Stay Mikado",
+        "type": "Guest House",
+        "phone": "9100413",
+        "email": "stay@stayislands.mv"
+      },
+      {
+        "name": "Surf Haven Farms & Chambers",
+        "type": "Guest House",
+        "phone": "7431411",
+        "email": "sajubinan@gmail.com"
+      }
+    ],
+    "Veymandoo": [
+      {
+        "name": "Mikado Break Inn",
+        "type": "Guest House",
+        "phone": "9121662",
+        "email": "faxaexpress@gmail.com"
+      }
+    ],
+    "Vilufushi": [
+      {
+        "name": "Kayak Inn Vilufushi",
+        "type": "Home Stay",
+        "phone": "9995657 /9394666",
+        "email": "info@kayakinnvilufushi.com"
+      }
+    ]
+  },
+  "Vaavu": {
+    "Felidhoo": [
+      {
+        "name": "Finolhu Beach Guest House",
+        "type": "Guest House",
+        "phone": "7765689\r\n9921252",
+        "email": "info@finolhubeach@gmail.com\r\nsales.islandholidaysafari@gmail.com"
+      },
+      {
+        "name": "Kawaii Stay",
+        "type": "Guest House",
+        "phone": "7776638",
+        "email": "rameelym@gmail.com"
+      },
+      {
+        "name": "Oshi Boutique",
+        "type": "Guest House",
+        "phone": "7776313",
+        "email": "a.husham6313@gmail.com"
+      },
+      {
+        "name": "Tourist Inn Baani",
+        "type": "Guest House",
+        "phone": "7787586\r\n7982897",
+        "email": "baanimaldives@gmail.com"
+      },
+      {
+        "name": "Vaali Beach Lodge",
+        "type": "Guest House",
+        "phone": "7908421",
+        "email": "info@lvmhotels.com"
+      }
+    ],
+    "Fulidhoo": [
+      {
+        "name": "Aagali Beach",
+        "type": "Guest House",
+        "phone": "9101188",
+        "email": "aagalibeach@gmail.com"
+      },
+      {
+        "name": "Alkina Lodge",
+        "type": "Guest House",
+        "phone": "7647724 \r\n9797958",
+        "email": "silveen3150@gmail.com"
+      },
+      {
+        "name": "Atoll Retreat",
+        "type": "Guest House",
+        "phone": "7988958",
+        "email": "info@atollretreat.mv"
+      },
+      {
+        "name": "Bougainvillea Inn",
+        "type": "Guest House",
+        "phone": "9996674",
+        "email": "stay.bougainvilleainn@gmail.com"
+      },
+      {
+        "name": "Cowry Inn",
+        "type": "Guest House",
+        "phone": "9716444",
+        "email": "cowryinn@gmail.com"
+      },
+      {
+        "name": "Eveylaa Guesthouse",
+        "type": "Guest House",
+        "phone": "7935444",
+        "email": "eveyla01001@gmail.com"
+      },
+      {
+        "name": "Fulidhoo Ihaa Lodge",
+        "type": "Guest House",
+        "phone": "7940999",
+        "email": "mfaiz789@gmail.com"
+      },
+      {
+        "name": "Fulidhoo La Perla Guest House",
+        "type": "Guest House",
+        "phone": "7955677",
+        "email": "fulidhoolaperla@outlook.com"
+      },
+      {
+        "name": "Fulidhoo White Inn",
+        "type": "Guest House",
+        "phone": "7779527",
+        "email": "fulidhoomuhaimin@gmail.com"
+      },
+      {
+        "name": "Galaxy Sunrise",
+        "type": "Guest House",
+        "phone": "9150518",
+        "email": "bushreemabuni74@gmail.com"
+      },
+      {
+        "name": "Hathaa Retreat",
+        "type": "Guest House",
+        "phone": "7508867",
+        "email": "zenithmoomin1@gmail.com"
+      },
+      {
+        "name": "Huvan Inn",
+        "type": "Guest House",
+        "phone": "9777751",
+        "email": "ameego463@gmail.com"
+      },
+      {
+        "name": "Island Break",
+        "type": "Guest House",
+        "phone": "9969988",
+        "email": "islandbreakmaldives@gmail.com"
+      },
+      {
+        "name": "Kinan Boutique",
+        "type": "Guest House",
+        "phone": "7797968",
+        "email": "ramxi21@gmail.com"
+      },
+      {
+        "name": "Kinan Retreat",
+        "type": "Guest House",
+        "phone": "7797968",
+        "email": "ramxi21@gmail.com"
+      },
+      {
+        "name": "Kunaa Beach Inn",
+        "type": "Guest House",
+        "phone": "7800090 / 7660241",
+        "email": "kunaabeachinn70@gmail.com"
+      },
+      {
+        "name": "Like Home",
+        "type": "Guest House",
+        "phone": "7583888",
+        "email": "zoebakker68@gmail.com"
+      },
+      {
+        "name": "Luau Beach Inn, Maldives",
+        "type": "Guest House",
+        "phone": "7786641",
+        "email": "info@luaubeachinnmaldives.com"
+      },
+      {
+        "name": "Madi Grand Guest House",
+        "type": "Guest House",
+        "phone": "7973131",
+        "email": "madigrandmaldives@gmail.com"
+      },
+      {
+        "name": "Malas Island View",
+        "type": "Guest House",
+        "phone": "7996725",
+        "email": "malasislandview1@gmail.com"
+      },
+      {
+        "name": "Royal Villa",
+        "type": "Guest House",
+        "phone": "7779944",
+        "email": "info@royalvilla.mv"
+      },
+      {
+        "name": "Rushkokaa Beach Villa",
+        "type": "Guest House",
+        "phone": "9733336 / 7770211",
+        "email": "hello@rushkokaa.com"
+      },
+      {
+        "name": "Seena Inn",
+        "type": "Guest House",
+        "phone": "7497593",
+        "email": "info@seenainn.com"
+      },
+      {
+        "name": "The Pearl Seaview",
+        "type": "Guest House",
+        "phone": "7955677",
+        "email": "ibfaaiz@gmail.com"
+      },
+      {
+        "name": "Thundi Sea View",
+        "type": "Guest House",
+        "phone": "7902139",
+        "email": "sales@thundihotels.com"
+      }
+    ],
+    "Keyodhoo": [
+      {
+        "name": "Alba Lodge",
+        "type": "Guest House",
+        "phone": "9988828",
+        "email": "rushdan@wishamlaw.com"
+      },
+      {
+        "name": "Blu Lodge",
+        "type": "Guest House",
+        "phone": "9358335",
+        "email": "a20.guesthouse@gmail.com"
+      },
+      {
+        "name": "Boaveli Maldives Guest House",
+        "type": "Guest House",
+        "phone": "7895903",
+        "email": "info@boavelimaldives.com"
+      },
+      {
+        "name": "Five Ens Lodge",
+        "type": "Guest House",
+        "phone": "7943731",
+        "email": "nizar.keyodhoo@gmail.com"
+      },
+      {
+        "name": "Hevana",
+        "type": "Guest House",
+        "phone": "7722212",
+        "email": "moosa.asim23@gmail.com"
+      },
+      {
+        "name": "Hevana Retreat",
+        "type": "Guest House",
+        "phone": "9681819",
+        "email": "azzurrodibazooka@gmail.com"
+      },
+      {
+        "name": "Island Holiday Lodge",
+        "type": "Guest House",
+        "phone": "7504114",
+        "email": "islandholidaylodge@gmail.com"
+      },
+      {
+        "name": "Jupiter Sunrise Lodge",
+        "type": "Guest House",
+        "phone": "7973856",
+        "email": "info@jupiter-sunrise-lodge.com"
+      },
+      {
+        "name": "Koamas View",
+        "type": "Guest House",
+        "phone": "9681817\r\n9821894",
+        "email": "azzurroali666@gmail.com"
+      },
+      {
+        "name": "Leaf Fish Guesthouse Maldives",
+        "type": "Guest House",
+        "phone": "9958884",
+        "email": "info@leaffish-maldives.com"
+      },
+      {
+        "name": "Mantha View",
+        "type": "Guest House",
+        "phone": "9631506",
+        "email": "booking@manthaview.com"
+      },
+      {
+        "name": "The Chill Inn",
+        "type": "Guest House",
+        "phone": "9899900",
+        "email": "silverarrowmaldives@gmail.com"
+      },
+      {
+        "name": "Three Star Lodge",
+        "type": "Guest House",
+        "phone": "9555123",
+        "email": "info.3starlodge@gmail.com"
+      },
+      {
+        "name": "Vaagali Inn",
+        "type": "Guest House",
+        "phone": "7957965",
+        "email": "shaif.hassan@vaagaliinn.com"
+      },
+      {
+        "name": "Venus Villa",
+        "type": "Guest House",
+        "phone": "7802005",
+        "email": "mohamedmaiz97@gmail.com"
+      },
+      {
+        "name": "White Maakanaa Lodge",
+        "type": "Guest House",
+        "phone": "7951965",
+        "email": "adamibrahimzz@hotmail.com"
+      },
+      {
+        "name": "Wow Inn Keyodhoo",
+        "type": "Guest House",
+        "phone": "9443731,7943731",
+        "email": "Info@wowhotelkeyodhoo.com"
+      },
+      {
+        "name": "Lotus Stay",
+        "type": "Home Stay",
+        "phone": "7910194",
+        "email": "jinahucen@gmail.com"
+      },
+      {
+        "name": "Rose Stay",
+        "type": "Home Stay",
+        "phone": "7732194",
+        "email": "aalalirasheed@gmail.com"
+      }
+    ],
+    "Rakeedhoo": [
+      {
+        "name": "Rattehi Inn at Rakeedhoo",
+        "type": "Guest House",
+        "phone": "7900002",
+        "email": "rattaa@gmail.com"
+      }
+    ],
+    "Thinadhoo": [
+      {
+        "name": "Akiri Grand",
+        "type": "Guest House",
+        "phone": "7944499",
+        "email": "akirigrand@gmail.com"
+      },
+      {
+        "name": "Maldives Sunset Lodge and Village Guesthouse",
+        "type": "Guest House",
+        "phone": "7893093",
+        "email": "info@maldivesunset.com"
+      },
+      {
+        "name": "Plumeria Sea View",
+        "type": "Guest House",
+        "phone": "6706001 \r\n9110880",
+        "email": "info@plumeriamaldives.com"
+      },
+      {
+        "name": "Reethi Villa",
+        "type": "Guest House",
+        "phone": "9111712",
+        "email": "reethivilla.maldives@gmail.com"
+      },
+      {
+        "name": "Stay Kora",
+        "type": "Guest House",
+        "phone": "7420900",
+        "email": "maniu.md@hotmail.com"
+      },
+      {
+        "name": "Thari Fushi",
+        "type": "Guest House",
+        "phone": "7681271",
+        "email": "info@tharifushi.com"
+      },
+      {
+        "name": "Oyster Residence",
+        "type": "Home Stay",
+        "phone": "7930303",
+        "email": "m_shafaan@hotmail.com"
+      },
+      {
+        "name": "Ecoboo Maldives",
+        "type": "Hotel",
+        "phone": "6706555\r\n7842052",
+        "email": "sithhath@gmail.com"
+      }
+    ]
+  },
+  "Unknown": {
+    "Unknown": [
+      {
+        "name": "Raabade Maldives",
+        "type": "Guest House",
+        "phone": "9775424",
+        "email": "raabademaldives@gmail.com"
+      },
+      {
+        "name": "Crystal Sea Inn",
+        "type": "Home Stay",
+        "phone": "7901487",
+        "email": "crystal.seainn@gmail.com"
+      }
+    ]
+  }
+}

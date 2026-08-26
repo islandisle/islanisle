@@ -35,7 +35,7 @@ CREATE TYPE admin_role AS ENUM ('admin', 'moderator');
 -- admin reclassifies a Local applicant to Tourist during review (Phase 1's
 -- manual equivalent of Phase 2's automatic OCR-based detection).
 CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted', 'reclassify_tourist', 'restore_pay_at_visit');
-CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute');
+CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute', 'external_place_claim');
 CREATE TYPE fulfillment_method AS ENUM ('pickup', 'delivery');
 CREATE TYPE handover_method AS ENUM ('buyer_pickup_at_boat', 'guesthouse_handover');
 CREATE TYPE return_type AS ENUM ('return', 'exchange');
@@ -92,6 +92,15 @@ CREATE TABLE users (
     notification_preferences     JSONB NOT NULL DEFAULT '{"booking_updates": true, "chat_messages": true, "deals_promos": true, "boarding_reminders": true}',
     two_factor_secret             TEXT,
     two_factor_enabled            BOOLEAN NOT NULL DEFAULT false,
+    -- Batch 25 (not in the original spec) — Tourist Pro tier. Real
+    -- per-account state, but there's no working payment path for
+    -- tourist/local accounts yet (same situation as
+    -- config/payments.js's ONLINE_PAYMENTS_ENABLED on the business side),
+    -- so config/proTier.js's TOURIST_PRO_DEFAULT_UNLOCKED currently
+    -- overrides this to true for everyone regardless of the stored value.
+    -- Defaults false so that flipping that flag off later reveals the
+    -- real (currently all-unpaid) state rather than silently granting Pro.
+    pro                           BOOLEAN NOT NULL DEFAULT false,
     password_hash                TEXT NOT NULL,
     created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -864,6 +873,61 @@ CREATE TABLE pay_at_visit_incidents (
     CONSTRAINT chk_pav_incident_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
 );
 CREATE INDEX idx_local_events_date ON local_events(event_date);
+
+-- ---------------------------------------------------------------------------
+-- [Batch 25] external_places — not in the original spec. Real Ministry of
+-- Tourism registered accommodation facilities (Guest House / Home Stay /
+-- Hotel — kept as three distinct categories per the source data, never
+-- merged into one) that aren't yet registered as businesses here. This is
+-- static reference data seeded once from
+-- backend/data/maldives_accommodations_master.json by config/migrate.js —
+-- not a live API, so unlike a real integration there's no fetched_at/cache
+-- concept, just a one-time load.
+-- ---------------------------------------------------------------------------
+CREATE TABLE external_places (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name                 TEXT NOT NULL,
+    type                 TEXT NOT NULL CHECK (type IN ('Guest House', 'Home Stay', 'Hotel')),
+    atoll                TEXT NOT NULL,
+    island               TEXT NOT NULL,
+    phone                TEXT,
+    email                TEXT,
+    -- Set once a claim for this place is approved (see
+    -- external_place_claims below) — a claimed place stops appearing in
+    -- "More on this island" and shows as a real listing instead.
+    claimed_business_id  UUID REFERENCES businesses(id),
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_external_places_island ON external_places(island);
+
+-- ---------------------------------------------------------------------------
+-- [Batch 25] external_place_claims — not in the original spec. A business
+-- account asserting "this Ministry-listed place is mine," backed by an
+-- uploaded verification document, reviewed through the same unified
+-- Super Admin approval queue as businesses/listings/agents/local
+-- verifications (Section 10.2). business_name/business_type/
+-- location_island are editable at submission time rather than read-only
+-- copies of the external place, since the Ministry data can be stale (an
+-- old trading name, a typo'd island) and the claimant is the authority on
+-- their own current details.
+-- ---------------------------------------------------------------------------
+CREATE TABLE external_place_claims (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_place_id     UUID NOT NULL REFERENCES external_places(id),
+    submitted_by_user_id  UUID NOT NULL REFERENCES users(id),
+    business_name         TEXT NOT NULL,
+    business_type         business_type NOT NULL,
+    location_island       TEXT NOT NULL,
+    contact_info          JSONB,
+    document_image_url    TEXT NOT NULL,
+    status                TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    decision_reason       TEXT,
+    -- Set on approval — the real business + listing created from this claim.
+    created_business_id   UUID REFERENCES businesses(id),
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    decided_at            TIMESTAMPTZ
+);
+CREATE INDEX idx_external_place_claims_status ON external_place_claims(status);
 
 -- ============================================================================
 -- END OF SCHEMA

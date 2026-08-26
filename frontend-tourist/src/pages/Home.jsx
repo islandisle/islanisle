@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
@@ -336,10 +336,80 @@ export default function Home() {
             onToggleFavorite={localStorage.getItem('atollisle_token') ? toggleFavorite : undefined}
           />
         ))}
+
+        <ExternalPlacesSection island={island} />
       </div>
 
       <SOSButton island={island} />
       <FirstRunTour />
+    </div>
+  );
+}
+
+// Batch 25 (not in the original spec) — "More on this island": real
+// Ministry of Tourism registered places that aren't on the platform yet,
+// split into the source data's own three categories (Guest House / Home
+// Stay / Hotel — kept distinct, never merged into one "accommodation"
+// bucket). Deliberately separated from the real, bookable listings above
+// (own heading, no ListingCard, no booking action) so it's never mistaken
+// for something bookable through Atoll Isle.
+function ExternalPlacesSection({ island }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getExternalPlaces(island).then((d) => { if (!cancelled) setData(d); }).catch(() => { if (!cancelled) setData(null); });
+    return () => { cancelled = true; };
+  }, [island]);
+
+  if (!data) return null;
+  const groups = [
+    { label: 'Guest houses', places: data.guesthouses },
+    { label: 'Home stays', places: data.home_stays },
+    { label: 'Hotels', places: data.hotels },
+  ].filter((g) => g.places && g.places.length > 0);
+  if (groups.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ borderTop: '1px solid var(--border)', marginBottom: 16 }} />
+      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>
+        More on {island}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+        Ministry of Tourism registered places — not bookable here.
+      </p>
+      {groups.map((group) => (
+        <div key={group.label} style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            {group.label}
+          </p>
+          {group.places.map((place) => (
+            <div key={place.id} className="card" style={{ padding: '12px 14px', marginBottom: 8, opacity: 0.9 }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>{place.name}</p>
+              {data.contact_locked ? (
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, filter: 'blur(3px)', userSelect: 'none' }}>
+                  071 234 5678 · contact@example.com
+                </p>
+              ) : (
+                (place.phone || place.email) && (
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                    {[place.phone, place.email].filter(Boolean).join(' · ')}
+                  </p>
+                )
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+      {/* No real Pro purchase flow exists yet (see config/proTier.js) — this
+          is just the locked-state prompt the spec asks for, ready for a
+          real upgrade action once one exists. */}
+      {data.contact_locked && (
+        <p style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 500, margin: 0 }}>
+          Upgrade to Pro to see contact info
+        </p>
+      )}
     </div>
   );
 }

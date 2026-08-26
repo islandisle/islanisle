@@ -153,6 +153,17 @@ export async function getIslandListings(island, type, accessibilityFeatures, die
   return handleResponse(res);
 }
 
+// Batch 25 — real Ministry of Tourism registered places near this island
+// that aren't registered on the platform yet ("More on this island").
+// Works for a guest same as real listings do; contact_locked in the
+// response tells the frontend whether to show phone/email or a locked
+// placeholder — the backend has already stripped them server-side when
+// locked, not just hidden them here.
+export async function getExternalPlaces(island) {
+  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // Favorites (routes/favorites.js)
 
 export async function getMyFavorites() {

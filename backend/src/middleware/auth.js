@@ -16,6 +16,24 @@ export function authenticate(req, res, next) {
   }
 }
 
+// Batch 25 — like authenticate(), but never blocks: attaches req.user if a
+// valid Bearer token is present, otherwise leaves it undefined and moves
+// on. For routes that work for a guest (browse-as-guest) but behave
+// differently for a logged-in — or Pro — account, e.g. external places'
+// contact-info gate.
+export function optionalAuthenticate(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return next();
+  }
+  try {
+    req.user = jwt.verify(header.slice(7), process.env.JWT_SECRET);
+  } catch (err) {
+    // invalid/expired token on an optional route — proceed as a guest
+  }
+  next();
+}
+
 // Restricts a route to a specific role (e.g. 'business', 'admin').
 export function requireRole(role) {
   return (req, res, next) => {

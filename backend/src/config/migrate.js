@@ -24,6 +24,9 @@
 //
 // Usage: cd backend && npm run migrate   (or node src/config/migrate.js)
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { pool } from './db.js';
 
 async function columnExists(table, column) {
@@ -378,6 +381,94 @@ async function main() {
     console.log('Adding listings.dietary_tags...');
     await pool.query(`ALTER TABLE listings ADD COLUMN dietary_tags TEXT[] NOT NULL DEFAULT '{}'`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_listings_dietary ON listings USING GIN (dietary_tags)`);
+    changed = true;
+  }
+
+  console.log("Checking for admin_target_type.external_place_claim (Batch 25)...");
+  const externalPlaceClaimTargetResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'external_place_claim'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'admin_target_type')`
+  );
+  if (!externalPlaceClaimTargetResult.rows.length) {
+    console.log("Adding 'external_place_claim' to admin_target_type...");
+    await pool.query(`ALTER TYPE admin_target_type ADD VALUE IF NOT EXISTS 'external_place_claim'`);
+    changed = true;
+  }
+
+  console.log('Checking for users.pro (Batch 25 Tourist Pro tier)...');
+  if (!(await columnExists('users', 'pro'))) {
+    console.log('Adding users.pro...');
+    await pool.query(`ALTER TABLE users ADD COLUMN pro BOOLEAN NOT NULL DEFAULT false`);
+    changed = true;
+  }
+
+  console.log('Checking for external_places table (Batch 25)...');
+  if (!(await tableExists('external_places'))) {
+    console.log('Creating external_places...');
+    await pool.query(`
+      CREATE TABLE external_places (
+          id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name                 TEXT NOT NULL,
+          type                 TEXT NOT NULL CHECK (type IN ('Guest House', 'Home Stay', 'Hotel')),
+          atoll                TEXT NOT NULL,
+          island               TEXT NOT NULL,
+          phone                TEXT,
+          email                TEXT,
+          claimed_business_id  UUID REFERENCES businesses(id),
+          created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_external_places_island ON external_places(island)`);
+    changed = true;
+  }
+
+  console.log('Checking for external_place_claims table (Batch 25)...');
+  if (!(await tableExists('external_place_claims'))) {
+    console.log('Creating external_place_claims...');
+    await pool.query(`
+      CREATE TABLE external_place_claims (
+          id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          external_place_id     UUID NOT NULL REFERENCES external_places(id),
+          submitted_by_user_id  UUID NOT NULL REFERENCES users(id),
+          business_name         TEXT NOT NULL,
+          business_type         business_type NOT NULL,
+          location_island       TEXT NOT NULL,
+          contact_info          JSONB,
+          document_image_url    TEXT NOT NULL,
+          status                TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+          decision_reason       TEXT,
+          created_business_id   UUID REFERENCES businesses(id),
+          created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+          decided_at            TIMESTAMPTZ
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_external_place_claims_status ON external_place_claims(status)`);
+    changed = true;
+  }
+
+  // Batch 25 — one-time seed from the static Ministry of Tourism JSON dump,
+  // not a live API, so "up to date" just means "the table isn't empty" —
+  // there's no per-row freshness to reconcile against on later runs.
+  console.log('Checking for external_places seed data (Batch 25 Ministry of Tourism import)...');
+  const externalPlacesCountResult = await pool.query('SELECT COUNT(*)::int AS count FROM external_places');
+  if (externalPlacesCountResult.rows[0].count === 0) {
+    const dataPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'data', 'maldives_accommodations_master.json');
+    console.log(`Seeding external_places from ${dataPath}...`);
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    let inserted = 0;
+    for (const [atoll, islands] of Object.entries(data)) {
+      for (const [island, entries] of Object.entries(islands)) {
+        for (const entry of entries) {
+          await pool.query(
+            `INSERT INTO external_places (name, type, atoll, island, phone, email)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [entry.name, entry.type, atoll, island, entry.phone || null, entry.email || null]
+          );
+          inserted++;
+        }
+      }
+    }
+    console.log(`Seeded ${inserted} external_places rows.`);
     changed = true;
   }
 

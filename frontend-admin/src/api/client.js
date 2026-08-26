@@ -243,3 +243,10 @@ export async function restorePayAtVisit(userId, reason) {
   });
   return handleResponse(res);
 }
+
+// --- External places outreach (routes/admin.js) — Batch 25, not in the original spec ---
+
+export async function getExternalPlacesProspects() {
+  const res = await fetch(`${API_BASE}/api/admin/external-places-prospects`, { headers: authHeaders() });
+  return handleResponse(res);
+}
