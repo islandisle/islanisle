@@ -8,12 +8,13 @@
 // keyed off req.user.role since agents/users are entirely separate tables,
 // not a shared one with a type discriminator.
 //
-// Known gap, not introduced by this batch and not fixed here: auth.js's
-// user login (and agents.js's agent login) never actually call /verify —
-// enabling 2FA here changes nothing about what a login accepts. Wiring
-// login-time enforcement for every account type is a larger, separate
-// change than this settings page; flagging rather than silently leaving
-// the setup UI implying protection it doesn't yet provide.
+// Batch 20: auth.js's user login now actually enforces this — POST /login
+// returns `requires_2fa` instead of a token when the account has it
+// enabled, and POST /login/verify-2fa (auth.js) completes the second step
+// itself (checking two_factor_secret directly, not via this file's
+// /verify route, since it already has the user row loaded). Remaining
+// known gap: agents.js's agent login still never checks 2FA — a
+// smaller, separate follow-up than this pass covered.
 
 import { Router } from 'express';
 import { query } from '../config/db.js';

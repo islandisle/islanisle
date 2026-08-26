@@ -21,6 +21,7 @@ import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { REFERRAL_BONUS } from '../services/loyalty.js';
 import { notify } from '../services/notifications.js';
+import { verifyToken } from '../services/totp.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -171,11 +172,34 @@ router.post('/signup', upload.single('document'), async (req, res) => {
   }
 });
 
+// Shared shape for a successful login response, regardless of whether 2FA
+// was involved — both /login (no 2FA) and /login/verify-2fa (2FA) issue
+// the exact same token/user object so the frontend has one code path for
+// "I'm logged in" either way.
+function issueSession(user) {
+  const token = jwt.sign({ id: user.id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return {
+    token,
+    user: {
+      id: user.id, name: user.name, type: user.type,
+      local_verification_status: user.local_verification_status, language: user.language,
+      referral_code: user.referral_code, wallet_balance: user.wallet_balance,
+    },
+  };
+}
+
 /**
  * POST /api/auth/login
  * body: { contact_email OR contact_mobile, password }
  * Works for tourist/local user accounts. Business/agent/admin login live in
  * their own route files once those are built.
+ *
+ * Batch 20: if the account has TOTP 2FA enabled (routes/twoFactor.js), a
+ * correct password alone is no longer enough to get a session — this
+ * returns `{ requires_2fa: true, user_id }` with no token, and the
+ * frontend must call POST /login/verify-2fa with the authenticator code
+ * before a token is issued. Previously 2FA could be enabled but changed
+ * nothing about what a login accepted — this is the actual enforcement.
  */
 router.post('/login', async (req, res) => {
   try {
@@ -185,7 +209,8 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await query(
-      `SELECT id, name, type, password_hash, local_verification_status, language, referral_code, wallet_balance
+      `SELECT id, name, type, password_hash, local_verification_status, language, referral_code, wallet_balance,
+              two_factor_enabled
        FROM users WHERE contact_email = $1 OR contact_mobile = $2`,
       [contact_email || null, contact_mobile || null]
     );
@@ -200,17 +225,51 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
-    const token = jwt.sign({ id: user.id, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({
-      token,
-      user: {
-        id: user.id, name: user.name, type: user.type,
-        local_verification_status: user.local_verification_status, language: user.language,
-        referral_code: user.referral_code, wallet_balance: user.wallet_balance,
-      },
-    });
+    if (user.two_factor_enabled) {
+      return res.json({ requires_2fa: true, user_id: user.id });
+    }
+
+    res.json(issueSession(user));
   } catch (err) {
     console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed. Please try again.' });
+  }
+});
+
+/**
+ * POST /api/auth/login/verify-2fa
+ * body: { user_id, token }
+ * Second step of login for an account with 2FA enabled — verifies the
+ * authenticator code and issues the same session /login would have, had
+ * 2FA not been required.
+ */
+router.post('/login/verify-2fa', async (req, res) => {
+  try {
+    const { user_id, token } = req.body;
+    if (!user_id || !token) {
+      return res.status(400).json({ error: 'user_id and token are required.' });
+    }
+
+    const result = await query(
+      `SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance,
+              two_factor_enabled, two_factor_secret
+       FROM users WHERE id = $1`,
+      [user_id]
+    );
+    if (!result.rows.length) {
+      return res.status(401).json({ error: 'Invalid login attempt.' });
+    }
+    const user = result.rows[0];
+    if (!user.two_factor_enabled) {
+      return res.status(400).json({ error: '2FA is not enabled on this account.' });
+    }
+    if (!verifyToken(token, user.two_factor_secret)) {
+      return res.status(401).json({ error: 'Incorrect code. Please try again.' });
+    }
+
+    res.json(issueSession(user));
+  } catch (err) {
+    console.error('2FA login verification error:', err);
     res.status(500).json({ error: 'Login failed. Please try again.' });
   }
 });
@@ -224,7 +283,8 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authenticate, async (req, res) => {
   const result = await query(
-    'SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance FROM users WHERE id = $1',
+    `SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance, two_factor_enabled
+     FROM users WHERE id = $1`,
     [req.user.id]
   );
   if (!result.rows.length) {

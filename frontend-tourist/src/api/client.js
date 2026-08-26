@@ -42,6 +42,17 @@ export async function login({ contact_email, contact_mobile, password }) {
   return handleResponse(res);
 }
 
+// Batch 20 — second step of login when login() above comes back with
+// `requires_2fa: true` instead of a token.
+export async function verifyLogin2FA(userId, token) {
+  const res = await fetch(`${API_BASE}/api/auth/login/verify-2fa`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, token }),
+  });
+  return handleResponse(res);
+}
+
 // Section 11's "change language later" — i18n.jsx's LanguageProvider calls
 // this whenever a logged-in tourist switches languages from Profile.jsx.
 export async function updateMyLanguage(language) {
@@ -57,6 +68,27 @@ export async function updateMyLanguage(language) {
 // (wallet_balance grows over time via services/loyalty.js).
 export async function getMyProfile() {
   const res = await fetch(`${API_BASE}/api/auth/me`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// Batch 20 — TOTP 2FA setup, mirroring frontend-agent's equivalents
+// (backend/src/routes/twoFactor.js is shared across account types).
+export async function setup2FA() {
+  const res = await fetch(`${API_BASE}/api/2fa/setup`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function confirm2FA(token) {
+  const res = await fetch(`${API_BASE}/api/2fa/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ token }),
+  });
+  return handleResponse(res);
+}
+
+export async function disable2FA() {
+  const res = await fetch(`${API_BASE}/api/2fa/disable`, { method: 'POST', headers: authHeaders() });
   return handleResponse(res);
 }
 
