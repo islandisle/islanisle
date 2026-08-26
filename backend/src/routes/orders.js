@@ -23,9 +23,17 @@
 //     different fulfillment_options, this only checks the requested
 //     fulfillment_method against each item's own options — it doesn't
 //     reconcile conflicting options across a multi-item order beyond that.
-//   - delivery_fee is always 0 for a matched cross-island delivery — no
-//     pricing rule for it was specified; the column is populated (ready
-//     for one) rather than left silently at its default for a different reason.
+//
+// Batch 22: delivery_fee used to be hardcoded 0 regardless of
+// free_delivery — the flag was stored and shown on the listing form but
+// never read back. No delivery-fee amount was ever specified anywhere in
+// the spec, so CROSS_ISLAND_DELIVERY_FEE below is an assumed flat rate,
+// not a documented one — flagging it as a judgment call. free_delivery is
+// per-listing (Section 4.5: "per product or store-wide"); for a
+// multi-item order this waives the fee only if EVERY item in the order
+// has it set, since one paid-shipping item in the cart means the order
+// as a whole isn't free to ship.
+const CROSS_ISLAND_DELIVERY_FEE = 5;
 
 import { Router } from 'express';
 import { query, pool } from '../config/db.js';
@@ -105,7 +113,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     const listingIds = items.map((i) => i.listing_id);
     const listingsResult = await query(
       `SELECT l.id, l.title, l.tourist_price, l.local_price, l.approval_status, l.stock_count,
-              l.fulfillment_options, l.pay_at_visit_enabled, b.id AS business_id, b.type AS business_type,
+              l.fulfillment_options, l.pay_at_visit_enabled, l.free_delivery, b.id AS business_id, b.type AS business_type,
               b.approval_status AS business_approval_status, b.account_status, b.trust_tier, b.location_island
        FROM listings l
        JOIN businesses b ON b.id = l.business_id
@@ -220,6 +228,12 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       basePrice = round2(basePrice + unitPrice * quantity);
     }
 
+    // free_delivery only waives the fee if every item in the order has it
+    // set — see this file's top comment.
+    const deliveryFee = deliveryMatch && !items.every((item) => listingsById[item.listing_id].free_delivery)
+      ? CROSS_ISLAND_DELIVERY_FEE
+      : 0;
+
     const businessCommission = round2(basePrice * BUSINESS_COMMISSION_RATE);
     const touristCommissionApplicable = !isPayAtVisit && payerType === 'tourist';
     const touristCommission = touristCommissionApplicable ? round2(basePrice * TOURIST_COMMISSION_RATE) : 0;
@@ -257,7 +271,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         basePrice,
       }));
     }
-    const priceCharged = round2(basePrice + touristCommission - promoDiscountAmount);
+    const priceCharged = round2(basePrice + touristCommission + deliveryFee - promoDiscountAmount);
 
     const orderResult = await client.query(
       `INSERT INTO orders (
@@ -276,7 +290,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         fulfillment_method || null,
         deliveryMatch ? delivery_island : null,
         deliveryMatch ? deliveryMatch.listing_id : null,
-        0, // delivery_fee — see this file's top comment
+        deliveryFee,
         deliveryMatch ? (handover_method || 'buyer_pickup_at_boat') : null,
         isPayAtVisit ? 'confirmed' : 'pending_payment',
         'not_applicable',
@@ -439,13 +453,14 @@ router.get('/delivery-check', async (req, res) => {
   }
 
   const listingResult = await query(
-    `SELECT b.location_island AS shop_island FROM listings l JOIN businesses b ON b.id = l.business_id WHERE l.id = $1`,
+    `SELECT b.location_island AS shop_island, l.free_delivery
+     FROM listings l JOIN businesses b ON b.id = l.business_id WHERE l.id = $1`,
     [listing_id]
   );
   if (!listingResult.rows.length) {
     return res.status(404).json({ error: 'Listing not found.' });
   }
-  const shopIsland = listingResult.rows[0].shop_island;
+  const { shop_island: shopIsland, free_delivery: freeDelivery } = listingResult.rows[0];
 
   if (!shopIsland || shopIsland.trim().toLowerCase() === delivery_island.trim().toLowerCase()) {
     return res.json({ available: true, cross_island: false, shop_island: shopIsland, delivery_island });
@@ -462,6 +477,10 @@ router.get('/delivery-check', async (req, res) => {
     delivery_island,
     departure: match.departure,
     boat_name: match.boat_name,
+    // Batch 22 — free_delivery now actually affects what's charged
+    // (see this file's top comment); surfaced here so the tourist sees
+    // the fee before checkout, not just at the final total.
+    delivery_fee: freeDelivery ? 0 : CROSS_ISLAND_DELIVERY_FEE,
   });
 });
 
