@@ -99,6 +99,13 @@ router.get('/thread', authenticate, async (req, res) => {
  * — enough for a conversation list. thread_key encodes both participants
  * as literal text, so this is a LIKE match on "<role>:<id>" appearing in
  * it; fine at this table's expected scale.
+ *
+ * Batch 22: also resolves each thread's other_role/other_id/other_name —
+ * previously just the raw thread_key, which is fine for a thread the
+ * caller already knows the context of (e.g. ChatPanel opened from a
+ * specific listing), but frontend-tourist's new "My messages" list needs
+ * to render threads it has no other context for at all (an agent-started
+ * one, say), so the name has to come from somewhere.
  */
 router.get('/threads/mine', authenticate, async (req, res) => {
   const { as_business_id } = req.query;
@@ -113,7 +120,31 @@ router.get('/threads/mine', authenticate, async (req, res) => {
      ORDER BY thread_key, created_at DESC`,
     [pattern]
   );
-  res.json({ threads: result.rows });
+
+  const threads = result.rows.map((row) => {
+    const [first, second] = row.thread_key.split('|').map((part) => {
+      const [role, id] = part.split(':');
+      return { role, id };
+    });
+    const other = first.role === me.role && first.id === me.id ? second : first;
+    return { ...row, other_role: other.role, other_id: other.id };
+  });
+
+  const idsByRole = {};
+  for (const t of threads) (idsByRole[t.other_role] ??= new Set()).add(t.other_id);
+  const nameByKey = {};
+  const TABLE_BY_ROLE = { user: 'users', business: 'businesses', agent: 'agents' };
+  for (const [role, ids] of Object.entries(idsByRole)) {
+    const table = TABLE_BY_ROLE[role];
+    if (!table || !ids.size) continue;
+    const nameResult = await query(`SELECT id, name FROM ${table} WHERE id = ANY($1::uuid[])`, [[...ids]]);
+    for (const row of nameResult.rows) nameByKey[`${role}:${row.id}`] = row.name;
+  }
+  for (const t of threads) {
+    t.other_name = nameByKey[`${t.other_role}:${t.other_id}`] || 'Unknown';
+  }
+
+  res.json({ threads });
 });
 
 export default router;

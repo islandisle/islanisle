@@ -115,6 +115,14 @@ export default function Profile() {
       </Link>
 
       <Link
+        to="/messages"
+        className="btn-secondary"
+        style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}
+      >
+        Messages
+      </Link>
+
+      <Link
         to="/support"
         className="btn-secondary"
         style={{ display: 'block', textAlign: 'center', width: '100%', marginBottom: 12, textDecoration: 'none' }}

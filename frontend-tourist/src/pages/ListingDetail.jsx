@@ -94,7 +94,7 @@ export default function ListingDetail() {
       {showChat && (
         <>
           <Hint id="listing-chat" text={t('hint.chat')} />
-          <ChatPanel businessId={listing.business_id} businessName={listing.business_name} onClose={() => setShowChat(false)} />
+          <ChatPanel otherRole="business" otherId={listing.business_id} otherName={listing.business_name} onClose={() => setShowChat(false)} />
         </>
       )}
 
@@ -701,6 +701,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
             <>
               <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>
                 Deliverable via {deliveryCheck.boat_name} — departs {new Date(deliveryCheck.departure).toLocaleString()}.
+                {' '}{deliveryCheck.delivery_fee > 0 ? `Delivery fee: $${deliveryCheck.delivery_fee}.` : 'Free delivery.'}
               </p>
               <label htmlFor="shop-handover" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 How should it be handed over?

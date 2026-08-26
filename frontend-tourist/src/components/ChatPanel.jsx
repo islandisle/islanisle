@@ -4,9 +4,15 @@ import { useModalA11y } from '../useModalA11y';
 
 // Section 6.5's tourist↔business chat — reuses the same generic messages
 // backend (routes/messages.js) and the same ChatPanel pattern already
-// built for the agent portal (frontend-agent/src/pages/Dashboard.jsx),
-// just always talking to other_role: 'business' here.
-export default function ChatPanel({ businessId, businessName, onClose }) {
+// built for the agent portal (frontend-agent/src/pages/Dashboard.jsx).
+//
+// Batch 22: generalized from business-only (businessId/businessName) to
+// any other_role, so the new Messages.jsx page can reuse this same panel
+// for an agent-initiated thread — a tourist previously had no UI at all
+// to see or reply to one, even though the backend already supported it.
+// ListingDetail.jsx's existing "Message business" button just passes
+// otherRole="business" now instead of the old business-specific props.
+export default function ChatPanel({ otherRole, otherId, otherName, onClose }) {
   const modalRef = useModalA11y(onClose);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -15,19 +21,19 @@ export default function ChatPanel({ businessId, businessName, onClose }) {
 
   function load() {
     setLoading(true);
-    getThread('business', businessId)
+    getThread(otherRole, otherId)
       .then((d) => setMessages(d.messages || []))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, [businessId]);
+  useEffect(() => { load(); }, [otherRole, otherId]);
 
   async function handleSend(e) {
     e.preventDefault();
     if (!text.trim()) return;
     try {
-      await sendMessage('business', businessId, text.trim());
+      await sendMessage(otherRole, otherId, text.trim());
       setText('');
       load();
     } catch (err) {
@@ -48,12 +54,12 @@ export default function ChatPanel({ businessId, businessName, onClose }) {
         className="card"
         role="dialog"
         aria-modal="true"
-        aria-label={`Chat with ${businessName}`}
+        aria-label={`Chat with ${otherName}`}
         style={{ width: '100%', maxWidth: 480, borderRadius: '20px 20px 0 0', padding: 16, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Chat with {businessName}</p>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>Chat with {otherName}</p>
           <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onClose} aria-label="Close chat">Close</button>
         </div>
 
@@ -63,7 +69,7 @@ export default function ChatPanel({ businessId, businessName, onClose }) {
           {!loading && messages.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No messages yet — say hello.</p>}
           {messages.map((m) => (
             <p key={m.id} style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 8px' }}>
-              <strong>{m.sender_role === 'user' ? 'You' : businessName}:</strong> {m.text}
+              <strong>{m.sender_role === 'user' ? 'You' : otherName}:</strong> {m.text}
             </p>
           ))}
         </div>
