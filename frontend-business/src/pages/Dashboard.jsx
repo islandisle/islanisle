@@ -67,6 +67,13 @@ export default function Dashboard() {
         <button
           className="btn-secondary"
           style={{ padding: '4px 12px', fontSize: 12 }}
+          onClick={() => navigate('/b2b')}
+        >
+          B2B
+        </button>
+        <button
+          className="btn-secondary"
+          style={{ padding: '4px 12px', fontSize: 12 }}
           onClick={() => navigate('/settings')}
         >
           Settings

@@ -629,6 +629,12 @@ CREATE TABLE b2b_requests (
     discount_percent          NUMERIC(4,2),
     discount_source           TEXT, -- 'live' | 'standing_rate'
     status                   TEXT NOT NULL DEFAULT 'pending',
+    -- Batch 19: filled in building routes/b2b.js — accepting a request
+    -- creates a real `bookings` row per guest (see b2b_request_guests
+    -- below), and a booking needs a slot. Absent from the original
+    -- [PHASE 2] table.
+    slot_start                TIMESTAMPTZ,
+    slot_end                  TIMESTAMPTZ,
     created_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

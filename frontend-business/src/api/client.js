@@ -383,3 +383,55 @@ export async function getPayoutItems(payoutId) {
   const res = await fetch(`${API_BASE}/api/payouts/${payoutId}/items`, { headers: authHeaders() });
   return handleResponse(res);
 }
+// --- B2B requests + standing discounts (routes/b2b.js) — Batch 19 ---
+
+export async function getStandingDiscounts(businessId) {
+  const res = await fetch(`${API_BASE}/api/b2b/standing-discounts/${businessId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function createStandingDiscount(businessId, { partner_business_id, discount_percent }) {
+  const res = await fetch(`${API_BASE}/api/b2b/standing-discounts/${businessId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ partner_business_id, discount_percent }),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteStandingDiscount(businessId, discountId) {
+  const res = await fetch(`${API_BASE}/api/b2b/standing-discounts/${businessId}/${discountId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function createB2BRequest(businessId, payload) {
+  const res = await fetch(`${API_BASE}/api/b2b/requests/${businessId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function getOutgoingB2BRequests(businessId) {
+  const res = await fetch(`${API_BASE}/api/b2b/requests/${businessId}/outgoing`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getIncomingB2BRequests(businessId) {
+  const res = await fetch(`${API_BASE}/api/b2b/requests/${businessId}/incoming`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function acceptB2BRequest(requestId) {
+  const res = await fetch(`${API_BASE}/api/b2b/requests/${requestId}/accept`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function rejectB2BRequest(requestId) {
+  const res = await fetch(`${API_BASE}/api/b2b/requests/${requestId}/reject`, { method: 'POST', headers: authHeaders() });
+  return handleResponse(res);
+}

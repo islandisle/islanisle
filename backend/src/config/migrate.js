@@ -281,6 +281,18 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for b2b_requests.slot_start/slot_end (Batch 19 B2B requests)...');
+  if (!(await columnExists('b2b_requests', 'slot_start'))) {
+    console.log('Adding b2b_requests.slot_start...');
+    await pool.query(`ALTER TABLE b2b_requests ADD COLUMN slot_start TIMESTAMPTZ`);
+    changed = true;
+  }
+  if (!(await columnExists('b2b_requests', 'slot_end'))) {
+    console.log('Adding b2b_requests.slot_end...');
+    await pool.query(`ALTER TABLE b2b_requests ADD COLUMN slot_end TIMESTAMPTZ`);
+    changed = true;
+  }
+
   console.log('Checking for favorites table (Batch 19)...');
   if (!(await tableExists('favorites'))) {
     console.log('Creating favorites...');
