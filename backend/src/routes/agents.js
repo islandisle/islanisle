@@ -44,6 +44,25 @@ function getSlotCapacity(businessType, typeSpecificFields) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+// Batch 22 — admin.js could already suspend an agent (account_status),
+// but nothing past login ever checked it: a suspended agent holding a
+// still-valid 30-day token could keep connecting to businesses and
+// creating bookings. Applied only to the two write actions Section 5.1
+// actually says suspension blocks ("cannot arrange new bookings or
+// connect with new businesses until reinstated") — read routes
+// (viewing existing bookings/commissions/settings) stay open, matching
+// "already-confirmed guest arrangements... are still honored."
+async function requireActiveAgent(req, res, next) {
+  const result = await query('SELECT account_status FROM agents WHERE id = $1', [req.user.id]);
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Agent account not found.' });
+  }
+  if (result.rows[0].account_status !== 'active') {
+    return res.status(403).json({ error: 'Your agent account is suspended. Existing bookings are still honored, but new ones cannot be made until reinstated.' });
+  }
+  next();
+}
+
 /**
  * POST /api/agents/signup
  * body: { name, contact_email, password }
@@ -100,7 +119,7 @@ router.post('/login', async (req, res) => {
  * POST /api/agents/connect
  * body: { business_id } — see file header re: no business-side approval yet.
  */
-router.post('/connect', authenticate, requireRole('agent'), async (req, res) => {
+router.post('/connect', authenticate, requireRole('agent'), requireActiveAgent, async (req, res) => {
   const { business_id } = req.body;
   if (!business_id) {
     return res.status(400).json({ error: 'business_id is required.' });
@@ -188,7 +207,7 @@ router.get('/availability', authenticate, requireRole('agent'), async (req, res)
  * agent_booking_guests. body: { business_id, listing_id, slot_start,
  * slot_end?, guest_user_id?, guest_name?, commission_rate }
  */
-router.post('/bookings', authenticate, requireRole('agent'), async (req, res) => {
+router.post('/bookings', authenticate, requireRole('agent'), requireActiveAgent, async (req, res) => {
   const { business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name, commission_rate } = req.body;
   if (!business_id || !listing_id || !slot_start || (!guest_user_id && !guest_name)) {
     return res.status(400).json({ error: 'business_id, listing_id, slot_start, and a guest (guest_user_id or guest_name) are required.' });
