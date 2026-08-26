@@ -5,6 +5,7 @@ import {
   markBusinessTrusted, getAgentDirectory, suspendAgent, reinstateAgent, getAuditLog,
   getBusinessDirectory, getBusinessDetail, getBusinessListingsDetail, getBusinessStaff, runPayouts,
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
+  getPlatformAnalytics,
 } from '../api/client';
 import { useTheme } from '../theme';
 
@@ -99,6 +100,8 @@ export default function Dashboard() {
 
       <AppearanceSection />
 
+      {!isModerator && <PlatformAnalyticsSection />}
+
       <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
       {!isModerator && <PayoutsSection />}
       {!isModerator && <DisputesSection disputes={disputes} onResolved={loadAll} />}
@@ -106,6 +109,79 @@ export default function Dashboard() {
       {!isModerator && <AgentDirectorySection />}
       <SupportTicketsSection />
       {!isModerator && <AuditLogSection />}
+    </div>
+  );
+}
+
+// GET /api/admin/analytics — Batch 19: platform-wide health at a glance,
+// the admin console's counterpart to frontend-business's per-business
+// Analytics page. Full-Admin-only, same gating as PayoutsSection/
+// DisputesSection, since it surfaces platform revenue.
+function PlatformAnalyticsSection() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getPlatformAnalytics().then(setData).catch((err) => setError(err.message));
+  }, []);
+
+  const maxDaily = data ? Math.max(1, ...data.daily_revenue.map((d) => Number(d.revenue))) : 1;
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Platform analytics
+      </p>
+
+      {error && <p className="error-text">{error}</p>}
+      {!data && !error && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+
+      {data && (
+        <>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <StatCard label="Users" value={data.totals.user_count} />
+            <StatCard label="Active businesses" value={data.totals.business_count} />
+            <StatCard label="Open disputes" value={data.totals.open_disputes} />
+            <StatCard label="Total revenue" value={`$${Number(data.totals.total_revenue).toFixed(2)}`} />
+            <StatCard label="Commission earned" value={`$${Number(data.totals.total_commission).toFixed(2)}`} />
+          </div>
+
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>Revenue, last 30 days</p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 90 }}>
+              {data.daily_revenue.map((d) => (
+                <div
+                  key={d.day}
+                  title={`${d.day.slice(0, 10)}: $${Number(d.revenue).toFixed(2)}`}
+                  style={{
+                    flex: 1,
+                    height: `${Math.max(2, (Number(d.revenue) / maxDaily) * 100)}%`,
+                    background: 'var(--lagoon)',
+                    borderRadius: '2px 2px 0 0',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 8px' }}>Top businesses by revenue</p>
+          {data.top_businesses.map((b) => (
+            <div key={b.id} className="card" style={{ padding: 10, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, color: 'var(--navy)' }}>{b.name} ({b.type})</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>${Number(b.revenue).toFixed(2)}</span>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+function StatCard({ label, value }) {
+  return (
+    <div className="card" style={{ flex: '1 0 100px', padding: 10, textAlign: 'center' }}>
+      <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '0 0 4px' }}>{label}</p>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>{value}</p>
     </div>
   );
 }

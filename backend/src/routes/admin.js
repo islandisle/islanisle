@@ -554,4 +554,65 @@ router.get('/audit-log', authenticate, requireRole('admin'), async (req, res) =>
   res.json({ entries: rowsResult.rows, total: countResult.rows[0].total, page, limit });
 });
 
+/**
+ * GET /api/admin/analytics
+ * Batch 19 — platform-wide health at a glance, the admin-side counterpart
+ * to business.js's per-business analytics. Revenue counts the same
+ * statuses as the business dashboard (confirmed/completed bookings,
+ * confirmed-through-completed orders) plus platform commission earned.
+ */
+router.get('/analytics', authenticate, requireRole('admin'), async (req, res) => {
+  const REVENUE_BOOKING_STATUSES = ['confirmed', 'completed'];
+  const REVENUE_ORDER_STATUSES = ['confirmed', 'ready', 'out_for_delivery', 'completed'];
+
+  const [totals, dailyRevenue, topBusinesses] = await Promise.all([
+    query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM users) AS user_count,
+         (SELECT COUNT(*)::int FROM businesses WHERE approval_status = 'approved') AS business_count,
+         (SELECT COUNT(*)::int FROM disputes WHERE status = 'open') AS open_disputes,
+         (SELECT COALESCE(SUM(price_charged), 0) FROM bookings WHERE status = ANY($1::booking_status[]))
+         + (SELECT COALESCE(SUM(price_charged), 0) FROM orders WHERE status = ANY($2::order_status[]))
+         AS total_revenue,
+         (SELECT COALESCE(SUM(business_commission + tourist_commission), 0) FROM bookings WHERE status = ANY($1::booking_status[]))
+         + (SELECT COALESCE(SUM(business_commission + tourist_commission), 0) FROM orders WHERE status = ANY($2::order_status[]))
+         AS total_commission`,
+      [REVENUE_BOOKING_STATUSES, REVENUE_ORDER_STATUSES]
+    ),
+    query(
+      `SELECT day::date AS day, COALESCE(SUM(amount), 0) AS revenue FROM (
+         SELECT created_at, price_charged AS amount FROM bookings
+         WHERE status = ANY($1::booking_status[]) AND created_at >= CURRENT_DATE - INTERVAL '29 days'
+         UNION ALL
+         SELECT created_at, price_charged FROM orders
+         WHERE status = ANY($2::order_status[]) AND created_at >= CURRENT_DATE - INTERVAL '29 days'
+       ) combined
+       RIGHT JOIN generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day') day
+         ON combined.created_at::date = day::date
+       GROUP BY day ORDER BY day ASC`,
+      [REVENUE_BOOKING_STATUSES, REVENUE_ORDER_STATUSES]
+    ),
+    query(
+      `SELECT b.id, b.name, b.type, COALESCE(SUM(rev.amount), 0) AS revenue FROM businesses b
+       LEFT JOIN LATERAL (
+         SELECT bk.price_charged AS amount FROM bookings bk
+         JOIN listings l ON l.id = bk.listing_id
+         WHERE l.business_id = b.id AND bk.status = ANY($1::booking_status[])
+         UNION ALL
+         SELECT o.price_charged FROM orders o WHERE o.business_id = b.id AND o.status = ANY($2::order_status[])
+       ) rev ON true
+       GROUP BY b.id, b.name, b.type
+       ORDER BY revenue DESC
+       LIMIT 10`,
+      [REVENUE_BOOKING_STATUSES, REVENUE_ORDER_STATUSES]
+    ),
+  ]);
+
+  res.json({
+    totals: totals.rows[0],
+    daily_revenue: dailyRevenue.rows,
+    top_businesses: topBusinesses.rows,
+  });
+});
+
 export default router;

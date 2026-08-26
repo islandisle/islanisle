@@ -265,4 +265,73 @@ router.patch('/:businessId/listings/:listingId', authenticate, requireBusinessOw
   res.json({ listing: result.rows[0] });
 });
 
+/**
+ * GET /api/business/:businessId/analytics
+ * Batch 19 — a business previously had no at-a-glance view of how it's
+ * doing beyond scrolling its raw bookings/orders list. Revenue counts only
+ * 'confirmed'/'completed' rows (not pending_payment/cancelled) — the same
+ * statuses services/payoutRun.js treats as payable.
+ */
+router.get('/:businessId/analytics', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
+  const { businessId } = req.params;
+  const REVENUE_BOOKING_STATUSES = ['confirmed', 'completed'];
+  const REVENUE_ORDER_STATUSES = ['confirmed', 'ready', 'out_for_delivery', 'completed'];
+
+  const [summary, dailyRevenue, topListings] = await Promise.all([
+    query(
+      `SELECT
+         (SELECT COALESCE(SUM(b.price_charged), 0) FROM bookings b
+          JOIN listings l ON l.id = b.listing_id
+          WHERE l.business_id = $1 AND b.status = ANY($2::booking_status[]))
+         +
+         (SELECT COALESCE(SUM(o.price_charged), 0) FROM orders o
+          WHERE o.business_id = $1 AND o.status = ANY($3::order_status[]))
+         AS total_revenue,
+         (SELECT COUNT(*)::int FROM bookings b JOIN listings l ON l.id = b.listing_id
+          WHERE l.business_id = $1 AND b.status = ANY($2::booking_status[]))
+         +
+         (SELECT COUNT(*)::int FROM orders o WHERE o.business_id = $1 AND o.status = ANY($3::order_status[]))
+         AS completed_count,
+         (SELECT COUNT(*)::int FROM bookings b JOIN listings l ON l.id = b.listing_id
+          WHERE l.business_id = $1 AND b.status = 'cancelled')
+         +
+         (SELECT COUNT(*)::int FROM orders o WHERE o.business_id = $1 AND o.status = 'cancelled')
+         AS cancelled_count`,
+      [businessId, REVENUE_BOOKING_STATUSES, REVENUE_ORDER_STATUSES]
+    ),
+    query(
+      `SELECT day::date AS day, COALESCE(SUM(amount), 0) AS revenue FROM (
+         SELECT b.created_at AS created_at, b.price_charged AS amount FROM bookings b
+         JOIN listings l ON l.id = b.listing_id
+         WHERE l.business_id = $1 AND b.status = ANY($2::booking_status[])
+           AND b.created_at >= CURRENT_DATE - INTERVAL '29 days'
+         UNION ALL
+         SELECT o.created_at, o.price_charged FROM orders o
+         WHERE o.business_id = $1 AND o.status = ANY($3::order_status[])
+           AND o.created_at >= CURRENT_DATE - INTERVAL '29 days'
+       ) combined
+       RIGHT JOIN generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day') day
+         ON combined.created_at::date = day::date
+       GROUP BY day ORDER BY day ASC`,
+      [businessId, REVENUE_BOOKING_STATUSES, REVENUE_ORDER_STATUSES]
+    ),
+    query(
+      `SELECT l.id, l.title, COUNT(b.id)::int AS booking_count, COALESCE(SUM(b.price_charged), 0) AS revenue
+       FROM listings l
+       LEFT JOIN bookings b ON b.listing_id = l.id AND b.status = ANY($2::booking_status[])
+       WHERE l.business_id = $1
+       GROUP BY l.id, l.title
+       ORDER BY revenue DESC
+       LIMIT 5`,
+      [businessId, REVENUE_BOOKING_STATUSES]
+    ),
+  ]);
+
+  res.json({
+    summary: summary.rows[0],
+    daily_revenue: dailyRevenue.rows,
+    top_listings: topListings.rows,
+  });
+});
+
 export default router;

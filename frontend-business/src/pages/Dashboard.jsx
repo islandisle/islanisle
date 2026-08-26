@@ -53,6 +53,13 @@ export default function Dashboard() {
         <button
           className="btn-secondary"
           style={{ padding: '4px 12px', fontSize: 12 }}
+          onClick={() => navigate('/analytics')}
+        >
+          Analytics
+        </button>
+        <button
+          className="btn-secondary"
+          style={{ padding: '4px 12px', fontSize: 12 }}
           onClick={() => navigate('/payouts')}
         >
           Payouts

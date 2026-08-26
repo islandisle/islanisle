@@ -129,6 +129,13 @@ export async function getAuditLog({ page = 1 } = {}) {
   return handleResponse(res);
 }
 
+// --- Platform analytics (routes/admin.js) ---
+
+export async function getPlatformAnalytics() {
+  const res = await fetch(`${API_BASE}/api/admin/analytics`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Business directory (routes/admin.js) ---
 
 export async function getBusinessDirectory({ search, status, page = 1 } = {}) {
