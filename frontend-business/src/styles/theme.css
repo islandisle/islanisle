@@ -174,3 +174,40 @@ body {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
+
+/* Batch 30 — animated multi-scene SectionArt line-art banners.
+   scene-rotate crossfades the 5 scenes; the rest are gentle per-scene
+   internal motion. All are frozen by the global prefers-reduced-motion
+   rule above; the .sa-scene rule then pins the first scene visible so the
+   banner still shows art rather than going blank. */
+@keyframes scene-rotate {
+  0%   { opacity: 0; }
+  4%   { opacity: 1; }
+  16%  { opacity: 1; }
+  20%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes soft-bob {
+  0%, 100% { transform: translateY(1px); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes soft-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+@keyframes drift-x {
+  0%, 100% { transform: translateX(-3px); }
+  50%      { transform: translateX(3px); }
+}
+@keyframes bubble-rise {
+  0%   { transform: translateY(0); opacity: 0.85; }
+  100% { transform: translateY(-18px); opacity: 0; }
+}
+@keyframes route-dash {
+  to { stroke-dashoffset: -14; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-scene { opacity: 0 !important; }
+  .sa-scene:first-child { opacity: 1 !important; }
+}
