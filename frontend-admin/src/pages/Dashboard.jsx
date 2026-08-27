@@ -9,6 +9,15 @@ import {
   getPayAtVisitIncidents, restorePayAtVisit, getExternalPlacesProspects,
 } from '../api/client';
 import { useTheme } from '../theme';
+import NavMenu from '../components/NavMenu';
+
+// Batch 27 — the admin console is one long scrolling page, so its hamburger
+// menu jumps to sections rather than routing. `scroll-margin-top` keeps the
+// landing spot clear of the sticky-ish header area.
+function jumpTo(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // Section 10.1's role levels: "Moderator — approvals only, vs. Full Admin —
 // approvals + suspensions + disputes + refund overrides." admin.role here
@@ -88,7 +97,25 @@ export default function Dashboard() {
     <div style={{ maxWidth: 640, margin: '0 auto', padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>Admin Console</h1>
-        <button className="btn-secondary" onClick={handleLogout}>Log out</button>
+        <div style={{ color: 'var(--navy)' }}>
+          <NavMenu
+            label="Sections"
+            buttonStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            items={[
+              { label: 'Approval queue', icon: 'queue', onClick: () => jumpTo('sec-approvals') },
+              ...(isModerator ? [] : [
+                { label: 'Payout run', icon: 'payouts', onClick: () => jumpTo('sec-payouts') },
+                { label: 'Open disputes', icon: 'sos', onClick: () => jumpTo('sec-disputes') },
+              ]),
+              { label: 'Businesses', icon: 'b2b', onClick: () => jumpTo('sec-businesses') },
+              ...(isModerator ? [] : [{ label: 'Agents', icon: 'guests', onClick: () => jumpTo('sec-agents') }]),
+              { label: 'Support tickets', icon: 'support', onClick: () => jumpTo('sec-support') },
+              { label: 'Local events', icon: 'guide', onClick: () => jumpTo('sec-events') },
+              ...(isModerator ? [] : [{ label: 'Audit log', icon: 'bookings', onClick: () => jumpTo('sec-audit') }]),
+              { onClick: handleLogout, label: 'Log out', icon: 'logout', danger: true },
+            ]}
+          />
+        </div>
       </div>
 
       {isModerator && (
@@ -103,16 +130,18 @@ export default function Dashboard() {
 
       {!isModerator && <PlatformAnalyticsSection />}
 
-      <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
-      {!isModerator && <PayoutsSection />}
-      {!isModerator && <DisputesSection disputes={disputes} onResolved={loadAll} />}
-      <BusinessDirectorySection isModerator={isModerator} />
-      {!isModerator && <AgentDirectorySection />}
-      <SupportTicketsSection />
-      <LocalEventsSection />
+      <div id="sec-approvals" style={{ scrollMarginTop: 12 }}>
+        <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
+      </div>
+      {!isModerator && <div id="sec-payouts" style={{ scrollMarginTop: 12 }}><PayoutsSection /></div>}
+      {!isModerator && <div id="sec-disputes" style={{ scrollMarginTop: 12 }}><DisputesSection disputes={disputes} onResolved={loadAll} /></div>}
+      <div id="sec-businesses" style={{ scrollMarginTop: 12 }}><BusinessDirectorySection isModerator={isModerator} /></div>
+      {!isModerator && <div id="sec-agents" style={{ scrollMarginTop: 12 }}><AgentDirectorySection /></div>}
+      <div id="sec-support" style={{ scrollMarginTop: 12 }}><SupportTicketsSection /></div>
+      <div id="sec-events" style={{ scrollMarginTop: 12 }}><LocalEventsSection /></div>
       {!isModerator && <PayAtVisitIncidentsSection />}
       {!isModerator && <ExternalPlacesProspectsSection />}
-      {!isModerator && <AuditLogSection />}
+      {!isModerator && <div id="sec-audit" style={{ scrollMarginTop: 12 }}><AuditLogSection /></div>}
     </div>
   );
 }

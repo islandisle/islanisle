@@ -7,6 +7,7 @@ import {
 } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import EntityPicker from '../components/EntityPicker';
+import NavMenu from '../components/NavMenu';
 
 // MVP agent portal — script Section 12's Agent account type. Scoped down
 // per explicit direction: connect to businesses, check availability, book
@@ -60,9 +61,15 @@ export default function Dashboard() {
           <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>{agent.name}</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Approval: {agent.approval_status}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-secondary" onClick={() => navigate('/settings')}>Settings</button>
-          <button className="btn-secondary" onClick={handleLogout}>Log out</button>
+        <div style={{ color: 'var(--navy)' }}>
+          <NavMenu
+            items={[
+              { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+              { to: '/settings', label: 'Settings', icon: 'settings' },
+              { onClick: handleLogout, label: 'Log out', icon: 'logout', danger: true },
+            ]}
+            buttonStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          />
         </div>
       </div>
 

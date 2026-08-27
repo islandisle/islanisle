@@ -5,7 +5,23 @@ import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
 import Hint from '../components/Hint';
+import NavMenu from '../components/NavMenu';
 import { useLanguage } from '../i18n';
+
+// Batch 27 — tourist navigation, consolidated from links previously split
+// between the Home header and the Profile page's button column.
+const NAV_ITEMS = [
+  { to: '/', end: true, label: 'Home', icon: 'home' },
+  { to: '/bookings', label: 'My bookings & orders', icon: 'bookings' },
+  { to: '/trips', label: 'My trips', icon: 'trips' },
+  { to: '/favorites', label: 'Favorites', icon: 'favorites' },
+  { to: '/messages', label: 'Messages', icon: 'messages' },
+  { to: '/transfers', label: 'Arrival transfers', icon: 'transfers' },
+  { to: '/local-guide', label: 'Local guide', icon: 'guide' },
+  { to: '/emergency-contacts', label: 'Emergency contacts', icon: 'sos' },
+  { to: '/support', label: 'Support', icon: 'support' },
+  { to: '/profile', label: 'Profile & settings', icon: 'profile' },
+];
 
 const DEFAULT_ISLAND = 'Maafushi';
 
@@ -573,11 +589,9 @@ function Header({ island, weather }) {
             {weather && <WeatherBadge weather={weather} />}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
           <NotificationBell />
-          <Link to="/profile" style={{ color: '#fff', fontSize: 13, textDecoration: 'none', background: 'rgba(255,255,255,0.15)', padding: '6px 10px', borderRadius: 20 }}>
-            {t('nav.profile')}
-          </Link>
+          <NavMenu items={NAV_ITEMS} label={t('nav.menu')} />
         </div>
       </div>
     </div>

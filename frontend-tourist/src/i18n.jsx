@@ -72,6 +72,7 @@ const TRANSLATIONS = {
     'business_types.shop': 'Shop',
     'profile.language': 'Language',
     'nav.profile': 'Profile',
+    'nav.menu': 'Menu',
   },
   zh: {
     'common.loading': '加载中…',
@@ -104,6 +105,7 @@ const TRANSLATIONS = {
     'business_types.shop': '商店',
     'profile.language': '语言',
     'nav.profile': '个人资料',
+    'nav.menu': '菜单',
   },
   it: {
     'common.loading': 'Caricamento…',
@@ -136,6 +138,7 @@ const TRANSLATIONS = {
     'business_types.shop': 'Negozio',
     'profile.language': 'Lingua',
     'nav.profile': 'Profilo',
+    'nav.menu': 'Menu',
   },
   es: {
     'common.loading': 'Cargando…',
@@ -168,6 +171,7 @@ const TRANSLATIONS = {
     'business_types.shop': 'Tienda',
     'profile.language': 'Idioma',
     'nav.profile': 'Perfil',
+    'nav.menu': 'Menú',
   },
 };
 

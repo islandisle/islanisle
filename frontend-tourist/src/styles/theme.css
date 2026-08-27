@@ -199,3 +199,9 @@ body {
   font-size: 13px;
   margin-top: 4px;
 }
+
+/* Batch 27 — hamburger nav slide-out sheet (respects reduced-motion via the global rule above). */
+@keyframes nav-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

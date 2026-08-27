@@ -10,6 +10,7 @@ import {
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
+import NavMenu from '../components/NavMenu';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -43,6 +44,13 @@ export default function Dashboard() {
     localStorage.setItem('atollisle_business', JSON.stringify(newBusiness));
   }
 
+  function handleLogout() {
+    localStorage.removeItem('atollisle_business_token');
+    localStorage.removeItem('atollisle_business');
+    localStorage.removeItem('atollisle_business_user');
+    navigate('/login');
+  }
+
   if (!business) {
     return (
       <>
@@ -52,47 +60,27 @@ export default function Dashboard() {
     );
   }
 
+  const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/analytics', label: 'Analytics', icon: 'analytics' },
+    { to: '/payouts', label: 'Payouts', icon: 'payouts' },
+    { to: '/b2b', label: 'B2B partnerships', icon: 'b2b' },
+    ...((business.type === 'guesthouse' || business.type === 'speedboat')
+      ? [{ to: '/group-transfers', label: 'Group transfers', icon: 'transfers' }] : []),
+    { to: '/notifications', label: 'Notifications', icon: 'messages' },
+    { to: '/settings', label: 'Settings', icon: 'settings' },
+    { to: '/support', label: 'Support', icon: 'support' },
+    { onClick: handleLogout, label: 'Log out', icon: 'logout', danger: true },
+  ];
+
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
-        <NotificationBellButton businessId={business.id} onClick={() => navigate('/notifications')} />
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 12px', fontSize: 12 }}
-          onClick={() => navigate('/analytics')}
-        >
-          Analytics
-        </button>
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 12px', fontSize: 12 }}
-          onClick={() => navigate('/payouts')}
-        >
-          Payouts
-        </button>
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 12px', fontSize: 12 }}
-          onClick={() => navigate('/b2b')}
-        >
-          B2B
-        </button>
-        {(business.type === 'guesthouse' || business.type === 'speedboat') && (
-          <button
-            className="btn-secondary"
-            style={{ padding: '4px 12px', fontSize: 12 }}
-            onClick={() => navigate('/group-transfers')}
-          >
-            Group transfers
-          </button>
-        )}
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 12px', fontSize: 12 }}
-          onClick={() => navigate('/settings')}
-        >
-          Settings
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0.3 }}>Atoll Isle · Business</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--navy)' }}>
+          <NotificationBellButton businessId={business.id} onClick={() => navigate('/notifications')} />
+          <NavMenu items={navItems} buttonStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }} />
+        </div>
       </div>
 
       <div style={{ background: 'var(--lagoon)', color: '#fff', padding: 16, borderRadius: 12, marginBottom: 20 }}>
@@ -104,6 +92,8 @@ export default function Dashboard() {
       </div>
 
       {error && <p className="error-text">{error}</p>}
+
+      <SectionArt type={business.type} title="Your listings" compact />
 
       <AddListingForm businessType={business.type} businessId={business.id} onCreated={loadListings} />
 
