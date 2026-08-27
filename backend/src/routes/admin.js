@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { query } from '../config/db.js';
+import { query, pool } from '../config/db.js';
 import { authenticate, requireRole, requireFullAdmin } from '../middleware/auth.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
 import { notify } from '../services/notifications.js';
@@ -14,8 +14,11 @@ import { stripe } from '../config/stripe.js';
 
 const router = Router();
 
-async function logAdminAction(adminId, actionType, targetType, targetId, reason) {
-  await query(
+// `runner` is either the module-level query() or a transaction client — so
+// this can be part of an atomic state change (Batch 29) rather than a bare
+// write that commits even when the surrounding request later fails.
+async function logAdminAction(adminId, actionType, targetType, targetId, reason, runner = { query }) {
+  await runner.query(
     `INSERT INTO audit_log (admin_id, action_type, target_type, target_id, reason)
      VALUES ($1, $2, $3, $4, $5)`,
     [adminId, actionType, targetType, targetId, reason]
@@ -270,15 +273,29 @@ router.post('/local-verifications/:id/reclassify-tourist', authenticate, require
   // Section 12's User model: local_verification_status becomes
   // 'auto_reclassified' regardless of whether the reclassification was
   // triggered manually (here, Phase 1) or by OCR (Phase 2) — the value
-  // names the outcome, not the trigger.
-  await query(
-    `UPDATE users SET type = 'tourist', local_verification_status = 'auto_reclassified' WHERE id = $1`,
-    [req.params.id]
-  );
-  await logAdminAction(
-    req.user.id, 'reclassify_tourist', 'user', req.params.id,
-    req.body.reason || 'Uploaded document was a passport, not a Maldivian National ID card.'
-  );
+  // names the outcome, not the trigger. The status change and its audit
+  // row commit together (Batch 29).
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE users SET type = 'tourist', local_verification_status = 'auto_reclassified' WHERE id = $1`,
+      [req.params.id]
+    );
+    await logAdminAction(
+      req.user.id, 'reclassify_tourist', 'user', req.params.id,
+      req.body.reason || 'Uploaded document was a passport, not a Maldivian National ID card.',
+      client
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Reclassify-tourist error:', err);
+    return res.status(500).json({ error: 'Could not reclassify this account.' });
+  } finally {
+    client.release();
+  }
+
   await notify({
     recipientType: 'user', recipientId: req.params.id,
     type: 'reclassified', title: 'Account updated to Tourist',
@@ -531,85 +548,96 @@ router.get('/disputes', authenticate, requireFullAdmin, async (req, res) => {
 // isOperatorFault:true (no refund-fee) branch of computeRefund regardless
 // of who actually raised the dispute. Idempotent: a booking/order already
 // cancelled/refunded is left alone.
-async function applyDisputeRefund(dispute) {
+//
+// Batch 29: runs its DB writes on the passed transaction client and DEFERS
+// the Stripe call + the guest notification, returned to the caller to run
+// after commit — so a later failure rolls the whole resolution back rather
+// than leaving a booking marked refunded with the dispute still open, and
+// Stripe (which can't be rolled back) is only hit once the DB is settled.
+async function applyDisputeRefund(client, dispute) {
   if (dispute.booking_id) {
-    const bookingResult = await query(
+    const bookingResult = await client.query(
       `SELECT b.price_charged, b.payment_method, b.status, b.user_id, b.stripe_payment_intent_id,
               biz.refund_fee_business_percent
        FROM bookings b JOIN listings l ON l.id = b.listing_id JOIN businesses biz ON biz.id = l.business_id
-       WHERE b.id = $1`,
+       WHERE b.id = $1 FOR UPDATE OF b`,
       [dispute.booking_id]
     );
-    if (!bookingResult.rows.length || bookingResult.rows[0].status === 'cancelled') return;
+    if (!bookingResult.rows.length || bookingResult.rows[0].status === 'cancelled') return null;
     const booking = bookingResult.rows[0];
     const refund = computeRefund({
       priceCharged: booking.price_charged, paymentMethod: booking.payment_method,
       refundFeeBusinessPercent: booking.refund_fee_business_percent, isOperatorFault: true,
     });
-    await query(
+    await client.query(
       `UPDATE bookings SET status = 'cancelled', escrow_status = 'refunded', cancellation_status = 'admin_refund',
          refund_fee_applicable = false, gross_refund_amount = $1, refund_app_fee = $2,
          refund_business_credit = $3, refund_amount = $4, updated_at = now()
        WHERE id = $5`,
       [refund.grossRefundAmount, refund.refundAppFee, refund.refundBusinessCredit, refund.refundAmount, dispute.booking_id]
     );
-    if (booking.stripe_payment_intent_id) {
-      await stripe.refunds.create({ payment_intent: booking.stripe_payment_intent_id, amount: Math.round(refund.refundAmount * 100) });
-    }
-    await notify({
-      recipientType: 'user', recipientId: booking.user_id, type: 'cancellation',
-      title: 'Booking refunded', body: `Your dispute was resolved with a full refund of $${refund.refundAmount}.`,
-    });
-  } else if (dispute.order_id) {
-    const orderResult = await query(
+    return {
+      stripePaymentIntentId: booking.stripe_payment_intent_id,
+      refundAmount: refund.refundAmount,
+      notify: {
+        recipientType: 'user', recipientId: booking.user_id, type: 'cancellation',
+        title: 'Booking refunded', body: `Your dispute was resolved with a full refund of $${refund.refundAmount}.`,
+      },
+    };
+  }
+  if (dispute.order_id) {
+    const orderResult = await client.query(
       `SELECT o.price_charged, o.payment_method, o.status, o.user_id, o.stripe_payment_intent_id,
               biz.refund_fee_business_percent
        FROM orders o JOIN businesses biz ON biz.id = o.business_id
-       WHERE o.id = $1`,
+       WHERE o.id = $1 FOR UPDATE OF o`,
       [dispute.order_id]
     );
-    if (!orderResult.rows.length || orderResult.rows[0].status === 'cancelled') return;
+    if (!orderResult.rows.length || orderResult.rows[0].status === 'cancelled') return null;
     const order = orderResult.rows[0];
     const refund = computeRefund({
       priceCharged: order.price_charged, paymentMethod: order.payment_method,
       refundFeeBusinessPercent: order.refund_fee_business_percent, isOperatorFault: true,
     });
-    await query(
+    await client.query(
       `UPDATE orders SET status = 'cancelled', escrow_status = 'refunded',
          refund_fee_applicable = false, gross_refund_amount = $1, refund_app_fee = $2,
          refund_business_credit = $3, refund_amount = $4, updated_at = now()
        WHERE id = $5`,
       [refund.grossRefundAmount, refund.refundAppFee, refund.refundBusinessCredit, refund.refundAmount, dispute.order_id]
     );
-    if (order.stripe_payment_intent_id) {
-      await stripe.refunds.create({ payment_intent: order.stripe_payment_intent_id, amount: Math.round(refund.refundAmount * 100) });
-    }
-    await notify({
-      recipientType: 'user', recipientId: order.user_id, type: 'cancellation',
-      title: 'Order refunded', body: `Your dispute was resolved with a full refund of $${refund.refundAmount}.`,
-    });
+    return {
+      stripePaymentIntentId: order.stripe_payment_intent_id,
+      refundAmount: refund.refundAmount,
+      notify: {
+        recipientType: 'user', recipientId: order.user_id, type: 'cancellation',
+        title: 'Order refunded', body: `Your dispute was resolved with a full refund of $${refund.refundAmount}.`,
+      },
+    };
   }
+  return null;
 }
 
 // Suspends whichever business owns the booking/order this dispute is tied
-// to — reuses the exact same effect as POST /businesses/:id/suspend.
-async function applyDisputeSuspension(dispute, adminId, reason) {
+// to — reuses the exact same effect as POST /businesses/:id/suspend. DB
+// writes on the transaction client; returns the suspended business id for
+// the caller to notify after commit (Batch 29).
+async function applyDisputeSuspension(client, dispute, adminId, reason) {
   let businessId = null;
   if (dispute.booking_id) {
-    const r = await query(
+    const r = await client.query(
       `SELECT biz.id FROM bookings b JOIN listings l ON l.id = b.listing_id JOIN businesses biz ON biz.id = l.business_id WHERE b.id = $1`,
       [dispute.booking_id]
     );
     businessId = r.rows[0]?.id || null;
   } else if (dispute.order_id) {
-    const r = await query('SELECT business_id FROM orders WHERE id = $1', [dispute.order_id]);
+    const r = await client.query('SELECT business_id FROM orders WHERE id = $1', [dispute.order_id]);
     businessId = r.rows[0]?.business_id || null;
   }
-  if (!businessId) return;
-  await query(`UPDATE businesses SET account_status = 'suspended' WHERE id = $1`, [businessId]);
-  await logAdminAction(adminId, 'suspend', 'business', businessId, reason);
-  await notify({ recipientType: 'business', recipientId: businessId, type: 'suspended', title: 'Account suspended', body: reason });
-  await notifyGuestsOfSuspension(businessId, reason);
+  if (!businessId) return null;
+  await client.query(`UPDATE businesses SET account_status = 'suspended' WHERE id = $1`, [businessId]);
+  await logAdminAction(adminId, 'suspend', 'business', businessId, reason, client);
+  return businessId;
 }
 
 /**
@@ -618,6 +646,10 @@ async function applyDisputeSuspension(dispute, adminId, reason) {
  * 'refund' and 'suspension' now actually perform those actions — previously
  * this only ever recorded the outcome as a label, and admin had to
  * separately go trigger the real refund/suspend elsewhere.
+ *
+ * Batch 29: the refund/suspension state change, the dispute-resolved write,
+ * and the audit row all commit together; Stripe and notifications run only
+ * after the transaction commits.
  */
 router.post('/disputes/:id/resolve', authenticate, requireFullAdmin, async (req, res) => {
   const { outcome, resolution_note } = req.body;
@@ -625,27 +657,58 @@ router.post('/disputes/:id/resolve', authenticate, requireFullAdmin, async (req,
     return res.status(400).json({ error: 'outcome is required.' });
   }
 
-  const disputeResult = await query('SELECT booking_id, order_id FROM disputes WHERE id = $1', [req.params.id]);
-  if (!disputeResult.rows.length) {
-    return res.status(404).json({ error: 'Dispute not found.' });
-  }
-  const dispute = disputeResult.rows[0];
+  const client = await pool.connect();
+  let refundEffect = null;
+  let suspendedBusinessId = null;
   const reason = resolution_note || outcome;
+  try {
+    await client.query('BEGIN');
+    const disputeResult = await client.query('SELECT booking_id, order_id FROM disputes WHERE id = $1 FOR UPDATE', [req.params.id]);
+    if (!disputeResult.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Dispute not found.' });
+    }
+    const dispute = disputeResult.rows[0];
 
-  if (outcome === 'refund') {
-    await applyDisputeRefund(dispute);
-  } else if (outcome === 'suspension') {
-    await applyDisputeSuspension(dispute, req.user.id, reason);
+    if (outcome === 'refund') {
+      refundEffect = await applyDisputeRefund(client, dispute);
+    } else if (outcome === 'suspension') {
+      suspendedBusinessId = await applyDisputeSuspension(client, dispute, req.user.id, reason);
+    }
+
+    await client.query(
+      `UPDATE disputes SET status = 'resolved', resolution = $1, resolved_by_admin_id = $2, resolved_at = now()
+       WHERE id = $3`,
+      [reason, req.user.id, req.params.id]
+    );
+    await logAdminAction(
+      req.user.id, outcome === 'refund' ? 'refund_override' : 'resolve_dispute', 'dispute', req.params.id, reason, client
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Dispute resolution error:', err);
+    return res.status(500).json({ error: 'Could not resolve this dispute.' });
+  } finally {
+    client.release();
   }
 
-  await query(
-    `UPDATE disputes SET status = 'resolved', resolution = $1, resolved_by_admin_id = $2, resolved_at = now()
-     WHERE id = $3`,
-    [reason, req.user.id, req.params.id]
-  );
-  await logAdminAction(
-    req.user.id, outcome === 'refund' ? 'refund_override' : 'resolve_dispute', 'dispute', req.params.id, reason
-  );
+  // After-commit side effects — Stripe can't be rolled back, and a failed
+  // notification must not undo a resolution that's already recorded.
+  if (refundEffect) {
+    if (refundEffect.stripePaymentIntentId) {
+      await stripe.refunds.create({
+        payment_intent: refundEffect.stripePaymentIntentId,
+        amount: Math.round(refundEffect.refundAmount * 100),
+      }).catch((err) => console.error('Dispute refund — Stripe error:', err));
+    }
+    await notify(refundEffect.notify).catch(() => {});
+  }
+  if (suspendedBusinessId) {
+    await notify({ recipientType: 'business', recipientId: suspendedBusinessId, type: 'suspended', title: 'Account suspended', body: reason }).catch(() => {});
+    await notifyGuestsOfSuspension(suspendedBusinessId, reason).catch(() => {});
+  }
+
   res.json({ status: 'resolved', outcome });
 });
 
@@ -783,15 +846,33 @@ router.get('/external-places-prospects', authenticate, requireRole('admin'), asy
  * next incident.
  */
 router.post('/users/:id/restore-pay-at-visit', authenticate, requireFullAdmin, async (req, res) => {
-  const result = await query(
-    `UPDATE users SET pay_at_visit_eligible = true, pay_at_visit_unpaid_count = 0
-     WHERE id = $1 RETURNING id, name`,
-    [req.params.id]
-  );
-  if (!result.rows.length) {
-    return res.status(404).json({ error: 'User not found.' });
+  // The eligibility restore and its audit row commit together (Batch 29) —
+  // previously the UPDATE committed on its own and the audit write then
+  // crashed on a missing enum value, leaving the change unrecorded.
+  const client = await pool.connect();
+  let restored;
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `UPDATE users SET pay_at_visit_eligible = true, pay_at_visit_unpaid_count = 0
+       WHERE id = $1 RETURNING id, name`,
+      [req.params.id]
+    );
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    restored = result.rows[0];
+    await logAdminAction(req.user.id, 'restore_pay_at_visit', 'user', req.params.id, req.body.reason || 'Restored via admin console', client);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Restore-pay-at-visit error:', err);
+    return res.status(500).json({ error: 'Could not restore eligibility.' });
+  } finally {
+    client.release();
   }
-  await logAdminAction(req.user.id, 'restore_pay_at_visit', 'user', req.params.id, req.body.reason || 'Restored via admin console');
+
   await notify({
     recipientType: 'user',
     recipientId: req.params.id,
