@@ -19,6 +19,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
 import { REFERRAL_BONUS } from '../services/loyalty.js';
 import { notify } from '../services/notifications.js';
 import { verifyToken } from '../services/totp.js';
@@ -48,7 +49,7 @@ async function saveDocumentImage(fileBuffer, userId) {
  *   travel_group    'true' | 'false'               (optional — creates a group if true)
  *   referral_code   string                        (optional — Batch 19: another account's referral_code)
  */
-router.post('/signup', upload.single('document'), async (req, res) => {
+router.post('/signup', signupLimiter, upload.single('document'), async (req, res) => {
   const client = await pool.connect();
   try {
     const {
@@ -201,7 +202,7 @@ function issueSession(user) {
  * before a token is issued. Previously 2FA could be enabled but changed
  * nothing about what a login accepted — this is the actual enforcement.
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { contact_email, contact_mobile, password } = req.body;
     if ((!contact_email && !contact_mobile) || !password) {
@@ -243,7 +244,7 @@ router.post('/login', async (req, res) => {
  * authenticator code and issues the same session /login would have, had
  * 2FA not been required.
  */
-router.post('/login/verify-2fa', async (req, res) => {
+router.post('/login/verify-2fa', loginLimiter, async (req, res) => {
   try {
     const { user_id, token } = req.body;
     if (!user_id || !token) {

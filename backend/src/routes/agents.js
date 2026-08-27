@@ -23,6 +23,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -70,7 +71,7 @@ async function requireActiveAgent(req, res, next) {
  * admin queue was built for this pass; an admin can approve directly via
  * `UPDATE agents SET approval_status = 'approved'` until that's added.
  */
-router.post('/signup', async (req, res) => {
+router.post('/signup', signupLimiter, async (req, res) => {
   const { name, contact_email, password } = req.body;
   if (!name || !contact_email || !password) {
     return res.status(400).json({ error: 'name, contact_email, and password are required.' });
@@ -94,7 +95,7 @@ router.post('/signup', async (req, res) => {
 /**
  * POST /api/agents/login
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { contact_email, password } = req.body;
   const result = await query('SELECT * FROM agents WHERE contact_email = $1', [contact_email]);
   if (!result.rows.length) {

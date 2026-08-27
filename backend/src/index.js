@@ -40,6 +40,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Deployed behind one reverse proxy (Render) — trust the first hop only so
+// req.ip is the real client address for rate limiting (middleware/
+// rateLimit.js), not the proxy's. '1' rather than 'true' on purpose:
+// express-rate-limit rejects a fully-permissive trust-proxy setting.
+app.set('trust proxy', 1);
+
 app.use(cors());
 
 // IMPORTANT: the Stripe webhook needs the raw request body to verify its

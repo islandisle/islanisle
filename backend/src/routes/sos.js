@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { sosLimiter } from '../middleware/rateLimit.js';
 import { notify } from '../services/notifications.js';
 
 const router = Router();
@@ -15,7 +16,7 @@ const router = Router();
  * POST /api/sos
  * body: { latitude, longitude, island? }
  */
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, sosLimiter, async (req, res) => {
   const { latitude, longitude, island } = req.body;
 
   const result = await query(

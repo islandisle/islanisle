@@ -7,6 +7,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
 import { authenticate, requireRole, requireFullAdmin } from '../middleware/auth.js';
+import { loginLimiter } from '../middleware/rateLimit.js';
 import { notify } from '../services/notifications.js';
 import { computeRefund } from '../services/refunds.js';
 import { stripe } from '../config/stripe.js';
@@ -63,7 +64,7 @@ async function notifyGuestsOfSuspension(businessId, reason) {
  * JWT claim alongside the generic role: 'admin' every admin token already
  * had — see middleware/auth.js's requireFullAdmin for why both exist.
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { contact_email, password } = req.body;
   const result = await query('SELECT * FROM admin_users WHERE contact_email = $1 AND status = $2', [contact_email, 'active']);
   if (!result.rows.length) {
