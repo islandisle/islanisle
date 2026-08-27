@@ -275,7 +275,7 @@ router.post('/local-verifications/:id/reclassify-tourist', authenticate, require
     [req.params.id]
   );
   await logAdminAction(
-    req.user.id, 'reclassify_tourist', 'business', req.params.id,
+    req.user.id, 'reclassify_tourist', 'user', req.params.id,
     req.body.reason || 'Uploaded document was a passport, not a Maldivian National ID card.'
   );
   await notify({
@@ -359,7 +359,7 @@ router.post('/approve', authenticate, requireRole('admin'), async (req, res) => 
     return res.status(400).json({ error: 'Invalid target_type.' });
   }
 
-  await logAdminAction(req.user.id, 'approve', target_type === 'local_verification' ? 'business' : target_type, target_id, 'Approved via admin console');
+  await logAdminAction(req.user.id, 'approve', target_type === 'local_verification' ? 'user' : target_type, target_id, 'Approved via admin console');
   res.json({ status: 'approved' });
 });
 

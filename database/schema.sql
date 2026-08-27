@@ -35,7 +35,11 @@ CREATE TYPE admin_role AS ENUM ('admin', 'moderator');
 -- admin reclassifies a Local applicant to Tourist during review (Phase 1's
 -- manual equivalent of Phase 2's automatic OCR-based detection).
 CREATE TYPE admin_action_type AS ENUM ('approve', 'reject', 'suspend', 'reinstate', 'resolve_dispute', 'refund_override', 'mark_trusted', 'reclassify_tourist', 'restore_pay_at_visit');
-CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute', 'external_place_claim');
+-- 'user': for admin actions that target a tourist/local account directly —
+-- the passport-instead-of-ID reclassification (Section 2.1) and the
+-- Pay-at-Visit eligibility restore (Batch 23). Both used to mislabel their
+-- target as 'business' to fit the enum.
+CREATE TYPE admin_target_type AS ENUM ('business', 'agent', 'listing', 'booking', 'order', 'dispute', 'external_place_claim', 'user');
 CREATE TYPE fulfillment_method AS ENUM ('pickup', 'delivery');
 CREATE TYPE handover_method AS ENUM ('buyer_pickup_at_boat', 'guesthouse_handover');
 CREATE TYPE return_type AS ENUM ('return', 'exchange');

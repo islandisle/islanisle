@@ -234,6 +234,17 @@ async function main() {
     changed = true;
   }
 
+  console.log("Checking for admin_target_type.user (Batch 28 — reclassify/restore audit target)...");
+  const userTargetResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'user'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'admin_target_type')`
+  );
+  if (!userTargetResult.rows.length) {
+    console.log("Adding 'user' to admin_target_type...");
+    await pool.query(`ALTER TYPE admin_target_type ADD VALUE IF NOT EXISTS 'user'`);
+    changed = true;
+  }
+
   console.log('Checking for users.notification_preferences (per-category mute)...');
   if (!(await columnExists('users', 'notification_preferences'))) {
     console.log('Adding users.notification_preferences...');
