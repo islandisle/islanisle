@@ -337,6 +337,21 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for bookings/orders.refund_credit_payout_id (Batch 28 — payout double-credit fix)...');
+  for (const table of ['bookings', 'orders']) {
+    if (!(await columnExists(table, 'refund_credit_payout_id'))) {
+      console.log(`Adding ${table}.refund_credit_payout_id...`);
+      await pool.query(`ALTER TABLE ${table} ADD COLUMN refund_credit_payout_id UUID`);
+      changed = true;
+    }
+    const fkName = `fk_${table}_refund_credit_payout`;
+    if (!(await constraintExists(fkName))) {
+      console.log(`Adding ${table} -> payouts (refund_credit_payout_id) foreign key...`);
+      await pool.query(`ALTER TABLE ${table} ADD CONSTRAINT ${fkName} FOREIGN KEY (refund_credit_payout_id) REFERENCES payouts(id)`);
+      changed = true;
+    }
+  }
+
   console.log('Checking for weather_conditions.fetched_at (Batch 22 live-refresh)...');
   if (!(await columnExists('weather_conditions', 'fetched_at'))) {
     console.log('Adding weather_conditions.fetched_at...');

@@ -156,15 +156,42 @@ export async function runPayoutBatch({ isMonthlyBillingRun = false } = {}) {
       const grossAmount = round2(items.reduce((sum, i) => sum + Number(i.base_price), 0));
       const commissionDeducted = round2(items.reduce((sum, i) => sum + Number(i.business_commission), 0));
 
-      // Refund fee credits earned since the last payout for this business.
-      const refundCreditsResult = await client.query(
-        `SELECT COALESCE(SUM(refund_business_credit), 0) AS total FROM bookings b
+      // Refund fee credits (Section 7.1) not yet settled to this business.
+      // Batch 28 fix: the old query filtered on payout_line_items, which a
+      // cancelled booking is NEVER added to (only escrow-released ones are),
+      // so every run re-summed every historical credit — the business was
+      // paid its refund-fee share again on each payout batch. Now each row
+      // is stamped with the payout id that settled it (bookings/orders'
+      // refund_credit_payout_id, returns' existing deducted_from_payout_id)
+      // and filtered out of later runs. Also extended to cover cancelled
+      // shop orders and processed returns, which weren't counted at all.
+      const creditBookings = await client.query(
+        `SELECT b.id, b.refund_business_credit FROM bookings b
          JOIN listings l ON l.id = b.listing_id
-         WHERE l.business_id = $1 AND b.status = 'cancelled' AND b.refund_business_credit IS NOT NULL
-           AND b.id NOT IN (SELECT booking_id FROM payout_line_items WHERE booking_id IS NOT NULL)`,
+         WHERE l.business_id = $1 AND b.status = 'cancelled'
+           AND b.refund_business_credit IS NOT NULL AND b.refund_business_credit > 0
+           AND b.refund_credit_payout_id IS NULL`,
         [businessId]
       );
-      const refundFeeCredits = round2(Number(refundCreditsResult.rows[0].total));
+      const creditOrders = await client.query(
+        `SELECT id, refund_business_credit FROM orders
+         WHERE business_id = $1 AND status = 'cancelled'
+           AND refund_business_credit IS NOT NULL AND refund_business_credit > 0
+           AND refund_credit_payout_id IS NULL`,
+        [businessId]
+      );
+      const creditReturns = await client.query(
+        `SELECT r.id, r.refund_business_credit FROM returns r
+         JOIN orders o ON o.id = r.order_id
+         WHERE o.business_id = $1 AND r.status = 'completed' AND r.type = 'return'
+           AND r.refund_business_credit IS NOT NULL AND r.refund_business_credit > 0
+           AND r.deducted_from_payout_id IS NULL`,
+        [businessId]
+      );
+      const refundFeeCredits = round2(
+        [...creditBookings.rows, ...creditOrders.rows, ...creditReturns.rows]
+          .reduce((sum, r) => sum + Number(r.refund_business_credit), 0)
+      );
 
       const availableBeforeDues = round2(grossAmount - commissionDeducted + refundFeeCredits);
 
@@ -188,6 +215,26 @@ export async function runPayoutBatch({ isMonthlyBillingRun = false } = {}) {
       }
       for (const o of eligibleOrders.rows) {
         await client.query('INSERT INTO payout_line_items (payout_id, order_id) VALUES ($1, $2)', [payoutId, o.id]);
+      }
+
+      // Stamp each refund credit with this payout so it's never paid again.
+      if (creditBookings.rows.length) {
+        await client.query(
+          `UPDATE bookings SET refund_credit_payout_id = $1 WHERE id = ANY($2::uuid[])`,
+          [payoutId, creditBookings.rows.map((r) => r.id)]
+        );
+      }
+      if (creditOrders.rows.length) {
+        await client.query(
+          `UPDATE orders SET refund_credit_payout_id = $1 WHERE id = ANY($2::uuid[])`,
+          [payoutId, creditOrders.rows.map((r) => r.id)]
+        );
+      }
+      if (creditReturns.rows.length) {
+        await client.query(
+          `UPDATE returns SET deducted_from_payout_id = $1 WHERE id = ANY($2::uuid[])`,
+          [payoutId, creditReturns.rows.map((r) => r.id)]
+        );
       }
 
       if (duesOwed > 0) {

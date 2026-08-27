@@ -259,6 +259,10 @@ CREATE TABLE bookings (
     refund_app_fee                    NUMERIC(12,2),
     refund_business_credit             NUMERIC(12,2),
     refund_amount                     NUMERIC(12,2),
+    -- Set once this cancelled booking's refund_business_credit (Section 7.1)
+    -- has been paid out to the business in a Payout, so services/payoutRun.js
+    -- never re-credits it on a later run. FK added after the payouts table.
+    refund_credit_payout_id            UUID,
     check_in_status                   check_in_status NOT NULL DEFAULT 'pending',
     check_in_method                   check_in_method,
     per_member_check_in                JSONB, -- list of {member_id, checked_in: bool}
@@ -319,6 +323,9 @@ CREATE TABLE orders (
     refund_app_fee                    NUMERIC(12,2),
     refund_business_credit             NUMERIC(12,2),
     refund_amount                     NUMERIC(12,2),
+    -- Same purpose as bookings.refund_credit_payout_id — set once this
+    -- cancelled order's refund_business_credit has been paid out.
+    refund_credit_payout_id            UUID,
     stripe_payment_intent_id           TEXT,
     promo_code_id                     UUID, -- FK added after promo_codes table exists; set when a promo code was applied at checkout
     promo_discount_amount              NUMERIC(12,2) NOT NULL DEFAULT 0, -- deducted from price_charged only; base_price/commissions are computed pre-discount, unchanged
@@ -394,6 +401,13 @@ CREATE TABLE payout_line_items (
     booking_id       UUID REFERENCES bookings(id),
     order_id         UUID REFERENCES orders(id)
 );
+
+-- Once-only settlement of a cancelled booking/order's refund_business_credit
+-- (Section 7.1) — see bookings/orders.refund_credit_payout_id above.
+ALTER TABLE bookings ADD CONSTRAINT fk_bookings_refund_credit_payout
+    FOREIGN KEY (refund_credit_payout_id) REFERENCES payouts(id);
+ALTER TABLE orders ADD CONSTRAINT fk_orders_refund_credit_payout
+    FOREIGN KEY (refund_credit_payout_id) REFERENCES payouts(id);
 
 -- ---------------------------------------------------------------------------
 -- [MVP] disputes — Section 12: Dispute
