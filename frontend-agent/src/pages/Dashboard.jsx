@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getConnectedBusinesses, connectToBusiness, checkAvailability, createAgentBooking,
   getMyAgentBookings, getMyCommissions, getThread, sendMessage,
+  searchBusinesses, lookupGuests,
 } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
+import EntityPicker from '../components/EntityPicker';
 
 // MVP agent portal — script Section 12's Agent account type. Scoped down
 // per explicit direction: connect to businesses, check availability, book
@@ -86,15 +88,24 @@ export default function Dashboard() {
 }
 
 function ConnectSection({ onConnected }) {
-  const [businessId, setBusinessId] = useState('');
+  const [business, setBusiness] = useState(null);
   const [status, setStatus] = useState('');
 
+  const findBusinesses = useCallback(async (q) => {
+    const d = await searchBusinesses(q);
+    return (d.businesses || []).map((b) => ({
+      id: b.id,
+      label: b.name,
+      sublabel: [b.type, b.location_island].filter(Boolean).join(' · '),
+    }));
+  }, []);
+
   async function handleConnect() {
-    if (!businessId.trim()) return;
+    if (!business) return;
     try {
-      const res = await connectToBusiness(businessId.trim());
+      const res = await connectToBusiness(business.id);
       setStatus(`Connected to ${res.business.name}.`);
-      setBusinessId('');
+      setBusiness(null);
       onConnected();
     } catch (err) {
       setStatus(err.message);
@@ -104,9 +115,17 @@ function ConnectSection({ onConnected }) {
   return (
     <div className="card" style={{ padding: 16, marginBottom: 20 }}>
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>Connect to a business</p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input className="input-field" placeholder="Business ID" value={businessId} onChange={(e) => setBusinessId(e.target.value)} />
-        <button className="btn-primary" onClick={handleConnect}>Connect</button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <EntityPicker
+            value={business}
+            onChange={setBusiness}
+            fetchResults={findBusinesses}
+            placeholder="Search a business by name"
+            dialogLabel="Find a business to connect to"
+          />
+        </div>
+        <button className="btn-primary" onClick={handleConnect} disabled={!business}>Connect</button>
       </div>
       {status && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>{status}</p>}
     </div>
@@ -144,8 +163,13 @@ function BookingForm({ businesses, onBooked }) {
   const [listingId, setListingId] = useState('');
   const [slotStart, setSlotStart] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [guestUserId, setGuestUserId] = useState('');
+  const [guestUser, setGuestUser] = useState(null);
   const [commissionRate, setCommissionRate] = useState('10');
+
+  const findGuests = useCallback(async (q) => {
+    const d = await lookupGuests(q);
+    return (d.users || []).map((u) => ({ id: u.id, label: u.name, sublabel: u.mobile_hint }));
+  }, []);
   const [availability, setAvailability] = useState(null);
   const [checking, setChecking] = useState(false);
   const [booking, setBooking] = useState(false);
@@ -170,8 +194,8 @@ function BookingForm({ businesses, onBooked }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!businessId || !listingId || !slotStart || (!guestName.trim() && !guestUserId.trim())) {
-      setError('Business, listing, date/time, and a guest (name or account id) are required.');
+    if (!businessId || !listingId || !slotStart || (!guestName.trim() && !guestUser)) {
+      setError('Business, listing, date/time, and a guest (a looked-up account or a name) are required.');
       return;
     }
     setBooking(true);
@@ -180,11 +204,11 @@ function BookingForm({ businesses, onBooked }) {
     try {
       const res = await createAgentBooking({
         business_id: businessId, listing_id: listingId, slot_start: slotStart,
-        guest_user_id: guestUserId.trim() || undefined, guest_name: guestName.trim() || undefined,
+        guest_user_id: guestUser?.id || undefined, guest_name: guestUser ? undefined : (guestName.trim() || undefined),
         commission_rate: Number(commissionRate) || 0,
       });
       setSuccess(res.message);
-      setListingId(''); setSlotStart(''); setGuestName(''); setGuestUserId(''); setAvailability(null);
+      setListingId(''); setSlotStart(''); setGuestName(''); setGuestUser(null); setAvailability(null);
       onBooked();
     } catch (err) {
       setError(err.message);
@@ -231,15 +255,43 @@ function BookingForm({ businesses, onBooked }) {
         </p>
       )}
 
-      <label htmlFor="booking-guest-user-id" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-        Guest — existing account ID (optional)
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Guest — look up an existing account (by name or mobile number)
       </label>
-      <input id="booking-guest-user-id" className="input-field" placeholder="User ID, if they have an account" value={guestUserId} onChange={(e) => setGuestUserId(e.target.value)} style={{ marginBottom: 10 }} />
+      <div style={{ marginBottom: 10 }}>
+        <EntityPicker
+          value={guestUser}
+          onChange={(u) => { setGuestUser(u); if (u) setGuestName(''); }}
+          fetchResults={findGuests}
+          placeholder="Search a guest by name or mobile number"
+          dialogLabel="Find a guest"
+          minChars={3}
+          emptyHint="Type at least 3 characters of a name, or a full mobile number."
+        />
+        {guestUser && (
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ marginTop: 6, padding: '4px 10px', fontSize: 12 }}
+            onClick={() => setGuestUser(null)}
+          >
+            Clear selected guest
+          </button>
+        )}
+      </div>
 
       <label htmlFor="booking-guest-name" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-        Guest — name (if no account)
+        Guest — name only (if they have no account)
       </label>
-      <input id="booking-guest-name" className="input-field" placeholder="Guest name" value={guestName} onChange={(e) => setGuestName(e.target.value)} style={{ marginBottom: 10 }} />
+      <input
+        id="booking-guest-name"
+        className="input-field"
+        placeholder="Guest name"
+        value={guestName}
+        onChange={(e) => setGuestName(e.target.value)}
+        disabled={!!guestUser}
+        style={{ marginBottom: 10 }}
+      />
 
       <label htmlFor="booking-commission-rate" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
         Your commission (%)

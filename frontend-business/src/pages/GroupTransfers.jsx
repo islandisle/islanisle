@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   createGroupTransfer, getMyGroupTransfers, getGroupTransferManifest,
   boardGroupTransferGuestByBooking, boardGroupTransferGuest, markGroupTransferGuestNoShow,
+  searchListings,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 import GuestPicker from '../components/GuestPicker';
+import EntityPicker from '../components/EntityPicker';
 
 const BOARDED_STATUS_LABEL = { pending: 'Pending', boarded: 'Boarded', 'no-show': 'No-show' };
 
@@ -97,7 +99,7 @@ function GuesthouseView({ business }) {
 }
 
 function NewTransferForm({ businessId, businessType, onCreated }) {
-  const [routeId, setRouteId] = useState('');
+  const [route, setRoute] = useState(null);
   const [eta, setEta] = useState('');
   const [payer, setPayer] = useState('guesthouse');
   const [discountPercent, setDiscountPercent] = useState('');
@@ -106,8 +108,21 @@ function NewTransferForm({ businessId, businessType, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const findRoutes = useCallback(async (q) => {
+    const d = await searchListings({ q, type: 'speedboat' });
+    return (d.listings || []).map((l) => ({
+      id: l.id,
+      label: l.title,
+      sublabel: [l.business_name, l.route].filter(Boolean).join(' · '),
+    }));
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!route) {
+      setError('Pick a speedboat route.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -115,13 +130,13 @@ function NewTransferForm({ businessId, businessType, onCreated }) {
       // backend only wants user_id/plain_name.
       const guestPayload = guests.map(({ user_id, plain_name }) => (user_id ? { user_id } : { plain_name }));
       await createGroupTransfer(businessId, {
-        route_id: routeId,
+        route_id: route.id,
         eta: new Date(eta).toISOString(),
         payer,
         discount_percent: discountPercent ? Number(discountPercent) : null,
         guests: guestPayload,
       });
-      setRouteId(''); setEta(''); setDiscountPercent(''); setGuests([]);
+      setRoute(null); setEta(''); setDiscountPercent(''); setGuests([]);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -142,7 +157,15 @@ function NewTransferForm({ businessId, businessType, onCreated }) {
   return (
     <form onSubmit={handleSubmit} className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)' }}>Arrange a transfer</p>
-      <input className="input-field" placeholder="Speedboat listing ID" value={routeId} onChange={(e) => setRouteId(e.target.value)} />
+      <EntityPicker
+        value={route}
+        onChange={setRoute}
+        fetchResults={findRoutes}
+        placeholder="Search a speedboat route"
+        dialogLabel="Choose a speedboat route"
+        minChars={0}
+        emptyHint="Type a boat name, island, or route."
+      />
       <input className="input-field" type="datetime-local" value={eta} onChange={(e) => setEta(e.target.value)} />
       <select className="input-field" value={payer} onChange={(e) => setPayer(e.target.value)}>
         <option value="guesthouse">Guesthouse pays</option>

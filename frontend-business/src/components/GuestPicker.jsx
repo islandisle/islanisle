@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { getCurrentGuests } from '../api/client';
+import { useState, useEffect, useCallback } from 'react';
+import { getCurrentGuests, lookupGuests } from '../api/client';
+import EntityPicker from './EntityPicker';
 
 // Batch 21 — shared guest-selection UI for B2B requests (B2B.jsx) and
 // guesthouse-arranged transfers (GroupTransfers.jsx), replacing what were
@@ -27,18 +28,23 @@ import { getCurrentGuests } from '../api/client';
 // B2B only ever deals with registered guests, per the spec's own "select
 // which guests (users) are being booked" (Section 4.7).
 //
-// `manualIdEntry` (only meaningful when allowManualAdd is false) adds a
-// secondary "add by user ID" fallback — the checkbox list above only ever
-// has anyone in it for a guesthouse (the current-guests endpoint is
-// guesthouse-only); a non-guesthouse business using B2B would otherwise
-// have no way to add a guest at all once the raw text field was removed.
+// `manualIdEntry` (only meaningful when allowManualAdd is false) swaps in a
+// searchable guest lookup (name or mobile number, backend GET
+// /api/users/lookup) — the checkbox list above only ever has anyone in it
+// for a guesthouse (the current-guests endpoint is guesthouse-only), so a
+// non-guesthouse business using B2B would otherwise have no way to add a
+// guest at all. Batch 26 replaced what was a raw "add by user ID" text box.
 export default function GuestPicker({
   businessId, businessType, selectedGuests, onChange, allowManualAdd = true, manualIdEntry = false,
 }) {
   const [currentGuests, setCurrentGuests] = useState([]);
   const [manualName, setManualName] = useState('');
-  const [manualUserId, setManualUserId] = useState('');
   const [error, setError] = useState('');
+
+  const findGuests = useCallback(async (q) => {
+    const d = await lookupGuests(q);
+    return (d.users || []).map((u) => ({ id: u.id, label: u.name, sublabel: u.mobile_hint }));
+  }, []);
 
   useEffect(() => {
     if (businessType !== 'guesthouse' || !businessId) return;
@@ -66,11 +72,9 @@ export default function GuestPicker({
     setManualName('');
   }
 
-  function addManualUserId() {
-    const id = manualUserId.trim();
-    if (!id || selectedGuests.some((g) => g.user_id === id)) return;
-    onChange([...selectedGuests, { user_id: id, name: `Guest ${id.slice(0, 8)}` }]);
-    setManualUserId('');
+  function addLookedUpGuest(row) {
+    if (!row || selectedGuests.some((g) => g.user_id === row.id)) return;
+    onChange([...selectedGuests, { user_id: row.id, name: row.label }]);
   }
 
   function removeSelected(index) {
@@ -124,17 +128,16 @@ export default function GuestPicker({
       )}
 
       {manualIdEntry && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input
-            className="input-field"
-            placeholder="Or add by user ID"
-            value={manualUserId}
-            onChange={(e) => setManualUserId(e.target.value)}
-            style={{ flex: 1 }}
+        <div style={{ marginBottom: 8 }}>
+          <EntityPicker
+            value={null}
+            onChange={addLookedUpGuest}
+            fetchResults={findGuests}
+            placeholder="Search a guest by name or mobile number"
+            dialogLabel="Find a guest"
+            minChars={3}
+            emptyHint="Type at least 3 characters of a name, or a full mobile number."
           />
-          <button type="button" className="btn-secondary" onClick={addManualUserId} disabled={!manualUserId.trim()}>
-            Add
-          </button>
         </div>
       )}
 

@@ -99,6 +99,111 @@ router.post('/signup', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/business/search?q=&type=&island=
+ * Batch 26 — backs the searchable business picker (frontend EntityPicker)
+ * that replaced the raw "type a business UUID" fields in the B2B and agent
+ * flows. Only ever returns businesses that are actually reachable for a
+ * booking: approved and active. Any authenticated account may call it
+ * (an agent connecting, a guesthouse arranging a B2B request) — it exposes
+ * nothing that isn't already public on the tourist island-browse.
+ */
+router.get('/search', authenticate, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  const { type, island } = req.query;
+
+  const params = [`%${q}%`];
+  const conditions = [
+    `approval_status = 'approved'`,
+    `account_status = 'active'`,
+    `name ILIKE $1`,
+  ];
+  if (type && VALID_BUSINESS_TYPES.includes(type)) {
+    params.push(type);
+    conditions.push(`type = $${params.length}`);
+  }
+  if (island) {
+    params.push(island);
+    conditions.push(`LOWER(TRIM(location_island)) = LOWER(TRIM($${params.length}))`);
+  }
+
+  const result = await query(
+    `SELECT id, name, type, location_island
+     FROM businesses
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY name ASC
+     LIMIT 20`,
+    params
+  );
+  res.json({ businesses: result.rows });
+});
+
+/**
+ * GET /api/business/listings/search?q=&type=
+ * Batch 26 — the cross-business version of the picker, for choosing a
+ * speedboat route in the guesthouse-arranged-transfer form (previously a
+ * raw "Speedboat listing ID" text field). Matches on listing title,
+ * business name, or the route's origin/destination.
+ */
+router.get('/listings/search', authenticate, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  const { type } = req.query;
+
+  const params = [`%${q}%`];
+  const conditions = [
+    `l.approval_status = 'approved'`,
+    `b.approval_status = 'approved'`,
+    `b.account_status = 'active'`,
+    `(l.title ILIKE $1 OR b.name ILIKE $1
+      OR l.type_specific_fields->>'origin' ILIKE $1
+      OR l.type_specific_fields->>'destination' ILIKE $1)`,
+  ];
+  if (type && VALID_BUSINESS_TYPES.includes(type)) {
+    params.push(type);
+    conditions.push(`b.type = $${params.length}`);
+  }
+
+  const result = await query(
+    `SELECT l.id, l.title, l.tourist_price, l.type_specific_fields,
+            b.name AS business_name, b.location_island
+     FROM listings l
+     JOIN businesses b ON b.id = l.business_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY b.name ASC, l.title ASC
+     LIMIT 20`,
+    params
+  );
+  const listings = result.rows.map((l) => {
+    const f = l.type_specific_fields || {};
+    return {
+      id: l.id,
+      title: l.title,
+      tourist_price: l.tourist_price,
+      business_name: l.business_name,
+      route: f.origin || f.destination ? `${f.origin || '—'} → ${f.destination || '—'}` : null,
+    };
+  });
+  res.json({ listings });
+});
+
+/**
+ * GET /api/business/:businessId/catalog
+ * Batch 26 — a business's approved listings, readable by any authenticated
+ * account (unlike GET /:businessId/listings, which is owner/admin-only and
+ * also returns unapproved ones). Used to pick a specific listing once a
+ * receiving business has been chosen in the B2B request form.
+ */
+router.get('/:businessId/catalog', authenticate, async (req, res) => {
+  const result = await query(
+    `SELECT id, title, tourist_price, local_price, type_specific_fields
+     FROM listings
+     WHERE business_id = $1 AND approval_status = 'approved'
+     ORDER BY title ASC`,
+    [req.params.businessId]
+  );
+  res.json({ listings: result.rows });
+});
+
+/**
  * POST /api/business/:businessId/listings
  * Section 4.1–4.5: fields differ by business type but all share the same
  * core shape (title, description, tourist_price, local_price, photos, plus

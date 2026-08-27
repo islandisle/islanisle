@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getStandingDiscounts, createStandingDiscount, deleteStandingDiscount,
   createB2BRequest, getOutgoingB2BRequests, getIncomingB2BRequests,
   acceptB2BRequest, rejectB2BRequest,
+  searchBusinesses, getBusinessCatalog,
 } from '../api/client';
 import GuestPicker from '../components/GuestPicker';
+import EntityPicker from '../components/EntityPicker';
+
+// Batch 26 — shared result mappers for the business/listing pickers that
+// replaced the raw ID fields in this form.
+function businessOption(b) {
+  return { id: b.id, label: b.name, sublabel: [b.type, b.location_island].filter(Boolean).join(' · ') };
+}
 
 // Batch 19 — B2B requests + standing discounts. [PHASE 2] tables that had
 // no frontend at all before this. Model: one business arranges something
@@ -127,16 +135,25 @@ export default function B2B() {
 }
 
 function StandingDiscountsSection({ businessId, discounts, onChanged }) {
-  const [partnerBusinessId, setPartnerBusinessId] = useState('');
+  const [partner, setPartner] = useState(null);
   const [discountPercent, setDiscountPercent] = useState('');
   const [error, setError] = useState('');
+
+  const findPartners = useCallback(async (q) => {
+    const d = await searchBusinesses({ q });
+    return (d.businesses || []).filter((b) => b.id !== businessId).map(businessOption);
+  }, [businessId]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    if (!partner) {
+      setError('Pick a partner business first.');
+      return;
+    }
     try {
-      await createStandingDiscount(businessId, { partner_business_id: partnerBusinessId, discount_percent: Number(discountPercent) });
-      setPartnerBusinessId('');
+      await createStandingDiscount(businessId, { partner_business_id: partner.id, discount_percent: Number(discountPercent) });
+      setPartner(null);
       setDiscountPercent('');
       onChanged();
     } catch (err) {
@@ -170,31 +187,35 @@ function StandingDiscountsSection({ businessId, discounts, onChanged }) {
           </button>
         </div>
       ))}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-        <input
-          className="input-field"
-          placeholder="Partner business ID"
-          value={partnerBusinessId}
-          onChange={(e) => setPartnerBusinessId(e.target.value)}
-          style={{ flex: 2 }}
-        />
-        <input
-          className="input-field"
-          type="number"
-          placeholder="%"
-          value={discountPercent}
-          onChange={(e) => setDiscountPercent(e.target.value)}
-          style={{ flex: 1 }}
-        />
-        <button className="btn-primary" type="submit">Add</button>
+      <form onSubmit={handleSubmit} style={{ marginTop: 10 }}>
+        <div style={{ marginBottom: 8 }}>
+          <EntityPicker
+            value={partner}
+            onChange={setPartner}
+            fetchResults={findPartners}
+            placeholder="Search a partner business by name"
+            dialogLabel="Choose a partner business"
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="input-field"
+            type="number"
+            placeholder="Discount %"
+            value={discountPercent}
+            onChange={(e) => setDiscountPercent(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button className="btn-primary" type="submit">Add</button>
+        </div>
       </form>
     </div>
   );
 }
 
 function NewRequestSection({ businessId, businessType, onCreated }) {
-  const [receivingBusinessId, setReceivingBusinessId] = useState('');
-  const [listingId, setListingId] = useState('');
+  const [receivingBusiness, setReceivingBusiness] = useState(null);
+  const [listing, setListing] = useState(null);
   const [payer, setPayer] = useState('business');
   const [roomNumber, setRoomNumber] = useState('');
   const [slotStart, setSlotStart] = useState('');
@@ -203,8 +224,26 @@ function NewRequestSection({ businessId, businessType, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const findReceivingBusinesses = useCallback(async (q) => {
+    const d = await searchBusinesses({ q });
+    return (d.businesses || []).filter((b) => b.id !== businessId).map(businessOption);
+  }, [businessId]);
+
+  const findListings = useCallback(async (q) => {
+    if (!receivingBusiness) return [];
+    const d = await getBusinessCatalog(receivingBusiness.id);
+    const needle = q.toLowerCase();
+    return (d.listings || [])
+      .filter((l) => l.title.toLowerCase().includes(needle))
+      .map((l) => ({ id: l.id, label: l.title, sublabel: `$${l.tourist_price} tourist rate` }));
+  }, [receivingBusiness]);
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!receivingBusiness || !listing) {
+      setError('Pick a receiving business and one of its listings.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -213,14 +252,14 @@ function NewRequestSection({ businessId, businessType, onCreated }) {
       // false for this form, but filter defensively anyway.
       const guestUserIds = guests.map((g) => g.user_id).filter(Boolean);
       await createB2BRequest(businessId, {
-        receiving_business_id: receivingBusinessId,
-        listing_id: listingId,
+        receiving_business_id: receivingBusiness.id,
+        listing_id: listing.id,
         payer,
         room_number: roomNumber || null,
         slot_start: new Date(slotStart).toISOString(),
         guest_user_ids: guestUserIds,
       });
-      setReceivingBusinessId(''); setListingId(''); setRoomNumber(''); setSlotStart(''); setGuests([]);
+      setReceivingBusiness(null); setListing(null); setRoomNumber(''); setSlotStart(''); setGuests([]);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -241,8 +280,25 @@ function NewRequestSection({ businessId, businessType, onCreated }) {
   return (
     <form onSubmit={handleSubmit} className="card" style={{ padding: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 4 }}>New B2B request</p>
-      <input className="input-field" placeholder="Receiving business ID" value={receivingBusinessId} onChange={(e) => setReceivingBusinessId(e.target.value)} />
-      <input className="input-field" placeholder="Listing ID" value={listingId} onChange={(e) => setListingId(e.target.value)} />
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Receiving business</label>
+      <EntityPicker
+        value={receivingBusiness}
+        onChange={(b) => { setReceivingBusiness(b); setListing(null); }}
+        fetchResults={findReceivingBusinesses}
+        placeholder="Search a business by name"
+        dialogLabel="Choose the receiving business"
+      />
+      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Listing</label>
+      <EntityPicker
+        value={listing}
+        onChange={setListing}
+        fetchResults={findListings}
+        placeholder={receivingBusiness ? 'Search this business’s listings' : 'Pick a receiving business first'}
+        dialogLabel="Choose a listing"
+        minChars={0}
+        emptyHint={receivingBusiness ? 'Showing this business’s listings…' : 'Pick a receiving business first.'}
+        disabled={!receivingBusiness}
+      />
       <select className="input-field" value={payer} onChange={(e) => setPayer(e.target.value)}>
         <option value="business">Business pays</option>
         <option value="tourist">Guest pays</option>

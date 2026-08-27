@@ -32,6 +32,7 @@ import favoriteRoutes from './routes/favorites.js';
 import b2bRoutes from './routes/b2b.js';
 import groupTransferRoutes from './routes/groupTransfers.js';
 import externalPlaceRoutes from './routes/externalPlaces.js';
+import userRoutes from './routes/users.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -82,6 +83,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/b2b', b2bRoutes);
 app.use('/api/group-transfers', groupTransferRoutes);
 app.use('/api/external-places', externalPlaceRoutes);
+app.use('/api/users', userRoutes);
 
 // Remaining Phase 1 item not built this round:
 //  15. Guided first-run tour — frontend-only, no backend endpoint needed.

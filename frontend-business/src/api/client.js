@@ -425,6 +425,33 @@ export async function getPayoutItems(payoutId) {
   const res = await fetch(`${API_BASE}/api/payouts/${payoutId}/items`, { headers: authHeaders() });
   return handleResponse(res);
 }
+// --- Batch 26: searchable pickers (backend business.js / users.js) ---
+
+export async function searchBusinesses({ q, type, island } = {}) {
+  const params = new URLSearchParams({ q: q || '' });
+  if (type) params.set('type', type);
+  if (island) params.set('island', island);
+  const res = await fetch(`${API_BASE}/api/business/search?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getBusinessCatalog(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/catalog`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function searchListings({ q, type } = {}) {
+  const params = new URLSearchParams({ q: q || '' });
+  if (type) params.set('type', type);
+  const res = await fetch(`${API_BASE}/api/business/listings/search?${params}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function lookupGuests(q) {
+  const res = await fetch(`${API_BASE}/api/users/lookup?q=${encodeURIComponent(q || '')}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- B2B requests + standing discounts (routes/b2b.js) — Batch 19 ---
 
 export async function getStandingDiscounts(businessId) {

@@ -35,6 +35,18 @@ export async function login({ contact_email, password }) {
   return handleResponse(res);
 }
 
+// --- Batch 26: searchable pickers (backend business.js / users.js) ---
+
+export async function searchBusinesses(q) {
+  const res = await fetch(`${API_BASE}/api/business/search?q=${encodeURIComponent(q || '')}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function lookupGuests(q) {
+  const res = await fetch(`${API_BASE}/api/users/lookup?q=${encodeURIComponent(q || '')}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Connections & availability ---
 
 export async function connectToBusiness(businessId) {
