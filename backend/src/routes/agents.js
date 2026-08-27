@@ -253,14 +253,15 @@ router.post('/bookings', authenticate, requireRole('agent'), requireActiveAgent,
        status, escrow_status
      ) VALUES ($1,$2,$3,$4,$5,'tourist','pay_at_visit',$6,false,0,$5,'confirmed','not_applicable')
      RETURNING id, base_price, price_charged, status`,
-    [listing_id, guest_user_id || req.user.id, slot_start, slot_end || null, basePrice, businessCommission]
+    [listing_id, guest_user_id || null, slot_start, slot_end || null, basePrice, businessCommission]
   );
   const booking = bookingResult.rows[0];
-  // guest_user_id is nullable on bookings.user_id's real-world intent but
-  // NOT NULL in schema — when there's no account yet, the booking is
-  // attributed to the agent itself and the real guest is recorded via
-  // agent_booking_guests.plain_name below, so front-desk/check-in still has
-  // a name to work from even with no user row.
+  // When the guest has no account yet, bookings.user_id is left null
+  // (Batch 28 — it used to be set to the agent's own id, which is not a
+  // valid users row and failed the FK). The real guest's name is recorded
+  // on agent_booking_guests.plain_name below, and the business-facing
+  // booking views COALESCE that in so front desk still has a name to work
+  // from.
 
   const commissionRateNum = commission_rate != null ? Number(commission_rate) : 0;
   const commissionAmount = round2(basePrice * (commissionRateNum / 100));

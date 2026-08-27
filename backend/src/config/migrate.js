@@ -337,6 +337,17 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking that bookings.user_id is nullable (Batch 28 — agent name-only guest fix)...');
+  const bookingUserIdNotNull = await pool.query(
+    `SELECT is_nullable FROM information_schema.columns
+     WHERE table_name = 'bookings' AND column_name = 'user_id'`
+  );
+  if (bookingUserIdNotNull.rows[0]?.is_nullable === 'NO') {
+    console.log('Dropping NOT NULL on bookings.user_id...');
+    await pool.query(`ALTER TABLE bookings ALTER COLUMN user_id DROP NOT NULL`);
+    changed = true;
+  }
+
   console.log('Checking for bookings/orders.refund_credit_payout_id (Batch 28 — payout double-credit fix)...');
   for (const table of ['bookings', 'orders']) {
     if (!(await columnExists(table, 'refund_credit_payout_id'))) {

@@ -36,6 +36,11 @@ const CATEGORY_BY_TYPE = {
 };
 
 export async function notify({ recipientType, recipientId, type, title, body }) {
+  // No recipient to notify — e.g. an agent booking made for a guest who has
+  // no account yet (bookings.user_id is null), later cancelled or hit by a
+  // weather cascade. Silently skip rather than fail the surrounding action.
+  if (!recipientId) return;
+
   if (recipientType === 'user' || recipientType === 'business') {
     const table = recipientType === 'user' ? 'users' : 'businesses';
     const category = CATEGORY_BY_TYPE[type] || 'booking_updates';

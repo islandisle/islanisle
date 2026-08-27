@@ -239,7 +239,11 @@ CREATE INDEX idx_group_members_group ON travel_group_members(travel_group_id);
 CREATE TABLE bookings (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     listing_id                    UUID NOT NULL REFERENCES listings(id),
-    user_id                       UUID NOT NULL REFERENCES users(id),
+    -- Nullable: an agent can book on behalf of a guest who has no account
+    -- yet (Section 5.2 — "added by name only"), in which case the guest's
+    -- name lives on agent_booking_guests.plain_name and there is no user
+    -- row to point at. Every other path always sets this.
+    user_id                       UUID REFERENCES users(id),
     slot_start                    TIMESTAMPTZ NOT NULL, -- explicit timezone, Asia/Male
     slot_end                      TIMESTAMPTZ,
     base_price                    NUMERIC(12,2) NOT NULL, -- business's listed price, or discounted rate if via B2B

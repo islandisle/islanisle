@@ -106,10 +106,11 @@ async function requireGuesthouseOwner(req, res, next) {
 router.get('/business/:businessId/arrivals', authenticate, requireGuesthouseOwner, async (req, res) => {
   const bookingsResult = await query(
     `SELECT b.id, b.slot_start, b.check_in_status, b.check_in_method, b.per_member_check_in,
-            b.room_number, l.title, u.id AS user_id, u.name AS customer_name
+            b.room_number, l.title, b.user_id AS user_id,
+            COALESCE(u.name, 'Guest') AS customer_name
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
-     JOIN users u ON u.id = b.user_id
+     LEFT JOIN users u ON u.id = b.user_id
      WHERE l.business_id = $1 AND b.status = 'confirmed' AND b.slot_start::date = CURRENT_DATE
      ORDER BY b.slot_start ASC`,
     [req.params.businessId]
@@ -189,10 +190,10 @@ router.post('/:bookingId', authenticate, async (req, res) => {
 
   const bookingResult = await query(
     `SELECT b.id, b.user_id, b.status, b.per_member_check_in, b.slot_start, b.slot_end,
-            l.business_id, u.name AS customer_name
+            l.business_id, COALESCE(u.name, 'Guest') AS customer_name
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
-     JOIN users u ON u.id = b.user_id
+     LEFT JOIN users u ON u.id = b.user_id
      WHERE b.id = $1`,
     [bookingId]
   );

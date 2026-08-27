@@ -529,11 +529,14 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
 
   const result = await query(
     `SELECT b.id, b.slot_start, b.status, b.escrow_status, b.price_charged, b.payer_type, b.payment_method,
-            l.id AS listing_id, l.title, u.name AS customer_name,
+            l.id AS listing_id, l.title,
+            COALESCE(u.name, abg.plain_name, 'Guest') AS customer_name,
             1 + (SELECT COUNT(*)::int FROM booking_members bm WHERE bm.booking_id = b.id) AS party_size
      FROM bookings b
      JOIN listings l ON l.id = b.listing_id
-     JOIN users u ON u.id = b.user_id
+     LEFT JOIN users u ON u.id = b.user_id
+     LEFT JOIN agent_bookings ab ON ab.resulting_booking_id = b.id
+     LEFT JOIN agent_booking_guests abg ON abg.agent_booking_id = ab.id
      WHERE l.business_id = $1
      ORDER BY b.slot_start DESC`,
     [req.params.businessId]
@@ -650,7 +653,9 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
   // tracked as a reliability incident against the guest instead. Not
   // possible for an online-paid booking, since payment already happened
   // before it could ever reach 'confirmed'.
-  if (isPayAtVisit && !paymentCollected) {
+  if (isPayAtVisit && !paymentCollected && booking.user_id) {
+    // No guest account (agent name-only booking) — nothing to record a
+    // reliability incident against, so this is simply skipped.
     await reportUnpaidPayAtVisit({
       businessId: booking.business_id, userId: booking.user_id, bookingId: id, amount: booking.price_charged,
     });
@@ -677,8 +682,9 @@ router.patch('/:id/complete', authenticate, async (req, res) => {
     await query(`UPDATE agent_bookings SET status = 'completed' WHERE id = $1`, [agentBooking.id]);
   }
 
-  // No loyalty credit for a transaction the guest never actually paid for.
-  if (paymentCollected) {
+  // No loyalty credit for a transaction the guest never actually paid for,
+  // or one with no guest account to credit (agent name-only booking).
+  if (paymentCollected && booking.user_id) {
     await awardLoyaltyCreditForCompletion(booking.user_id, booking.price_charged);
   }
 
