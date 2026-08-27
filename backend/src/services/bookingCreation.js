@@ -20,6 +20,51 @@ import { round2 } from './refunds.js';
 
 const BUSINESS_COMMISSION_RATE = 0.01; // same flat rate as bookings.js's checkout
 
+// Which type_specific_fields key holds the per-slot capacity, per business
+// type — kept identical to bookings.js / agents.js's own copies (no shared
+// constants module). Guesthouse rooms and anything without a matching
+// field are capacity 1.
+const CAPACITY_FIELD_BY_TYPE = {
+  restaurant: 'table_capacity',
+  excursion: 'capacity_per_slot',
+  speedboat: 'seat_capacity',
+};
+
+export function getSlotCapacity(businessType, typeSpecificFields) {
+  const fieldName = CAPACITY_FIELD_BY_TYPE[businessType];
+  if (!fieldName) return 1;
+  const parsed = Number(typeSpecificFields?.[fieldName]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+// Throws a { statusCode: 409 } error if placing `seats` more bookings on
+// this listing+slot would exceed capacity. Batch 28: b2b.js's accept
+// handler and groupTransfers.js both create one booking per guest and
+// previously skipped this check entirely, so a guesthouse could arrange an
+// excursion or a boat seat that direct tourist checkout (bookings.js) or an
+// agent booking (agents.js) — both of which do enforce it — would have
+// rejected as full. Counts the same statuses bookings.js's own checkout
+// does. Must be called inside the caller's open transaction.
+export async function assertSlotCapacity(client, { listingId, slotStart, businessType, typeSpecificFields, seats }) {
+  if (!seats || seats < 1) return;
+  const capacity = getSlotCapacity(businessType, typeSpecificFields);
+  const existing = await client.query(
+    `SELECT COUNT(*)::int AS count FROM bookings
+     WHERE listing_id = $1 AND slot_start = $2 AND status IN ('confirmed', 'pending_approval')`,
+    [listingId, slotStart]
+  );
+  const taken = existing.rows[0].count;
+  if (taken + seats > capacity) {
+    const err = new Error(
+      capacity === 1
+        ? 'That slot is already booked.'
+        : `That slot doesn't have room for ${seats} more — ${taken} of ${capacity} already taken.`
+    );
+    err.statusCode = 409;
+    throw err;
+  }
+}
+
 // `payer` is whatever string the caller's own vocabulary uses for "the
 // business pays" (b2b.js: 'business'; groupTransfers.js: 'guesthouse') —
 // anything else is treated as "the guest pays their own tourist rate".

@@ -18,7 +18,7 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { notify } from '../services/notifications.js';
-import { insertArrangedBooking } from '../services/bookingCreation.js';
+import { insertArrangedBooking, assertSlotCapacity } from '../services/bookingCreation.js';
 
 const router = Router();
 
@@ -53,7 +53,7 @@ router.post('/:guesthouseBusinessId', authenticate, async (req, res) => {
   }
 
   const listingResult = await query(
-    `SELECT l.id, l.tourist_price FROM listings l JOIN businesses b ON b.id = l.business_id
+    `SELECT l.id, l.tourist_price, l.type_specific_fields FROM listings l JOIN businesses b ON b.id = l.business_id
      WHERE l.id = $1 AND b.type = 'speedboat' AND l.approval_status = 'approved'`,
     [route_id]
   );
@@ -65,6 +65,17 @@ router.post('/:guesthouseBusinessId', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Section 4.4/9 — only registered guests get a real seat booking, so
+    // that's the seat count to check against the departure's capacity
+    // (the same check direct checkout and agent bookings already enforce).
+    await assertSlotCapacity(client, {
+      listingId: route_id,
+      slotStart: eta,
+      businessType: 'speedboat',
+      typeSpecificFields: listing.type_specific_fields,
+      seats: guests.filter((g) => g.user_id).length,
+    });
 
     const groupBookingResult = await client.query(
       `INSERT INTO group_bookings (guesthouse_business_id, route_id, payer, discount_percent, status, eta)
@@ -116,6 +127,9 @@ router.post('/:guesthouseBusinessId', authenticate, async (req, res) => {
     res.status(201).json({ group_booking_id: groupBookingId, guests: createdGuests });
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('Group transfer creation error:', err);
     res.status(500).json({ error: 'Could not create this group transfer.' });
   } finally {

@@ -19,7 +19,7 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { notify } from '../services/notifications.js';
-import { insertArrangedBooking } from '../services/bookingCreation.js';
+import { insertArrangedBooking, assertSlotCapacity } from '../services/bookingCreation.js';
 
 const router = Router();
 
@@ -204,7 +204,8 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
   const client = await pool.connect();
   try {
     const requestResult = await client.query(
-      `SELECT r.*, l.tourist_price, l.business_id AS listing_business_id, biz.owner_user_id
+      `SELECT r.*, l.tourist_price, l.type_specific_fields, l.business_id AS listing_business_id,
+              biz.owner_user_id, biz.type AS business_type
        FROM b2b_requests r
        JOIN listings l ON l.id = r.listing_id
        JOIN businesses biz ON biz.id = r.receiving_business_id
@@ -234,6 +235,16 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
     const discountPercent = b2bRequest.discount_percent ? Number(b2bRequest.discount_percent) : 0;
 
     await client.query('BEGIN');
+
+    // Section 4.3/9 — the same slot-capacity check direct checkout enforces.
+    await assertSlotCapacity(client, {
+      listingId: b2bRequest.listing_id,
+      slotStart: b2bRequest.slot_start,
+      businessType: b2bRequest.business_type,
+      typeSpecificFields: b2bRequest.type_specific_fields,
+      seats: guestsResult.rows.length,
+    });
+
     const createdBookingIds = [];
     for (const guest of guestsResult.rows) {
       const bookingId = await insertArrangedBooking(client, {
@@ -273,6 +284,9 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
     res.json({ status: 'accepted', booking_ids: createdBookingIds });
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('B2B accept error:', err);
     res.status(500).json({ error: 'Could not accept this request.' });
   } finally {
