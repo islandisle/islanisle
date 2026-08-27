@@ -7,6 +7,7 @@ import GlobalSearch from '../components/GlobalSearch';
 import Hint from '../components/Hint';
 import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
+import { AmbientBackground } from '../components/AmbientBackground';
 import { useLanguage } from '../i18n';
 
 // Batch 27 — tourist navigation, consolidated from links previously split
@@ -186,6 +187,7 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
+      <AmbientBackground type={typeFilter || 'all'} />
       <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>

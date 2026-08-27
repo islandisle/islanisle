@@ -5,6 +5,7 @@ import { useModalA11y } from '../useModalA11y';
 import ChatPanel from '../components/ChatPanel';
 import Hint from '../components/Hint';
 import { SectionArt } from '../components/SectionArt';
+import { AmbientBackground } from '../components/AmbientBackground';
 import { useLanguage } from '../i18n';
 
 function getCurrentUser() {
@@ -73,6 +74,7 @@ export default function ListingDetail() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
+      <AmbientBackground type={listing.business_type || 'all'} />
       <button className="btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
         ← Back
       </button>
