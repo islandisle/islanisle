@@ -11,6 +11,7 @@ import {
 import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
 import NavMenu from '../components/NavMenu';
+import { SectionArt } from '../components/SectionArt';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -97,9 +98,9 @@ export default function Dashboard() {
 
       <AddListingForm businessType={business.type} businessId={business.id} onCreated={loadListings} />
 
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
-        Your listings
-      </p>
+      <div style={{ margin: '24px 0 10px' }}>
+        <SectionArt type={business.type} title="Your listings" compact />
+      </div>
       {listings.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No listings yet — add one above.</p>
       )}

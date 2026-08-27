@@ -4,6 +4,7 @@ import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinW
 import { useModalA11y } from '../useModalA11y';
 import ChatPanel from '../components/ChatPanel';
 import Hint from '../components/Hint';
+import { SectionArt } from '../components/SectionArt';
 import { useLanguage } from '../i18n';
 
 function getCurrentUser() {
@@ -75,6 +76,8 @@ export default function ListingDetail() {
       <button className="btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
         ← Back
       </button>
+
+      <SectionArt type={listing.business_type} title={listing.business_name} compact />
 
       <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>
         {listing.title}

@@ -6,6 +6,7 @@ import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
 import Hint from '../components/Hint';
 import NavMenu from '../components/NavMenu';
+import { SectionArt } from '../components/SectionArt';
 import { useLanguage } from '../i18n';
 
 // Batch 27 — tourist navigation, consolidated from links previously split
@@ -338,6 +339,8 @@ export default function Home() {
             Open now
           </label>
         </div>
+
+        {typeFilter && <SectionArt type={typeFilter} subtitle={t('home.staying_on', { island })} />}
 
         {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>}
         {error && <p className="error-text">{error}</p>}
