@@ -513,11 +513,12 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
   );
 }
 
-// The guest's "personal QR" for guesthouse check-in — encodes this specific
-// booking's id, which backend/src/routes/checkin.js validates a scan against.
-// Front desk scans this from frontend-business's CheckInScanner; distinct
-// from the travel-group QR shown via Profile.jsx's "My QR code" (QRPopup),
-// which is for joining a group, not checking in.
+// The check-in QR for this specific guesthouse booking — encodes the
+// booking id, which backend/src/routes/checkin.js validates a scan against.
+// Front desk scans this from frontend-business's CheckInScanner. This is a
+// separate code from the personal identity QR on Profile.jsx's "My QR
+// code" (QRPopup, which encodes the user's own id and whose scan-in half
+// is for joining a travel group) — the two QR systems aren't unified.
 function CheckInQR({ bookingId }) {
   const [open, setOpen] = useState(false);
 

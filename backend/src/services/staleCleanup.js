@@ -3,14 +3,16 @@
 // closed) is left in 'pending_payment' forever with nothing to expire it.
 // Run periodically from jobs/scheduler.js.
 //
-// Bookings don't hold any real inventory while pending_payment — see
-// bookings.js's own top comment ("A still-pending-payment booking does NOT
-// count against capacity yet"), since the capacity check only counts
-// 'confirmed' bookings — so expiring one is pure housekeeping, nothing to
-// release. Orders are different: stock_count is decremented immediately at
-// order creation (see orders.js), before payment ever confirms, so an
-// abandoned order really is holding real stock hostage until it's expired
-// here and that stock is given back.
+// Since Batch 13's slot-hold, a pending_payment booking DOES count against
+// capacity — but only for as long as PENDING_PAYMENT_TIMEOUT_MINUTES, the
+// same window this job uses to expire it (bookings.js's capacity check is
+// bounded by that interval, so a hold self-releases even between runs).
+// This job is the tidy-up that flips the row to 'cancelled' once the hold
+// has lapsed; the slot was already effectively free. Orders are the more
+// urgent case: stock_count is decremented immediately at order creation
+// (see orders.js), before payment ever confirms, so an abandoned order
+// really is holding real stock hostage until it's expired here and that
+// stock is given back.
 //
 // Not handled here (a known, narrow gap, not silently ignored): an expired
 // order/booking that had a promo code applied leaves that code's
