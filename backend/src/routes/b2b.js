@@ -264,15 +264,15 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
     await client.query(`UPDATE b2b_requests SET status = 'accepted' WHERE id = $1`, [b2bRequest.id]);
     await client.query('COMMIT');
 
-    for (const guest of guestsResult.rows) {
-      await notify({
+    await Promise.all(guestsResult.rows.map((guest) =>
+      notify({
         recipientType: 'user',
         recipientId: guest.user_id,
         type: 'booking_confirmation',
         title: 'Booking confirmed',
         body: `Your guesthouse arranged a booking for you — you're confirmed.`,
-      });
-    }
+      })
+    ));
     await notify({
       recipientType: 'business',
       recipientId: b2bRequest.requesting_business_id,

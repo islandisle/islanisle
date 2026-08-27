@@ -435,12 +435,12 @@ router.post('/departure/eta-update', authenticate, async (req, res) => {
     `SELECT user_id FROM bookings WHERE listing_id = $1 AND slot_start = $2 AND status = 'confirmed'`,
     [listing_id, slot_start]
   );
-  for (const p of passengers.rows) {
-    await notify({
+  await Promise.all(passengers.rows.map((p) =>
+    notify({
       recipientType: 'user', recipientId: p.user_id,
       type: 'eta_update', title: 'Departure update', body: message,
-    });
-  }
+    })
+  ));
   res.json({ status: 'sent', recipients: passengers.rows.length });
 });
 

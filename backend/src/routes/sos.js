@@ -27,16 +27,18 @@ router.post('/', authenticate, sosLimiter, async (req, res) => {
 
   // Notify every active admin — an SOS is urgent enough to broadcast rather
   // than route through the normal approval-queue-style single assignment.
+  // Fanned out in parallel so a large admin team doesn't add latency to an
+  // emergency alert.
   const admins = await query(`SELECT id FROM admin_users WHERE status = 'active'`);
-  for (const admin of admins.rows) {
-    await notify({
+  await Promise.all(admins.rows.map((admin) =>
+    notify({
       recipientType: 'admin',
       recipientId: admin.id,
       type: 'sos',
       title: 'SOS alert',
       body: `A user has triggered an SOS alert${island ? ` on ${island}` : ''}.`,
-    });
-  }
+    })
+  ));
 
   res.status(201).json({
     alert: result.rows[0],

@@ -50,15 +50,15 @@ async function notifyGuestsOfSuspension(businessId, reason) {
     [businessId]
   );
 
-  for (const { user_id } of guestsResult.rows) {
-    await notify({
+  await Promise.all(guestsResult.rows.map(({ user_id }) =>
+    notify({
       recipientType: 'user',
       recipientId: user_id,
       type: 'suspended',
       title: `${businessName} has been suspended`,
       body: `${businessName} is temporarily suspended (${reason}). Any existing booking or order you have there is still honored — this only affects new ones.`,
-    });
-  }
+    })
+  ));
 }
 
 /**
