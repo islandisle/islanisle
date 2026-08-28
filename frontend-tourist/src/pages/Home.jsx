@@ -96,6 +96,14 @@ export default function Home() {
   const isLocal = user?.type === 'local';
   const { t } = useLanguage();
 
+  // Batch 30 — the page background (styles/theme.css's --page-bg, with a
+  // crossfade on `body`) is tinted per selected category. Kept synced here;
+  // reset only when leaving Home so other pages start from the default.
+  useEffect(() => {
+    document.body.dataset.category = typeFilter || 'all';
+  }, [typeFilter]);
+  useEffect(() => () => { delete document.body.dataset.category; }, []);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);

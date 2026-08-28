@@ -63,6 +63,13 @@ export default function ListingDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Batch 30 — tint the page background (styles/theme.css's --page-bg) to
+  // this listing's category while it's open; reset on leave.
+  useEffect(() => {
+    if (listing?.business_type) document.body.dataset.category = listing.business_type;
+  }, [listing]);
+  useEffect(() => () => { delete document.body.dataset.category; }, []);
+
   if (loading) return <p style={{ padding: 20 }}>Loading…</p>;
   if (!listing) return <p style={{ padding: 20 }} className="error-text">Listing not found.</p>;
 

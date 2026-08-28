@@ -78,10 +78,11 @@
 
 body {
   margin: 0;
-  background: var(--sand);
+  background: var(--page-bg);
   color: var(--navy);
   font-family: var(--font-sans);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  /* Batch 30 — a soft crossfade when --page-bg changes on category switch. */
+  transition: background-color 0.45s ease, color 0.15s ease;
 }
 
 /* Reduced-motion respected everywhere, per script Section 11's motion design rule. */
@@ -281,3 +282,33 @@ body {
   from { transform: translate(0, 0); }
   to   { transform: translate(140px, 140px); }
 }
+
+/* Batch 30 — category-tinted page background. Soft light-tint variants of
+   --lagoon (#0e7c66) so it still reads as the Horizon Line identity; dark
+   mode gets a correspondingly deep/muted version of the same hue family.
+   Driven by <body data-category="…"> set from Home.jsx / ListingDetail.jsx;
+   the crossfade lives on `body`'s background-color transition above. */
+:root { --page-bg: #e8f3f1; }
+body[data-category="all"]        { --page-bg: #e8f3f1; }
+body[data-category="guesthouse"] { --page-bg: #e5f1e8; }
+body[data-category="excursion"]  { --page-bg: #e1f0ef; }
+body[data-category="restaurant"] { --page-bg: #eaf3ec; }
+body[data-category="speedboat"]  { --page-bg: #dfedf0; }
+body[data-category="shop"]       { --page-bg: #e4f2ec; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page-bg: #0c2127; }
+  :root:not([data-theme="light"]) body[data-category="all"]        { --page-bg: #0c2127; }
+  :root:not([data-theme="light"]) body[data-category="guesthouse"] { --page-bg: #0c2222; }
+  :root:not([data-theme="light"]) body[data-category="excursion"]  { --page-bg: #0b2026; }
+  :root:not([data-theme="light"]) body[data-category="restaurant"] { --page-bg: #0d2223; }
+  :root:not([data-theme="light"]) body[data-category="speedboat"]  { --page-bg: #0a1f27; }
+  :root:not([data-theme="light"]) body[data-category="shop"]       { --page-bg: #0c2224; }
+}
+:root[data-theme="dark"] { --page-bg: #0c2127; }
+:root[data-theme="dark"] body[data-category="all"]        { --page-bg: #0c2127; }
+:root[data-theme="dark"] body[data-category="guesthouse"] { --page-bg: #0c2222; }
+:root[data-theme="dark"] body[data-category="excursion"]  { --page-bg: #0b2026; }
+:root[data-theme="dark"] body[data-category="restaurant"] { --page-bg: #0d2223; }
+:root[data-theme="dark"] body[data-category="speedboat"]  { --page-bg: #0a1f27; }
+:root[data-theme="dark"] body[data-category="shop"]       { --page-bg: #0c2224; }
