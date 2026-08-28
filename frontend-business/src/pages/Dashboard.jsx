@@ -296,6 +296,16 @@ function ClaimForm({ place, island, onClose, onSubmitted }) {
       setError('A verification document (business registration certificate) is required.');
       return;
     }
+    // Batch 31 — a formal ownership assertion reviewed by Super Admin, so
+    // confirm what's being submitted before it goes.
+    if (!window.confirm(
+      `Submit a claim that you own "${place.name}"?\n\n`
+      + `Super Admin will review your verification document. If approved, `
+      + `"${businessName}" becomes a live business under your account and this `
+      + `place stops showing as unclaimed. Submitting a false claim can get your account suspended.`
+    )) {
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {

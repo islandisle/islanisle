@@ -488,7 +488,14 @@ function BusinessDirectorySection({ isModerator }) {
   }
 
   async function handleSuspend(id) {
-    const reason = window.prompt('Reason for suspending (required):');
+    // Batch 31 — spell out the effect before asking for a reason.
+    if (!window.confirm(
+      'Suspend this business?\n\n'
+      + 'Their listings stop appearing for new bookings immediately, and they '
+      + "can't accept new ones. Existing confirmed bookings are still honoured, "
+      + 'and affected guests are notified. You can reinstate them later.'
+    )) return;
+    const reason = window.prompt('Reason for suspending (required, recorded in the audit log):');
     if (!reason) return;
     try {
       await suspendBusiness(id, reason);
@@ -630,7 +637,13 @@ function AgentDirectorySection() {
   }
 
   async function handleSuspend(id) {
-    const reason = window.prompt('Reason for suspending (required):');
+    if (!window.confirm(
+      'Suspend this agent?\n\n'
+      + "They can't arrange new bookings or connect with new businesses until "
+      + 'reinstated. Already-confirmed arrangements and earned commission are '
+      + 'unaffected. You can reinstate them later.'
+    )) return;
+    const reason = window.prompt('Reason for suspending (required, recorded in the audit log):');
     if (!reason) return;
     try {
       await suspendAgent(id, reason);
