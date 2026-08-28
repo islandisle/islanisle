@@ -156,6 +156,38 @@ Log into `frontend-admin` with that email and password. Any admin created
 after this first one can be added the same way — there's no "invite another
 admin" feature in the console UI yet.
 
+## Running tests
+
+```bash
+cd backend
+npm test
+```
+
+`npm test` runs the integration/unit suite in `backend/tests/` on Node's
+built-in test runner (Node 22.3+ / `node --test`; the
+`--experimental-test-module-mocks` flag is already in the script). No
+database, network, or `npm install` is needed — the DB layer is stubbed
+with `node:test` module mocks.
+
+The suite is deliberately **not** exhaustive. It pins down the highest-risk,
+money-touching logic and the specific regressions the four project audits
+found:
+
+- **`bookingCreation.test.js`** — arranged-booking commission (a tourist
+  payer gets the same two-tier 2%-only-when-online treatment as direct
+  checkout; the B2B discount is never passed through to a tourist payer),
+  per-type slot capacity, and `assertSlotCapacity` actually rejecting an
+  over-capacity B2B / group-transfer booking.
+- **`refunds.test.js`** — refund fee math: Pay at Visit and operator-fault
+  cancellations lose nothing to fees; an online tourist-fault cancellation
+  loses exactly platform 5% + the business's configurable share.
+- **`payoutRun.test.js`** — refund-fee credits (from cancelled bookings,
+  cancelled orders *and* processed returns) are paid to a business exactly
+  once, then filtered out of every later run.
+- **`payAtVisit.test.js`** — the eligibility gate: already-eligible users
+  pass, a brand-new user's first transaction is exempt, everything after is
+  gated.
+
 ## Local setup
 
 ```bash
