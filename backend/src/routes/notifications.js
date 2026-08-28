@@ -109,6 +109,36 @@ router.post('/:id/read', authenticate, async (req, res) => {
 });
 
 /**
+ * POST /api/notifications/:id/unread
+ * Batch 31 — the "Undo" for a just-tapped notification. Same ownership
+ * check as /read.
+ */
+router.post('/:id/unread', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const notifResult = await query('SELECT id, recipient_type, recipient_id FROM notifications WHERE id = $1', [id]);
+  if (!notifResult.rows.length) {
+    return res.status(404).json({ error: 'Notification not found.' });
+  }
+  const notification = notifResult.rows[0];
+  let owns = notification.recipient_type === 'user' && notification.recipient_id === req.user.id;
+  if (!owns && notification.recipient_type === 'business') {
+    const ownerCheck = await query(
+      'SELECT id FROM businesses WHERE id = $1 AND owner_user_id = $2',
+      [notification.recipient_id, req.user.id]
+    );
+    owns = ownerCheck.rows.length > 0;
+  }
+  if (!owns) {
+    return res.status(404).json({ error: 'Notification not found.' });
+  }
+  const result = await query(
+    'UPDATE notifications SET read = false WHERE id = $1 RETURNING id, type, title, body, read, created_at',
+    [id]
+  );
+  res.json({ notification: result.rows[0] });
+});
+
+/**
  * POST /api/notifications/read-all
  * body: { business_id? } — same scope rule as GET /api/notifications.
  */

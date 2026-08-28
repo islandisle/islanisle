@@ -10,6 +10,7 @@ import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
 import EmptyState from '../components/EmptyState';
 import { useLanguage } from '../i18n';
+import { useToast } from '../components/Toast';
 
 // Batch 31 — a few well-populated islands to suggest when the selected one
 // has nothing yet (the app rolls out island by island).
@@ -100,6 +101,7 @@ export default function Home() {
   const user = getCurrentUser();
   const isLocal = user?.type === 'local';
   const { t } = useLanguage();
+  const { showToast } = useToast();
 
   // Batch 30 — the page background (styles/theme.css's --page-bg, with a
   // crossfade on `body`) is tinted per selected category. Kept synced here;
@@ -166,6 +168,22 @@ export default function Home() {
         return next;
       });
     });
+    if (isFavorited) {
+      showToast({
+        message: 'Removed from favorites.',
+        actionLabel: 'Undo',
+        onAction: () => {
+          setFavoriteIds((prev) => new Set(prev).add(listingId));
+          addFavorite(listingId).catch(() => {
+            setFavoriteIds((prev) => {
+              const next = new Set(prev);
+              next.delete(listingId);
+              return next;
+            });
+          });
+        },
+      });
+    }
   }
 
   function toggleDietaryTag(key, checked) {

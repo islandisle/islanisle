@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyFavorites, removeFavorite } from '../api/client';
+import { getMyFavorites, removeFavorite, addFavorite } from '../api/client';
 import { ListingCard } from './Home';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -21,6 +22,7 @@ export default function Favorites() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   const user = getCurrentUser();
   const isLocal = user?.type === 'local';
@@ -42,8 +44,24 @@ export default function Favorites() {
   }, []);
 
   function handleUnfavorite(listingId) {
+    const removed = listings.find((l) => l.id === listingId);
+    const removedIndex = listings.findIndex((l) => l.id === listingId);
     setListings((prev) => prev.filter((l) => l.id !== listingId));
     removeFavorite(listingId).catch(() => load()); // reconcile on failure
+    if (!removed) return;
+    showToast({
+      message: 'Removed from favorites.',
+      actionLabel: 'Undo',
+      onAction: () => {
+        setListings((prev) => {
+          if (prev.some((l) => l.id === listingId)) return prev;
+          const next = [...prev];
+          next.splice(Math.min(removedIndex, next.length), 0, removed);
+          return next;
+        });
+        addFavorite(listingId).catch(() => load());
+      },
+    });
   }
 
   return (

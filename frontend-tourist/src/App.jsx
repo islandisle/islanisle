@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './i18n';
+import { ToastProvider } from './components/Toast';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -18,6 +19,7 @@ import Messages from './pages/Messages';
 export default function App() {
   return (
     <LanguageProvider>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -36,6 +38,7 @@ export default function App() {
           <Route path="/messages" element={<Messages />} />
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
     </LanguageProvider>
   );
 }

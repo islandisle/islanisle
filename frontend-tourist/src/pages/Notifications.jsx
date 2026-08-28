@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/client';
+import { getNotifications, markNotificationRead, markNotificationUnread, markAllNotificationsRead } from '../api/client';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 
 // Read side of Section 6.5's notification system — the write side
 // (services/notifications.js notify()) has been firing into the
@@ -13,6 +14,7 @@ export default function Notifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   function load() {
     setLoading(true);
@@ -39,6 +41,19 @@ export default function Notifications() {
       await markNotificationRead(notification.id);
       setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
+      showToast({
+        message: 'Marked as read.',
+        actionLabel: 'Undo',
+        onAction: async () => {
+          try {
+            await markNotificationUnread(notification.id);
+            setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: false } : n)));
+            setUnreadCount((prev) => prev + 1);
+          } catch (err) {
+            setError(err.message);
+          }
+        },
+      });
     } catch (err) {
       setError(err.message);
     }

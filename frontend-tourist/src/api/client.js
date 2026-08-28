@@ -438,6 +438,15 @@ export async function markNotificationRead(id) {
   return handleResponse(res);
 }
 
+// Batch 31 — the "Undo" for a just-tapped notification.
+export async function markNotificationUnread(id) {
+  const res = await fetch(`${API_BASE}/api/notifications/${id}/unread`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
 export async function markAllNotificationsRead() {
   const res = await fetch(`${API_BASE}/api/notifications/read-all`, {
     method: 'POST',
