@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyThreads } from '../api/client';
 import ChatPanel from '../components/ChatPanel';
+import EmptyState from '../components/EmptyState';
 
 // Batch 22 — a tourist could message a business from a listing, but had no
 // way to see or reply to a thread someone else started (an agent, most
@@ -47,7 +48,11 @@ export default function Messages() {
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && !error && threads.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No conversations yet.</p>
+        <EmptyState
+          message="No conversations yet. Open any listing and tap “Message business” to ask about availability, dietary needs or custom timing before you book."
+          actionLabel="Browse listings"
+          actionTo="/"
+        />
       )}
 
       {threads.map((t) => (

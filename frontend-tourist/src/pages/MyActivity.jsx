@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn, getMyDisputes } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
+import EmptyState from '../components/EmptyState';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -145,13 +146,23 @@ export default function MyActivity() {
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
 
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-        Bookings
-      </p>
-      {!loading && bookings.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-          No bookings yet.
-        </p>
+      {!loading && bookings.length === 0 && orders.length === 0 ? (
+        <EmptyState
+          message="You haven't booked or ordered anything yet. Pick an island and find a room, a table, an excursion or a transfer."
+          actionLabel="Start browsing"
+          actionTo="/"
+        />
+      ) : (
+        <>
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+            Bookings
+          </p>
+          {!loading && bookings.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+              No bookings yet.
+            </p>
+          )}
+        </>
       )}
       {bookings.map((b) => (
         <BookingRow
@@ -163,12 +174,14 @@ export default function MyActivity() {
         />
       ))}
 
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
-        Orders
-      </p>
-      {!loading && orders.length === 0 && (
+      {(bookings.length > 0 || orders.length > 0) && (
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
+          Orders
+        </p>
+      )}
+      {!loading && orders.length === 0 && bookings.length > 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          No orders yet.
+          No shop orders yet.
         </p>
       )}
       {orders.map((o) => (

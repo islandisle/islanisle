@@ -8,7 +8,12 @@ import Hint from '../components/Hint';
 import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
+import EmptyState from '../components/EmptyState';
 import { useLanguage } from '../i18n';
+
+// Batch 31 — a few well-populated islands to suggest when the selected one
+// has nothing yet (the app rolls out island by island).
+const SUGGESTED_ISLANDS = ['Maafushi', 'Malé', 'Hulhumalé', 'Thulusdhoo', 'Dhigurah'];
 
 // Batch 27 — tourist navigation, consolidated from links previously split
 // between the Home header and the Profile page's button column.
@@ -355,7 +360,9 @@ export default function Home() {
 
         {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>}
         {error && <p className="error-text">{error}</p>}
-        {!loading && !error && listings.length === 0 && <EmptyState island={island} />}
+        {!loading && !error && listings.length === 0 && (
+          <IslandEmptyState island={island} onPickIsland={setIsland} />
+        )}
 
         {listings.filter((l) => !openNowOnly || !l.is_closed).map((listing) => (
           <ListingCard
@@ -926,11 +933,32 @@ export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite })
   );
 }
 
-function EmptyState({ island }) {
+function IslandEmptyState({ island, onPickIsland }) {
   const { t } = useLanguage();
+  const others = SUGGESTED_ISLANDS.filter((i) => i.toLowerCase() !== (island || '').toLowerCase()).slice(0, 4);
   return (
-    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-      <p style={{ fontSize: 14 }}>{t('home.empty_state', { island })}</p>
-    </div>
+    <EmptyState message={t('home.empty_state', { island })}>
+      {others.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>Try an island that's up and running:</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {others.map((i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onPickIsland(i)}
+                style={{
+                  padding: '6px 12px', borderRadius: 20, fontSize: 13,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--lagoon)', cursor: 'pointer',
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </EmptyState>
   );
 }

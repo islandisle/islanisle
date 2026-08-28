@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getMyTrips } from '../api/client';
+import EmptyState from '../components/EmptyState';
 
 // Trip/itinerary view — script Section 12's Trip/TripIslandStay, populated
 // entirely from checkin.js's guesthouse check-in flow (there's no manual
@@ -71,9 +72,11 @@ export default function Trips() {
       {error && <p className="error-text">{error}</p>}
 
       {!loading && !error && trips.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          No trips yet — checking in to a guesthouse starts one.
-        </p>
+        <EmptyState
+          message="No trips yet. Your itinerary builds itself once you check in at a guesthouse — book a stay to get started."
+          actionLabel="Find a place to stay"
+          actionTo="/"
+        />
       )}
 
       {!loading && !error && trips.length > 0 && view === 'calendar' && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyFavorites, removeFavorite } from '../api/client';
 import { ListingCard } from './Home';
+import EmptyState from '../components/EmptyState';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -58,9 +59,11 @@ export default function Favorites() {
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && !error && listings.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Nothing saved yet — tap the star on any listing to add it here.
-        </p>
+        <EmptyState
+          message="Nothing saved yet. Tap the ☆ on any listing to keep it here while you decide."
+          actionLabel="Browse listings"
+          actionTo="/"
+        />
       )}
 
       {listings.map((listing) => (

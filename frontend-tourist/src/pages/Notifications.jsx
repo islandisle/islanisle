@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/client';
+import EmptyState from '../components/EmptyState';
 
 // Read side of Section 6.5's notification system — the write side
 // (services/notifications.js notify()) has been firing into the
@@ -77,7 +78,11 @@ export default function Notifications() {
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && notifications.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No notifications yet.</p>
+        <EmptyState
+          message="No notifications yet. Booking confirmations, boarding reminders, ETA updates and deal alerts will show up here once you've booked something."
+          actionLabel="Find something to book"
+          actionTo="/"
+        />
       )}
 
       {notifications.map((n) => (
