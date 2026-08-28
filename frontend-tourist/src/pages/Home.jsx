@@ -8,6 +8,7 @@ import Hint from '../components/Hint';
 import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
+import { LeafBackdrop } from '../components/LeafBackdrop';
 import EmptyState from '../components/EmptyState';
 import { SkeletonList } from '../components/Skeleton';
 import { useLanguage } from '../i18n';
@@ -220,6 +221,7 @@ export default function Home() {
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <AmbientBackground type={typeFilter || 'all'} />
+      <LeafBackdrop />
       <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>

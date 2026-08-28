@@ -330,3 +330,76 @@ body[data-category="shop"]       { --page-bg: #e4f2ec; }
 :root[data-theme="dark"] body[data-category="restaurant"] { --page-bg: #0d2223; }
 :root[data-theme="dark"] body[data-category="speedboat"]  { --page-bg: #0a1f27; }
 :root[data-theme="dark"] body[data-category="shop"]       { --page-bg: #0c2224; }
+
+/* Batch 30 (addition) — Home tropical leaf line-art backdrop (LeafBackdrop.jsx).
+   --leaf-fill is the deep silhouette, --leaf-vein the lighter interior
+   linework — both derived from the Horizon Line navy / lagoon-light, kept
+   at ~5-11% so cards and text stay fully readable. Same fixed z-index -1
+   layer as .ambient-bg: above --page-bg, below every piece of content. */
+:root {
+  --leaf-fill: rgba(11, 46, 61, 0.055);
+  --leaf-vein: rgba(11, 46, 61, 0.11);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --leaf-fill: rgba(228, 243, 238, 0.05);
+    --leaf-vein: rgba(228, 243, 238, 0.11);
+  }
+}
+:root[data-theme="dark"] {
+  --leaf-fill: rgba(228, 243, 238, 0.05);
+  --leaf-vein: rgba(228, 243, 238, 0.11);
+}
+
+.leaf-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.leaf-cluster {
+  position: absolute;
+  display: block;
+  height: auto;
+}
+.leaf-cluster--bl { left: -7vw;   bottom: -7vw;  width: min(58vw, 440px); }
+.leaf-cluster--br { right: -9vw;   bottom: -9vw;  width: min(64vw, 480px); transform: scaleX(-1); }
+.leaf-cluster--tr { right: -12vw;  top: -14vw;    width: min(42vw, 320px); transform: scaleY(-1) rotate(-8deg); }
+
+.leaf-fill {
+  fill: var(--leaf-fill);
+  stroke: none;
+}
+.leaf-vein {
+  fill: none;
+  stroke: var(--leaf-vein);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.leaf-petal {
+  fill: var(--leaf-fill);
+  stroke: var(--leaf-vein);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.leaf-sway {
+  transform-box: fill-box;
+  transform-origin: var(--sway-origin, 50% 100%);
+  animation: leaf-sway var(--sway-dur, 9s) ease-in-out var(--sway-delay, 0s) infinite;
+  will-change: transform;
+}
+@keyframes leaf-sway {
+  0%   { transform: rotate(var(--sway-a, -1.6deg)) skewX(var(--sway-skew, 0.5deg)); }
+  50%  { transform: rotate(var(--sway-b, 2.2deg)) skewX(calc(var(--sway-skew, 0.5deg) * -1)); }
+  100% { transform: rotate(var(--sway-a, -1.6deg)) skewX(var(--sway-skew, 0.5deg)); }
+}
+
+/* Freeze to a static upright pose when reduced motion is requested — same
+   pattern as the .sa-scene rule above. */
+@media (prefers-reduced-motion: reduce) {
+  .leaf-sway { animation: none !important; transform: none !important; }
+}
