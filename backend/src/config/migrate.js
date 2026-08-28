@@ -234,6 +234,42 @@ async function main() {
     changed = true;
   }
 
+  console.log("Checking for local_verification_status.rejected (Batch 36)...");
+  const rejectedLvsResult = await pool.query(
+    `SELECT 1 FROM pg_enum WHERE enumlabel = 'rejected'
+     AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'local_verification_status')`
+  );
+  if (!rejectedLvsResult.rows.length) {
+    console.log("Adding 'rejected' to local_verification_status...");
+    await pool.query(`ALTER TYPE local_verification_status ADD VALUE IF NOT EXISTS 'rejected'`);
+    changed = true;
+  }
+
+  console.log('Checking for refund_failures table (Batch 36)...');
+  if (!(await tableExists('refund_failures'))) {
+    console.log('Creating refund_failures...');
+    await pool.query(`
+      CREATE TABLE refund_failures (
+          id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          booking_id                 UUID REFERENCES bookings(id),
+          order_id                   UUID REFERENCES orders(id),
+          dispute_id                 UUID REFERENCES disputes(id),
+          source                     TEXT NOT NULL,
+          amount                     NUMERIC(12,2) NOT NULL,
+          stripe_payment_intent_id    TEXT,
+          error_message              TEXT,
+          status                     TEXT NOT NULL DEFAULT 'open',
+          resolved_by_admin_id        UUID REFERENCES admin_users(id),
+          resolved_note              TEXT,
+          created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+          resolved_at                 TIMESTAMPTZ,
+          CONSTRAINT chk_refund_failure_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_refund_failures_status ON refund_failures(status)`);
+    changed = true;
+  }
+
   console.log("Checking for admin_target_type.user (Batch 28 — reclassify/restore audit target)...");
   const userTargetResult = await pool.query(
     `SELECT 1 FROM pg_enum WHERE enumlabel = 'user'

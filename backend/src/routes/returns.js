@@ -16,6 +16,7 @@ import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from '../services/notifications.js';
+import { recordRefundFailure } from '../services/refundFailures.js';
 
 const router = Router();
 
@@ -217,10 +218,17 @@ router.post('/:id/process', authenticate, async (req, res) => {
     refundAmount = round2(grossRefundAmount - refundAppFee - refundBusinessCredit);
 
     if (ret.payment_method === 'online' && ret.stripe_payment_intent_id) {
-      await stripe.refunds.create({
-        payment_intent: ret.stripe_payment_intent_id,
-        amount: Math.round(refundAmount * 100),
-      });
+      try {
+        await stripe.refunds.create({
+          payment_intent: ret.stripe_payment_intent_id,
+          amount: Math.round(refundAmount * 100),
+        });
+      } catch (err) {
+        await recordRefundFailure({
+          orderId: ret.order_id, source: 'return', amount: refundAmount,
+          stripePaymentIntentId: ret.stripe_payment_intent_id, error: err,
+        });
+      }
     }
 
     refundFields = {

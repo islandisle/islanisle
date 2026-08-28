@@ -13,6 +13,7 @@ import { query } from '../config/db.js';
 import { stripe } from '../config/stripe.js';
 import { notify } from './notifications.js';
 import { computeRefund } from './refunds.js';
+import { recordRefundFailure } from './refundFailures.js';
 
 // Batch 22 — the cascade previously only ever cancelled the directly-hit
 // speedboat/excursion booking; it never walked the rest of the trip for
@@ -107,10 +108,19 @@ export async function triggerWeatherCascade(atoll, dateStr) {
     );
 
     if (booking.stripe_payment_intent_id) {
-      await stripe.refunds.create({
-        payment_intent: booking.stripe_payment_intent_id,
-        amount: Math.round(refundAmount * 100),
-      });
+      try {
+        await stripe.refunds.create({
+          payment_intent: booking.stripe_payment_intent_id,
+          amount: Math.round(refundAmount * 100),
+        });
+      } catch (err) {
+        // Booking is already cancelled — record the refund failure for
+        // admin follow-up (Batch 36) and keep the cascade going.
+        await recordRefundFailure({
+          bookingId: booking.id, source: 'weather_cascade', amount: refundAmount,
+          stripePaymentIntentId: booking.stripe_payment_intent_id, error: err,
+        });
+      }
     }
 
     const message = `Severe weather forced cancellation of "${booking.title}" at ${booking.business_name} — refunded in full ($${refundAmount}).`;

@@ -10,7 +10,7 @@
 -- ENUM TYPES
 -- ---------------------------------------------------------------------------
 CREATE TYPE user_type AS ENUM ('tourist', 'local');
-CREATE TYPE local_verification_status AS ENUM ('not_applicable', 'pending', 'verified', 'auto_reclassified');
+CREATE TYPE local_verification_status AS ENUM ('not_applicable', 'pending', 'verified', 'auto_reclassified', 'rejected');
 CREATE TYPE document_type AS ENUM ('id_card', 'passport');
 CREATE TYPE business_type AS ENUM ('guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop');
 CREATE TYPE business_account_status AS ENUM ('active', 'suspended');
@@ -436,6 +436,32 @@ CREATE TABLE disputes (
     resolved_at         TIMESTAMPTZ,
     CONSTRAINT chk_dispute_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
 );
+
+-- ---------------------------------------------------------------------------
+-- [Batch 36] refund_failures — a Stripe refund that the DB has already
+-- recorded as done (booking cancelled/refunded, dispute resolved, return
+-- processed) but the payment processor rejected. Recorded here rather than
+-- swallowed to a log line, so an admin has a follow-up queue and the DB
+-- state and the money state don't disagree silently. `source` names which
+-- flow hit it; one of booking_id / order_id is always set.
+-- ---------------------------------------------------------------------------
+CREATE TABLE refund_failures (
+    id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id                 UUID REFERENCES bookings(id),
+    order_id                   UUID REFERENCES orders(id),
+    dispute_id                 UUID REFERENCES disputes(id),
+    source                     TEXT NOT NULL, -- 'user_cancel' | 'dispute_refund' | 'weather_cascade' | 'return'
+    amount                     NUMERIC(12,2) NOT NULL,
+    stripe_payment_intent_id    TEXT,
+    error_message              TEXT,
+    status                     TEXT NOT NULL DEFAULT 'open', -- 'open' | 'resolved'
+    resolved_by_admin_id        UUID REFERENCES admin_users(id),
+    resolved_note              TEXT,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at                 TIMESTAMPTZ,
+    CONSTRAINT chk_refund_failure_target CHECK (booking_id IS NOT NULL OR order_id IS NOT NULL)
+);
+CREATE INDEX idx_refund_failures_status ON refund_failures(status);
 
 -- ---------------------------------------------------------------------------
 -- [MVP] admin_users + audit_log — Section 12: AdminUser, AuditLog

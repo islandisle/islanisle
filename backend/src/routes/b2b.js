@@ -212,17 +212,17 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
        WHERE r.id = $1`,
       [req.params.id]
     );
+    // Early-return guards don't release the client themselves — the finally
+    // block does that exactly once, whichever path returns (Batch 36 fix:
+    // these used to call client.release() and then finally released again).
     if (!requestResult.rows.length) {
-      client.release();
       return res.status(404).json({ error: 'B2B request not found.' });
     }
     const b2bRequest = requestResult.rows[0];
     if (b2bRequest.owner_user_id !== req.user.id) {
-      client.release();
       return res.status(403).json({ error: 'You do not manage the receiving business.' });
     }
     if (b2bRequest.status !== 'pending') {
-      client.release();
       return res.status(400).json({ error: `Request is already ${b2bRequest.status}.` });
     }
 

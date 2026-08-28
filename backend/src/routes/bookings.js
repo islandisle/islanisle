@@ -53,6 +53,7 @@ import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
 import { round2, computeRefund } from '../services/refunds.js';
+import { recordRefundFailure } from '../services/refundFailures.js';
 import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
 import { reportUnpaidPayAtVisit } from '../services/payAtVisitIncidents.js';
 
@@ -759,12 +760,24 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
     [id]
   );
 
-  // Refund the actual charge via Stripe.
+  // Refund the actual charge via Stripe. The cancellation is already
+  // committed above — if Stripe rejects the refund, the booking still
+  // stays cancelled, but the failure is recorded for admin follow-up
+  // (Batch 36) rather than 500'ing with the DB and the money out of sync.
+  let refundPending = false;
   if (booking.stripe_payment_intent_id) {
-    await stripe.refunds.create({
-      payment_intent: booking.stripe_payment_intent_id,
-      amount: Math.round(refundAmount * 100),
-    });
+    try {
+      await stripe.refunds.create({
+        payment_intent: booking.stripe_payment_intent_id,
+        amount: Math.round(refundAmount * 100),
+      });
+    } catch (err) {
+      refundPending = true;
+      await recordRefundFailure({
+        bookingId: id, source: 'user_cancel', amount: refundAmount,
+        stripePaymentIntentId: booking.stripe_payment_intent_id, error: err,
+      });
+    }
   }
 
   await notify({
@@ -772,9 +785,11 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
     recipientId: booking.user_id,
     type: 'cancellation',
     title: 'Booking cancelled',
-    body: isOperatorFault
-      ? `Your booking was cancelled by the business — you've been refunded in full, no fee.`
-      : `Your booking was cancelled. You'll receive $${refundAmount} back.`,
+    body: refundPending
+      ? `Your booking was cancelled. Your refund of $${refundAmount} is being processed — it may take a little longer than usual.`
+      : isOperatorFault
+        ? `Your booking was cancelled by the business — you've been refunded in full, no fee.`
+        : `Your booking was cancelled. You'll receive $${refundAmount} back.`,
   });
 
   // Waitlist (Phase 2): this cancellation just freed up listing_id +
@@ -799,6 +814,7 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
 
   res.json({
     status: 'cancelled',
+    refund_pending: refundPending,
     refund_breakdown: { gross: grossRefundAmount, app_fee: refundAppFee, business_fee: refundBusinessCredit, net_refund: refundAmount },
   });
 });

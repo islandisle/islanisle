@@ -7,6 +7,7 @@ import {
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
   getPlatformAnalytics, getEvents, createEvent, deleteEvent,
   getPayAtVisitIncidents, restorePayAtVisit, getExternalPlacesProspects,
+  getRefundFailures, resolveRefundFailure,
 } from '../api/client';
 import { useTheme } from '../theme';
 import NavMenu from '../components/NavMenu';
@@ -104,6 +105,7 @@ export default function Dashboard() {
             items={[
               { label: 'Approval queue', icon: 'queue', onClick: () => jumpTo('sec-approvals') },
               ...(isModerator ? [] : [
+                { label: 'Refund failures', icon: 'payouts', onClick: () => jumpTo('sec-refund-failures') },
                 { label: 'Payout run', icon: 'payouts', onClick: () => jumpTo('sec-payouts') },
                 { label: 'Open disputes', icon: 'sos', onClick: () => jumpTo('sec-disputes') },
               ]),
@@ -129,6 +131,8 @@ export default function Dashboard() {
       <AppearanceSection />
 
       {!isModerator && <PlatformAnalyticsSection />}
+
+      {!isModerator && <div id="sec-refund-failures" style={{ scrollMarginTop: 12 }}><RefundFailuresSection /></div>}
 
       <div id="sec-approvals" style={{ scrollMarginTop: 12 }}>
         <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
@@ -826,6 +830,74 @@ function PayoutsSection() {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+// GET /api/admin/refund-failures — Batch 36. Stripe refunds the DB already
+// recorded as done but the processor rejected. Full-Admin-only; each row
+// needs a manual refund elsewhere, then "Mark resolved".
+const REFUND_FAILURE_SOURCE_LABEL = {
+  user_cancel: 'Guest cancellation',
+  dispute_refund: 'Dispute resolution',
+  weather_cascade: 'Weather cancellation',
+  return: 'Shop return',
+};
+
+function RefundFailuresSection() {
+  const [failures, setFailures] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function load() {
+    setLoading(true);
+    getRefundFailures('open')
+      .then((d) => setFailures(d.refund_failures || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleResolve(id) {
+    const note = window.prompt('How was this settled? (optional note)') ?? '';
+    try {
+      await resolveRefundFailure(id, note || undefined);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!loading && failures.length === 0 && !error) return null;
+
+  return (
+    <section className="card" style={{ padding: 16, marginBottom: 28, borderColor: 'var(--coral)' }}>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--coral)', margin: '0 0 4px' }}>
+        Refund failures ({failures.length}) — needs manual follow-up
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+        The booking/order is marked refunded in Atoll Isle, but Stripe rejected the refund. Process each one manually, then mark it resolved.
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {failures.map((f) => (
+        <div key={f.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+            ${Number(f.amount).toFixed(2)} — {f.item_title}{f.customer_name ? ` · ${f.customer_name}` : ''}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 2px' }}>
+            {REFUND_FAILURE_SOURCE_LABEL[f.source] || f.source} · {new Date(f.created_at).toLocaleString()}
+            {f.stripe_payment_intent_id && ` · ${f.stripe_payment_intent_id}`}
+          </p>
+          {f.error_message && (
+            <p style={{ fontSize: 11, color: 'var(--coral)', margin: '0 0 8px' }}>Stripe: {f.error_message}</p>
+          )}
+          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => handleResolve(f.id)}>
+            Mark resolved
+          </button>
+        </div>
+      ))}
     </section>
   );
 }

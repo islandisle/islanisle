@@ -244,6 +244,22 @@ export async function restorePayAtVisit(userId, reason) {
   return handleResponse(res);
 }
 
+// --- Refund failures (routes/admin.js) — Batch 36 ---
+
+export async function getRefundFailures(status = 'open') {
+  const res = await fetch(`${API_BASE}/api/admin/refund-failures?status=${status}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function resolveRefundFailure(id, note) {
+  const res = await fetch(`${API_BASE}/api/admin/refund-failures/${id}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ note }),
+  });
+  return handleResponse(res);
+}
+
 // --- External places outreach (routes/admin.js) — Batch 25, not in the original spec ---
 
 export async function getExternalPlacesProspects() {

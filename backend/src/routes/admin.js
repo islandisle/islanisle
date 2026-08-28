@@ -10,6 +10,7 @@ import { authenticate, requireRole, requireFullAdmin } from '../middleware/auth.
 import { loginLimiter } from '../middleware/rateLimit.js';
 import { notify } from '../services/notifications.js';
 import { computeRefund } from '../services/refunds.js';
+import { recordRefundFailure } from '../services/refundFailures.js';
 import { stripe } from '../config/stripe.js';
 
 const router = Router();
@@ -443,6 +444,22 @@ router.post('/reject', authenticate, requireRole('admin'), async (req, res) => {
       `UPDATE external_place_claims SET status = 'rejected', decision_reason = $1, decided_at = now() WHERE id = $2`,
       [reason, target_id]
     );
+  } else if (target_type === 'local_verification') {
+    // Batch 36 — previously fell through to "Invalid target_type" because
+    // local_verification_status had no 'rejected' value. The account stays
+    // a Local (type unchanged, still on Tourist pricing) but is marked
+    // rejected so it's out of the queue; the user is notified with the
+    // reason and can re-upload.
+    const result = await query(
+      `SELECT type FROM users WHERE id = $1`, [target_id]
+    );
+    if (!result.rows.length || result.rows[0].type !== 'local') {
+      return res.status(400).json({ error: 'This account is not a pending Local verification.' });
+    }
+    await query(
+      `UPDATE users SET local_verification_status = 'rejected' WHERE id = $1`,
+      [target_id]
+    );
   } else {
     const t = tableMap[target_type];
     if (!t) {
@@ -450,7 +467,11 @@ router.post('/reject', authenticate, requireRole('admin'), async (req, res) => {
     }
     await query(`UPDATE ${t.table} SET ${t.column} = 'rejected' WHERE id = $1`, [target_id]);
   }
-  await logAdminAction(req.user.id, 'reject', target_type, target_id, reason);
+  // 'local_verification' targets a user account; audit_log's enum only knows
+  // 'user' (same mapping the approve/reclassify paths use).
+  await logAdminAction(
+    req.user.id, 'reject', target_type === 'local_verification' ? 'user' : target_type, target_id, reason
+  );
   await notifyRejection(target_type, target_id, reason);
   res.json({ status: 'rejected', reason });
 });
@@ -577,6 +598,8 @@ async function applyDisputeRefund(client, dispute) {
       [refund.grossRefundAmount, refund.refundAppFee, refund.refundBusinessCredit, refund.refundAmount, dispute.booking_id]
     );
     return {
+      bookingId: dispute.booking_id,
+      orderId: null,
       stripePaymentIntentId: booking.stripe_payment_intent_id,
       refundAmount: refund.refundAmount,
       notify: {
@@ -607,6 +630,8 @@ async function applyDisputeRefund(client, dispute) {
       [refund.grossRefundAmount, refund.refundAppFee, refund.refundBusinessCredit, refund.refundAmount, dispute.order_id]
     );
     return {
+      bookingId: null,
+      orderId: dispute.order_id,
       stripePaymentIntentId: order.stripe_payment_intent_id,
       refundAmount: refund.refundAmount,
       notify: {
@@ -697,10 +722,21 @@ router.post('/disputes/:id/resolve', authenticate, requireFullAdmin, async (req,
   // notification must not undo a resolution that's already recorded.
   if (refundEffect) {
     if (refundEffect.stripePaymentIntentId) {
-      await stripe.refunds.create({
-        payment_intent: refundEffect.stripePaymentIntentId,
-        amount: Math.round(refundEffect.refundAmount * 100),
-      }).catch((err) => console.error('Dispute refund — Stripe error:', err));
+      try {
+        await stripe.refunds.create({
+          payment_intent: refundEffect.stripePaymentIntentId,
+          amount: Math.round(refundEffect.refundAmount * 100),
+        });
+      } catch (err) {
+        // The dispute is already resolved and the booking/order marked
+        // refunded — record the Stripe failure for follow-up (Batch 36)
+        // instead of losing it to a log line.
+        await recordRefundFailure({
+          bookingId: refundEffect.bookingId, orderId: refundEffect.orderId,
+          disputeId: req.params.id, source: 'dispute_refund',
+          amount: refundEffect.refundAmount, stripePaymentIntentId: refundEffect.stripePaymentIntentId, error: err,
+        });
+      }
     }
     await notify(refundEffect.notify).catch(() => {});
   }
@@ -813,6 +849,51 @@ router.get('/pay-at-visit-incidents', authenticate, requireRole('admin'), async 
      ORDER BY i.reported_at DESC`
   );
   res.json({ incidents: result.rows });
+});
+
+/**
+ * GET /api/admin/refund-failures?status=open
+ * Batch 36 — Stripe refunds the DB already recorded as done but the
+ * processor rejected. Full-Admin-only (it's money). Newest first.
+ */
+router.get('/refund-failures', authenticate, requireFullAdmin, async (req, res) => {
+  const status = req.query.status || 'open';
+  const result = await query(
+    `SELECT rf.id, rf.source, rf.amount, rf.error_message, rf.status, rf.created_at, rf.resolved_at, rf.resolved_note,
+            rf.booking_id, rf.order_id, rf.dispute_id, rf.stripe_payment_intent_id,
+            COALESCE(bl.title, 'Shop order') AS item_title,
+            COALESCE(bu.name, ou.name) AS customer_name
+     FROM refund_failures rf
+     LEFT JOIN bookings b ON b.id = rf.booking_id
+     LEFT JOIN listings bl ON bl.id = b.listing_id
+     LEFT JOIN users bu ON bu.id = b.user_id
+     LEFT JOIN orders o ON o.id = rf.order_id
+     LEFT JOIN users ou ON ou.id = o.user_id
+     WHERE ($1 = 'all' OR rf.status = $1)
+     ORDER BY rf.created_at DESC`,
+    [status]
+  );
+  res.json({ refund_failures: result.rows });
+});
+
+/**
+ * POST /api/admin/refund-failures/:id/resolve
+ * body: { note? } — marks one resolved once the admin has processed the
+ * refund manually (or otherwise settled it). resolved_by_admin_id +
+ * resolved_at on the row are the audit trail for this ops action.
+ */
+router.post('/refund-failures/:id/resolve', authenticate, requireFullAdmin, async (req, res) => {
+  const result = await query(
+    `UPDATE refund_failures
+     SET status = 'resolved', resolved_by_admin_id = $1, resolved_note = $2, resolved_at = now()
+     WHERE id = $3 AND status = 'open'
+     RETURNING id, status`,
+    [req.user.id, req.body.note || null, req.params.id]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'Open refund failure not found.' });
+  }
+  res.json({ status: 'resolved' });
 });
 
 /**
