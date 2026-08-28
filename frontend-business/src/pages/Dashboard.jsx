@@ -406,6 +406,8 @@ const TYPE_FIELD_CONFIG = {
   ],
   excursion: [
     { key: 'duration', label: 'Duration (e.g. 3 hours, Half day)', type: 'text' },
+    { key: 'meeting_point', label: 'Meeting point (where guests should gather)', type: 'text' },
+    { key: 'whats_included', label: "What's included (comma-separated, e.g. Snorkel gear, Lunch, Water)", type: 'text' },
     { key: 'time_slots', label: 'Available time slots (comma-separated)', type: 'text' },
     { key: 'capacity_per_slot', label: 'Capacity per slot', type: 'number' },
   ],
@@ -510,13 +512,13 @@ function AddListingForm({ businessType, businessId, onCreated }) {
     setSubmitting(true);
     setError('');
     try {
-      // Comma-separated fields (amenities, time_slots, departure_times) get
-      // split into arrays; everything else stays as typed.
+      // Comma-separated fields (amenities, what's-included, time_slots,
+      // departure_times) get split into arrays; everything else stays as typed.
       const processedTypeFields = {};
       for (const field of fieldConfig) {
         const raw = typeFields[field.key];
         if (raw == null || raw === '') continue;
-        if (field.key === 'amenities' || field.key === 'time_slots' || field.key === 'departure_times') {
+        if (field.key === 'amenities' || field.key === 'whats_included' || field.key === 'time_slots' || field.key === 'departure_times') {
           processedTypeFields[field.key] = raw.split(',').map((s) => s.trim()).filter(Boolean);
         } else if (field.type === 'number') {
           processedTypeFields[field.key] = Number(raw);

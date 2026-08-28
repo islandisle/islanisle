@@ -120,6 +120,8 @@ export default function ListingDetail() {
 
       {listing.business_type === 'speedboat' && <LuggageInfo listing={listing} />}
 
+      {listing.business_type === 'excursion' && <ExcursionInfo listing={listing} />}
+
       {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
@@ -252,6 +254,49 @@ function LuggageInfo({ listing }) {
           Luggage allowance: {fields.luggage_bags != null ? `${fields.luggage_bags} bag${fields.luggage_bags === 1 ? '' : 's'}` : 'not specified'}
           {fields.luggage_weight_kg != null && `, up to ${fields.luggage_weight_kg}kg`}
         </p>
+      )}
+    </div>
+  );
+}
+
+// Section 4.3 — an excursion's duration, meeting point and what's-included
+// are captured on the business listing form (frontend-business Dashboard's
+// TYPE_FIELD_CONFIG.excursion) but were never surfaced to the tourist.
+// Same card treatment as speedboat's LuggageInfo. whats_included is stored
+// as an array (comma-split on save) but tolerate a bare string too.
+function ExcursionInfo({ listing }) {
+  const { t } = useLanguage();
+  const fields = listing.type_specific_fields || {};
+  const included = Array.isArray(fields.whats_included)
+    ? fields.whats_included
+    : fields.whats_included
+      ? [fields.whats_included]
+      : [];
+  if (!fields.duration && !fields.meeting_point && !included.length) return null;
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 20 }}>
+      {fields.duration && (
+        <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 4px' }}>
+          {t('checkout.duration')}: {fields.duration}
+        </p>
+      )}
+      {fields.meeting_point && (
+        <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 4px' }}>
+          {t('checkout.meeting_point')}: {fields.meeting_point}
+        </p>
+      )}
+      {included.length > 0 && (
+        <>
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '4px 0 4px' }}>
+            {t('checkout.whats_included')}
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {included.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
