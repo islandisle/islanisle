@@ -38,8 +38,19 @@ import { recordRefundFailure } from './refundFailures.js';
 async function flagDownstreamDependents(transportBooking, destination) {
   if (!destination) return;
 
+  // Batch 37 — routes/weather.js re-runs the cascade on every fresh fetch
+  // while conditions stay 'thundery' (roughly every 15 min). The
+  // directly-hit bookings above are naturally idempotent (they get
+  // cancelled), but downstream items are only *flagged* and stay
+  // 'confirmed', so without this guard each run re-inserted a
+  // cascade_affected alert and re-sent the push. A cascade_affected alert
+  // already on the row means it's been flagged for this event — skip it.
   const affectedOrders = await query(
-    `SELECT id, user_id FROM orders WHERE matched_route_id = $1 AND status NOT IN ('cancelled', 'completed')`,
+    `SELECT id, user_id FROM orders
+     WHERE matched_route_id = $1 AND status NOT IN ('cancelled', 'completed')
+       AND NOT EXISTS (
+         SELECT 1 FROM alerts a WHERE a.order_id = orders.id AND a.type = 'cascade_affected'
+       )`,
     [transportBooking.listing_id]
   );
   for (const order of affectedOrders.rows) {
@@ -58,7 +69,10 @@ async function flagDownstreamDependents(transportBooking, destination) {
      JOIN businesses biz ON biz.id = l.business_id
      WHERE b.user_id = $1 AND b.id != $2 AND b.status = 'confirmed'
        AND LOWER(TRIM(biz.location_island)) = LOWER(TRIM($3))
-       AND b.slot_start::date BETWEEN $4::date AND $4::date + INTERVAL '2 days'`,
+       AND b.slot_start::date BETWEEN $4::date AND $4::date + INTERVAL '2 days'
+       AND NOT EXISTS (
+         SELECT 1 FROM alerts a WHERE a.booking_id = b.id AND a.type = 'cascade_affected'
+       )`,
     [transportBooking.user_id, transportBooking.id, destination, transportBooking.slot_start]
   );
   for (const booking of affectedBookings.rows) {
