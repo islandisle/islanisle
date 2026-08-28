@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './i18n';
 import { ToastProvider } from './components/Toast';
+import OfflineIndicator from './components/OfflineIndicator';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -20,24 +21,25 @@ export default function App() {
   return (
     <LanguageProvider>
       <ToastProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/bookings" element={<MyActivity />} />
-          <Route path="/transfers" element={<Transfers />} />
-          <Route path="/trips" element={<Trips />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/emergency-contacts" element={<EmergencyContacts />} />
-          <Route path="/local-guide" element={<LocalGuide />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/messages" element={<Messages />} />
-        </Routes>
-      </BrowserRouter>
+        <BrowserRouter>
+          <OfflineIndicator />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/listing/:id" element={<ListingDetail />} />
+            <Route path="/bookings" element={<MyActivity />} />
+            <Route path="/transfers" element={<Transfers />} />
+            <Route path="/trips" element={<Trips />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/emergency-contacts" element={<EmergencyContacts />} />
+            <Route path="/local-guide" element={<LocalGuide />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/messages" element={<Messages />} />
+          </Routes>
+        </BrowserRouter>
       </ToastProvider>
     </LanguageProvider>
   );
