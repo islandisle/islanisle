@@ -199,6 +199,7 @@ export default function Home() {
       <Header island={island} weather={weather} />
 
       <div style={{ padding: 16 }}>
+        <WelcomeBack context={tripContext} />
         <TripStagePriority context={tripContext} isLocal={isLocal} />
 
         {/* Section 3.2/11 "Choosing a Stay Island": searchable, grouped by
@@ -760,6 +761,41 @@ function NotificationBell() {
         >
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
+      )}
+    </Link>
+  );
+}
+
+// Batch 31 — a light "welcome back" touch for a returning tourist who has
+// something in progress: their current stay if checked in, otherwise their
+// next upcoming booking. Silent for a first-time visitor or a logged-in
+// user with nothing booked.
+function WelcomeBack({ context }) {
+  const user = getCurrentUser();
+  if (!user) return null;
+  const currentStay = context.current_stay;
+  const nextBooking = context.next_booking;
+  if (!currentStay && !nextBooking) return null;
+
+  const firstName = (user.name || '').trim().split(' ')[0] || 'traveller';
+  return (
+    <Link
+      to={currentStay ? '/trips' : `/bookings#booking-${nextBooking.id}`}
+      className="card"
+      style={{ display: 'block', padding: 14, marginBottom: 14, textDecoration: 'none', background: 'var(--lagoon-tint)', border: 'none' }}
+    >
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 3px' }}>
+        Welcome back, {firstName}
+      </p>
+      {currentStay ? (
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+          You're checked in at {currentStay.business_name}
+          {currentStay.room_number ? ` · Room ${currentStay.room_number}` : ''}
+        </p>
+      ) : (
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+          Next up: {nextBooking.title} · {new Date(nextBooking.slot_start).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </p>
       )}
     </Link>
   );

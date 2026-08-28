@@ -148,29 +148,42 @@ const PRE_ARRIVAL_WINDOW_DAYS = 3;
  */
 router.get('/context', authenticate, async (req, res) => {
   const userResult = await query(
-    `SELECT u.current_stay_business_id, biz.location_island
+    `SELECT u.current_stay_business_id, u.current_stay_room_number, biz.location_island, biz.name AS stay_business_name
      FROM users u LEFT JOIN businesses biz ON biz.id = u.current_stay_business_id
      WHERE u.id = $1`,
     [req.user.id]
   );
   const row = userResult.rows[0];
-  if (row?.current_stay_business_id) {
-    return res.json({ stage: 'on_island', island: row.location_island });
-  }
 
-  const upcoming = await query(
-    `SELECT b.slot_start
+  // Batch 31 — the single next thing to surface as a "welcome back" touch:
+  // the current stay if checked in, otherwise the soonest upcoming
+  // confirmed booking of any kind (transfer, table, excursion), whenever it
+  // is — not just within the pre-arrival window.
+  const nextBookingResult = await query(
+    `SELECT b.id, b.slot_start, l.title, biz.name AS business_name, biz.type AS business_type
      FROM bookings b
-     WHERE b.user_id = $1 AND b.status = 'confirmed'
-       AND b.slot_start BETWEEN now() AND now() + make_interval(days => $2)
+     JOIN listings l ON l.id = b.listing_id
+     JOIN businesses biz ON biz.id = l.business_id
+     WHERE b.user_id = $1 AND b.status = 'confirmed' AND b.slot_start >= now()
      ORDER BY b.slot_start ASC LIMIT 1`,
-    [req.user.id, PRE_ARRIVAL_WINDOW_DAYS]
+    [req.user.id]
   );
-  if (upcoming.rows.length) {
-    return res.json({ stage: 'pre_arrival' });
+  const nextBooking = nextBookingResult.rows[0] || null;
+  const currentStay = row?.current_stay_business_id
+    ? { business_name: row.stay_business_name, room_number: row.current_stay_room_number }
+    : null;
+
+  if (row?.current_stay_business_id) {
+    return res.json({ stage: 'on_island', island: row.location_island, current_stay: currentStay, next_booking: nextBooking });
   }
 
-  res.json({ stage: 'none' });
+  const soon = nextBooking
+    && new Date(nextBooking.slot_start) <= new Date(Date.now() + PRE_ARRIVAL_WINDOW_DAYS * 86400000);
+  if (soon) {
+    return res.json({ stage: 'pre_arrival', current_stay: null, next_booking: nextBooking });
+  }
+
+  res.json({ stage: 'none', current_stay: null, next_booking: nextBooking });
 });
 
 export default router;
