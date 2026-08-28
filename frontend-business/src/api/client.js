@@ -82,6 +82,12 @@ export async function getAnalytics(businessId) {
   return handleResponse(res);
 }
 
+// Batch 33 — threshold nudges ("fully booked for the next 7 days").
+export async function getAvailabilitySummary(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/availability-summary`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- External places / claim flow (routes/externalPlaces.js) — Batch 25, not in the original spec ---
 
 export async function getExternalPlaces(island) {

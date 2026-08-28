@@ -9,6 +9,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { getSlotCapacity } from '../services/bookingCreation.js';
 
 const router = Router();
 
@@ -441,6 +442,100 @@ router.get('/:businessId/analytics', authenticate, requireBusinessOwnerOrAdmin, 
     daily_revenue: dailyRevenue.rows,
     top_listings: topListings.rows,
   });
+});
+
+/**
+ * GET /api/business/:businessId/availability-summary
+ * Batch 33 — threshold nudges for the dashboard: "you're (nearly) fully
+ * booked for the next 7 days". A coarse estimate, deliberately: it assumes
+ * every defined time slot / departure runs every day of the window and
+ * doesn't model per-night guesthouse occupancy overlap. It exists to
+ * prompt the business to open more availability or raise prices, not to be
+ * an authoritative capacity view. Only listings that trip a threshold are
+ * returned.
+ */
+router.get('/:businessId/availability-summary', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
+  const { businessId } = req.params;
+  const WINDOW_DAYS = 7;
+
+  const bizResult = await query('SELECT type FROM businesses WHERE id = $1', [businessId]);
+  if (!bizResult.rows.length) {
+    return res.status(404).json({ error: 'Business not found.' });
+  }
+  const businessType = bizResult.rows[0].type;
+
+  const [listingsResult, bookingCounts] = await Promise.all([
+    query(
+      `SELECT id, title, type_specific_fields, stock_count
+       FROM listings
+       WHERE business_id = $1 AND approval_status = 'approved'`,
+      [businessId]
+    ),
+    query(
+      `SELECT b.listing_id, COUNT(*)::int AS booked
+       FROM bookings b
+       JOIN listings l ON l.id = b.listing_id
+       WHERE l.business_id = $1
+         AND b.status = ANY($2::booking_status[])
+         AND b.slot_start >= now()
+         AND b.slot_start < now() + make_interval(days => $3)
+       GROUP BY b.listing_id`,
+      [businessId, ['confirmed', 'completed', 'pending_approval'], WINDOW_DAYS]
+    ),
+  ]);
+
+  const bookedByListing = Object.fromEntries(bookingCounts.rows.map((r) => [r.listing_id, r.booked]));
+  const nudges = [];
+
+  for (const listing of listingsResult.rows) {
+    const tsf = listing.type_specific_fields || {};
+    const booked = bookedByListing[listing.id] || 0;
+
+    if (businessType === 'shop') {
+      if (listing.stock_count != null && listing.stock_count <= 3) {
+        nudges.push({
+          listing_id: listing.id,
+          title: listing.title,
+          message: listing.stock_count <= 0 ? 'Out of stock' : `Only ${listing.stock_count} left in stock`,
+        });
+      }
+      continue;
+    }
+
+    if (businessType === 'guesthouse') {
+      const capacity = Number(tsf.capacity) || 1;
+      const available = capacity - booked;
+      if (available <= 0) {
+        nudges.push({ listing_id: listing.id, title: listing.title, message: `No rooms available in the next ${WINDOW_DAYS} days` });
+      } else if (available === 1) {
+        nudges.push({ listing_id: listing.id, title: listing.title, message: `Only 1 room left in the next ${WINDOW_DAYS} days` });
+      }
+      continue;
+    }
+
+    // restaurant / excursion / speedboat — slot-based
+    const slotTimes = Array.isArray(tsf.time_slots)
+      ? tsf.time_slots
+      : Array.isArray(tsf.departure_times)
+        ? tsf.departure_times
+        : [];
+    const perSlotCapacity = getSlotCapacity(businessType, tsf);
+    if (!slotTimes.length || !perSlotCapacity) continue;
+
+    const totalCapacity = slotTimes.length * WINDOW_DAYS * perSlotCapacity;
+    const available = totalCapacity - booked;
+    if (available <= 0) {
+      nudges.push({ listing_id: listing.id, title: listing.title, message: `Fully booked for the next ${WINDOW_DAYS} days` });
+    } else if (available / totalCapacity <= 0.15) {
+      nudges.push({
+        listing_id: listing.id,
+        title: listing.title,
+        message: `Nearly full for the next ${WINDOW_DAYS} days — ${available} ${available === 1 ? 'spot' : 'spots'} left`,
+      });
+    }
+  }
+
+  res.json({ window_days: WINDOW_DAYS, nudges });
 });
 
 export default router;

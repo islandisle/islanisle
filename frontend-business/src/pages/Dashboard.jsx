@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
   getArrivals, checkInBooking, getBookingDocuments, getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
   fileDispute, approveReservation, rejectReservation, sendEtaUpdate,
-  getExternalPlaces, claimExternalPlace,
+  getExternalPlaces, claimExternalPlace, getAvailabilitySummary,
 } from '../api/client';
 import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
@@ -94,6 +94,10 @@ export default function Dashboard() {
 
       {error && <p className="error-text">{error}</p>}
 
+      <OnboardingChecklist business={business} listings={listings} />
+
+      <LowAvailabilityNudges businessId={business.id} />
+
       <SectionArt type={business.type} title="Your listings" compact />
 
       <AddListingForm businessType={business.type} businessId={business.id} onCreated={loadListings} />
@@ -120,6 +124,121 @@ export default function Dashboard() {
       {business.type === 'shop' && <ReturnsSection businessId={business.id} />}
 
       <ReviewsSection businessId={business.id} />
+    </div>
+  );
+}
+
+// Batch 33 — threshold nudges. The backend
+// (business.js /availability-summary) only returns listings that trip a
+// low-availability threshold, so this renders nothing in the common case.
+function LowAvailabilityNudges({ businessId }) {
+  const [nudges, setNudges] = useState([]);
+
+  useEffect(() => {
+    getAvailabilitySummary(businessId)
+      .then((d) => setNudges(d.nudges || []))
+      .catch(() => {}); // advisory only — a failed fetch just means no nudges shown
+  }, [businessId]);
+
+  if (!nudges.length) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      {nudges.map((n) => (
+        <div
+          key={n.listing_id}
+          className="card"
+          style={{ padding: 12, marginBottom: 8, background: 'var(--coral-light)', border: 'none' }}
+        >
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 2px' }}>{n.title}</p>
+          <p style={{ fontSize: 12, color: 'var(--navy)', margin: 0 }}>{n.message}.</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Batch 33 — a dismissable getting-started checklist for a new business.
+// Steps 1, 2 and 4 are detected from the account's own data; step 3 has
+// no reliable "was saved" signal (refund_fee_business_percent has a
+// default), so it marks itself done once the business opens Settings from
+// here. The whole card auto-hides once every step is done, or on Dismiss.
+const ONBOARDING_KEY = 'atollisle_business_onboarding';
+
+function OnboardingChecklist({ business, listings }) {
+  const dismissKey = `${ONBOARDING_KEY}_dismissed_${business.id}`;
+  const policyKey = `${ONBOARDING_KEY}_policy_${business.id}`;
+
+  const read = (k) => {
+    try { return localStorage.getItem(k) === '1'; } catch { return false; }
+  };
+  const [dismissed, setDismissed] = useState(() => read(dismissKey));
+  const [policyVisited, setPolicyVisited] = useState(() => read(policyKey));
+
+  const hasListing = listings.length > 0;
+  const hasPhotos = listings.some((l) => Array.isArray(l.photos) && l.photos.length > 0);
+  const isLive = business.approval_status === 'approved' && listings.some((l) => l.approval_status === 'approved');
+
+  const steps = [
+    { label: 'Add your first listing', done: hasListing },
+    { label: 'Add photos to a listing', done: hasPhotos },
+    {
+      label: 'Set your refund & cancellation policy',
+      done: policyVisited,
+      to: '/settings',
+      onClick: () => {
+        try { localStorage.setItem(policyKey, '1'); } catch { /* ignore */ }
+        setPolicyVisited(true);
+      },
+    },
+    { label: "You're live — a listing is approved and visible to tourists", done: isLive },
+  ];
+
+  if (dismissed || steps.every((s) => s.done)) return null;
+
+  function dismiss() {
+    try { localStorage.setItem(dismissKey, '1'); } catch { /* ignore */ }
+    setDismissed(true);
+  }
+
+  return (
+    <div className="card" style={{ padding: 14, marginBottom: 20, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>Getting started</p>
+        <button
+          type="button"
+          onClick={dismiss}
+          style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          Dismiss
+        </button>
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {steps.map((s) => (
+          <li
+            key={s.label}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: s.done ? 'var(--text-muted)' : 'var(--navy)' }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                background: s.done ? 'var(--lagoon)' : 'var(--border)', color: '#fff',
+              }}
+            >
+              {s.done ? '✓' : ''}
+            </span>
+            {s.to && !s.done ? (
+              <Link to={s.to} onClick={s.onClick} style={{ color: 'var(--lagoon)', textDecoration: 'none' }}>
+                {s.label}
+              </Link>
+            ) : (
+              <span style={{ textDecoration: s.done ? 'line-through' : 'none' }}>{s.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
