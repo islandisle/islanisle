@@ -4,6 +4,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn, getMyDisputes } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import EmptyState from '../components/EmptyState';
+import { SkeletonList } from '../components/Skeleton';
+import { friendlyError } from '../friendlyError';
 import { useLanguage } from '../i18n';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
@@ -129,7 +131,7 @@ export default function MyActivity() {
       await cancelBooking(id);
       loadAll();
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, { t }));
     } finally {
       setCancelTargetId(null);
     }
@@ -145,7 +147,7 @@ export default function MyActivity() {
         {t('activity.title')}
       </h1>
 
-      {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
+      {loading && <SkeletonList count={4} />}
       {error && <p className="error-text">{error}</p>}
 
       {!loading && bookings.length === 0 && orders.length === 0 ? (

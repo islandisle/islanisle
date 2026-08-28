@@ -6,6 +6,7 @@ import ChatPanel from '../components/ChatPanel';
 import Hint from '../components/Hint';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
+import { friendlyError } from '../friendlyError';
 import { useLanguage } from '../i18n';
 
 function getCurrentUser() {
@@ -414,7 +415,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
       // A 409 (slot just got taken) gets its own inline waitlist offer
       // instead of the modal, since "join the waitlist" is a more useful
       // next step than retrying the exact same slot.
-      setError(err.message);
+      setError(friendlyError(err, { t }));
       if (err.status === 409) {
         setSlotFull(true);
       } else {
@@ -668,7 +669,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         onSuccess(res);
       }
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, { t }));
       setShowFailurePopup(true);
     } finally {
       setOrdering(false);

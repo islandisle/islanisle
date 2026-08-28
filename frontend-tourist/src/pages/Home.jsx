@@ -9,6 +9,7 @@ import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
 import EmptyState from '../components/EmptyState';
+import { SkeletonList } from '../components/Skeleton';
 import { useLanguage } from '../i18n';
 import { useToast } from '../components/Toast';
 
@@ -376,7 +377,7 @@ export default function Home() {
 
         {typeFilter && <SectionArt type={typeFilter} subtitle={t('home.staying_on', { island })} />}
 
-        {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>}
+        {loading && <SkeletonList count={5} />}
         {error && <p className="error-text">{error}</p>}
         {!loading && !error && listings.length === 0 && (
           <IslandEmptyState island={island} onPickIsland={setIsland} />

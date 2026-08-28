@@ -6,6 +6,7 @@ import {
   searchBusinesses, lookupGuests,
 } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
+import { friendlyError } from '../friendlyError';
 import EntityPicker from '../components/EntityPicker';
 import NavMenu from '../components/NavMenu';
 
@@ -218,7 +219,7 @@ function BookingForm({ businesses, onBooked }) {
       setListingId(''); setSlotStart(''); setGuestName(''); setGuestUser(null); setAvailability(null);
       onBooked();
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err));
     } finally {
       setBooking(false);
     }

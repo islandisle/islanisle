@@ -94,6 +94,24 @@ body {
   }
 }
 
+/* Batch 35 — skeleton placeholders for list loading states. The shimmer is
+   frozen by the reduced-motion rule above, leaving a static tinted block. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--surface) 37%,
+    var(--border) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
 @keyframes sun-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.15); opacity: 0.85; }

@@ -12,6 +12,7 @@ import CheckInScanner from '../components/CheckInScanner';
 import IslandPicker from '../components/IslandPicker';
 import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
+import { SkeletonList } from '../components/Skeleton';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -979,7 +980,7 @@ function IncomingActivity({ businessId, businessType }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
         Incoming bookings
       </p>
-      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {loading && <SkeletonList count={3} />}
       {!loading && openBookings.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Nothing pending right now.</p>
       )}
@@ -1021,6 +1022,7 @@ function IncomingActivity({ businessId, businessType }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '20px 0 10px' }}>
         Incoming orders
       </p>
+      {loading && <SkeletonList count={2} />}
       {!loading && openOrders.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending right now.</p>
       )}

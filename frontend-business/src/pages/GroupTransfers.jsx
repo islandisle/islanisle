@@ -8,6 +8,7 @@ import {
 import CheckInScanner from '../components/CheckInScanner';
 import GuestPicker from '../components/GuestPicker';
 import EntityPicker from '../components/EntityPicker';
+import { friendlyError } from '../friendlyError';
 
 const BOARDED_STATUS_LABEL = { pending: 'Pending', boarded: 'Boarded', 'no-show': 'No-show' };
 
@@ -140,7 +141,7 @@ function NewTransferForm({ businessId, businessType, onCreated }) {
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err));
     } finally {
       setSubmitting(false);
     }

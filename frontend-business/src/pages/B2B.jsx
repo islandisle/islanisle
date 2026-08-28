@@ -8,6 +8,7 @@ import {
 } from '../api/client';
 import GuestPicker from '../components/GuestPicker';
 import EntityPicker from '../components/EntityPicker';
+import { friendlyError } from '../friendlyError';
 
 // Batch 26 — shared result mappers for the business/listing pickers that
 // replaced the raw ID fields in this form.
@@ -59,7 +60,7 @@ export default function B2B() {
       await acceptB2BRequest(id);
       loadAll();
     } catch (err) {
-      window.alert(err.message);
+      window.alert(friendlyError(err));
     }
   }
 
@@ -68,7 +69,7 @@ export default function B2B() {
       await rejectB2BRequest(id);
       loadAll();
     } catch (err) {
-      window.alert(err.message);
+      window.alert(friendlyError(err));
     }
   }
 
