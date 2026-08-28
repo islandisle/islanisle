@@ -833,6 +833,30 @@ router.get('/analytics', authenticate, requireRole('admin'), async (req, res) =>
 });
 
 /**
+ * GET /api/admin/daily-digest
+ * Batch 34 — the "what needs my attention right now" counts for the top of
+ * the admin console. Current-state counts, not a date-windowed report:
+ * pending_approvals is the same set the approval queue lists; open_disputes
+ * and open_refund_failures mirror their sections; pay_at_visit_incidents is
+ * the full incident log (that table has no resolution step by design).
+ */
+router.get('/daily-digest', authenticate, requireRole('admin'), async (req, res) => {
+  const result = await query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM businesses WHERE approval_status = 'pending')
+       + (SELECT COUNT(*)::int FROM listings WHERE approval_status = 'pending')
+       + (SELECT COUNT(*)::int FROM agents WHERE approval_status = 'pending')
+       + (SELECT COUNT(*)::int FROM users WHERE type = 'local' AND local_verification_status = 'pending')
+       + (SELECT COUNT(*)::int FROM external_place_claims WHERE status = 'pending')
+         AS pending_approvals,
+       (SELECT COUNT(*)::int FROM disputes WHERE status = 'open') AS open_disputes,
+       (SELECT COUNT(*)::int FROM pay_at_visit_incidents) AS pay_at_visit_incidents,
+       (SELECT COUNT(*)::int FROM refund_failures WHERE status = 'open') AS open_refund_failures`
+  );
+  res.json({ digest: result.rows[0] });
+});
+
+/**
  * GET /api/admin/pay-at-visit-incidents
  * Batch 23 (not in the original spec) — every reported non-payment,
  * newest first, so admin can review/follow up. No accept/reject step —

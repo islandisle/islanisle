@@ -136,6 +136,12 @@ export async function getPlatformAnalytics() {
   return handleResponse(res);
 }
 
+// Batch 34 — "what needs attention" counts for the top of the console.
+export async function getDailyDigest() {
+  const res = await fetch(`${API_BASE}/api/admin/daily-digest`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 // --- Business directory (routes/admin.js) ---
 
 export async function getBusinessDirectory({ search, status, page = 1 } = {}) {

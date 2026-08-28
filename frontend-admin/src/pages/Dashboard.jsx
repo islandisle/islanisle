@@ -7,7 +7,7 @@ import {
   getSupportTickets, getSupportTicket, replyToSupportTicket, closeSupportTicket,
   getPlatformAnalytics, getEvents, createEvent, deleteEvent,
   getPayAtVisitIncidents, restorePayAtVisit, getExternalPlacesProspects,
-  getRefundFailures, resolveRefundFailure,
+  getRefundFailures, resolveRefundFailure, getDailyDigest,
 } from '../api/client';
 import { useTheme } from '../theme';
 import NavMenu from '../components/NavMenu';
@@ -128,6 +128,8 @@ export default function Dashboard() {
 
       {error && <p className="error-text">{error}</p>}
 
+      <DailyDigestSection isModerator={isModerator} />
+
       <AppearanceSection />
 
       {!isModerator && <PlatformAnalyticsSection />}
@@ -147,6 +149,69 @@ export default function Dashboard() {
       {!isModerator && <ExternalPlacesProspectsSection />}
       {!isModerator && <div id="sec-audit" style={{ scrollMarginTop: 12 }}><AuditLogSection /></div>}
     </div>
+  );
+}
+
+// Batch 34 — the daily digest strip at the very top of the console:
+// GET /api/admin/daily-digest's "what needs attention now" counts, each
+// row jumping to the section that clears it. A moderator sees only the
+// approvals line (disputes / refund failures / incidents are Full-Admin
+// sections).
+function DailyDigestSection({ isModerator }) {
+  const [digest, setDigest] = useState(null);
+
+  useEffect(() => {
+    getDailyDigest().then((d) => setDigest(d.digest)).catch(() => {});
+  }, []);
+
+  if (!digest) return null;
+
+  const rows = [
+    { label: 'pending approvals', count: digest.pending_approvals, target: 'sec-approvals', show: true },
+    { label: 'open disputes', count: digest.open_disputes, target: 'sec-disputes', show: !isModerator },
+    { label: 'unresolved refund failures', count: digest.open_refund_failures, target: 'sec-refund-failures', show: !isModerator },
+    { label: 'unpaid Pay at Visit incidents', count: digest.pay_at_visit_incidents, target: null, show: !isModerator },
+  ].filter((r) => r.show);
+
+  const allClear = rows.every((r) => r.count === 0);
+
+  return (
+    <section
+      className="card"
+      style={{ padding: 14, marginBottom: 20, background: allClear ? 'var(--surface)' : 'var(--coral-light)', border: '1px solid var(--border)' }}
+    >
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.4, margin: '0 0 8px' }}>
+        Today
+      </p>
+      {allClear ? (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+          Nothing needs attention right now.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {rows.map((r) => {
+            const content = (
+              <>
+                <span style={{ fontWeight: 600, color: r.count > 0 ? 'var(--coral)' : 'var(--navy)' }}>{r.count}</span>
+                {' '}{r.label}
+              </>
+            );
+            const style = {
+              fontSize: 13, color: 'var(--navy)', background: 'var(--surface)',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              padding: '6px 10px', textAlign: 'left', cursor: r.target ? 'pointer' : 'default',
+            };
+            return r.target ? (
+              <button key={r.label} type="button" onClick={() => jumpTo(r.target)} style={style}>
+                {content}
+              </button>
+            ) : (
+              <span key={r.label} style={style}>{content}</span>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

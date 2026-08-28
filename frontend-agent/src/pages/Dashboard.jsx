@@ -352,6 +352,46 @@ function BookingsSection({ agentBookings, onChat }) {
   );
 }
 
+// Batch 34 — at-a-glance earnings, computed from the same
+// agent_commissions rows already fetched. "Earned this month" counts rows
+// that have left escrow (status released/paid) with a schedule_date in the
+// current calendar month; "pending release" is everything still
+// held_in_escrow, regardless of date.
+function CommissionSummary({ commissions }) {
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  let earnedThisMonth = 0;
+  let pendingRelease = 0;
+  for (const c of commissions) {
+    const amount = Number(c.amount) || 0;
+    if (c.status === 'held_in_escrow') {
+      pendingRelease += amount;
+    } else if ((c.status === 'released' || c.status === 'paid') && String(c.schedule_date || '').slice(0, 7) === thisMonth) {
+      earnedThisMonth += amount;
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', gap: 16 }}>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+          Earned this month
+        </p>
+        <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--lagoon)', margin: 0 }}>
+          ${earnedThisMonth.toFixed(2)}
+        </p>
+      </div>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+          Pending release
+        </p>
+        <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+          ${pendingRelease.toFixed(2)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function CommissionsSection({ commissions }) {
   const total = commissions.reduce((sum, c) => sum + Number(c.amount), 0);
   return (
@@ -359,6 +399,7 @@ function CommissionsSection({ commissions }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
         Commissions (${total.toFixed(2)} total)
       </p>
+      {commissions.length > 0 && <CommissionSummary commissions={commissions} />}
       {commissions.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>None yet — commission is recorded once a booking is marked fulfilled.</p>}
       {commissions.map((c) => (
         <div key={c.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
