@@ -70,8 +70,8 @@ export default function ListingDetail() {
   }, [listing]);
   useEffect(() => () => { delete document.body.dataset.category; }, []);
 
-  if (loading) return <p style={{ padding: 20 }}>Loading…</p>;
-  if (!listing) return <p style={{ padding: 20 }} className="error-text">Listing not found.</p>;
+  if (loading) return <p style={{ padding: 20 }}>{t('common.loading')}</p>;
+  if (!listing) return <p style={{ padding: 20 }} className="error-text">{t('checkout.listing_not_found')}</p>;
 
   if (result) {
     return <PendingPayment result={result} onDone={() => navigate('/')} />;
@@ -94,11 +94,11 @@ export default function ListingDetail() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
           {listing.business_name}
-          {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
+          {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · {t('checkout.verified')}</span>}
         </p>
         {localStorage.getItem('atollisle_token') && (
           <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setShowChat(true)}>
-            Message business
+            {t('checkout.message_business')}
           </button>
         )}
       </div>
@@ -123,7 +123,7 @@ export default function ListingDetail() {
       {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
-            Accessibility
+            {t('checkout.accessibility')}
           </p>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
             {listing.accessibility_features.map((key) => (
@@ -136,7 +136,7 @@ export default function ListingDetail() {
       {Array.isArray(listing.dietary_tags) && listing.dietary_tags.length > 0 && (
         <div className="card" style={{ padding: 12, marginBottom: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
-            Dietary options
+            {t('checkout.dietary_options')}
           </p>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)' }}>
             {listing.dietary_tags.map((key) => (
@@ -148,7 +148,7 @@ export default function ListingDetail() {
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
-          {isLocal ? 'Local price' : 'Tourist price'}
+          {isLocal ? t('checkout.local_price') : t('checkout.tourist_price')}
         </p>
         <p style={{ fontSize: 22, fontWeight: 600, color: 'var(--lagoon)', margin: 0 }}>
           ${price}
@@ -269,13 +269,12 @@ function LuggageInfo({ listing }) {
 const PLATFORM_REFUND_FEE_PERCENT = 5;
 
 function RefundFeeDisclosure({ listing }) {
+  const { t } = useLanguage();
   const businessPercent = Number(listing.refund_fee_business_percent ?? 5);
   const combinedPercent = PLATFORM_REFUND_FEE_PERCENT + businessPercent;
   return (
     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 0, marginBottom: 20 }}>
-      If you cancel an online-paid booking outside the cancellation window, a combined {combinedPercent}% refund
-      fee applies. This never applies to Pay at Visit bookings, and you always get a full refund if the business
-      is the one who cancels.
+      {t('checkout.refund_fee_disclosure', { percent: combinedPercent })}
     </p>
   );
 }
@@ -331,6 +330,7 @@ function Reviews({ businessId }) {
 
 // Guesthouse / restaurant / excursion / speedboat — date/time slot booking.
 function SlotCheckout({ listing, onSuccess, error, setError }) {
+  const { t } = useLanguage();
   const [slotStart, setSlotStart] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [memberIds, setMemberIds] = useState([]);
@@ -344,7 +344,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
 
   async function handleBook() {
     if (!slotStart) {
-      setError('Please choose a date/time.');
+      setError(t('checkout.choose_date_time'));
       return;
     }
     setBooking(true);
@@ -383,7 +383,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
   return (
     <>
       <label htmlFor="slot-datetime" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-        Date &amp; time
+        {t('checkout.date_time')}
       </label>
       <input
         id="slot-datetime"
@@ -397,12 +397,12 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
       <GroupMemberPicker selectedIds={memberIds} onToggle={toggleMember} />
 
       <label htmlFor="slot-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-        Promo code (optional)
+        {t('checkout.promo_code')}
       </label>
       <input
         id="slot-promo"
         className="input-field"
-        placeholder="e.g. WELCOME10"
+        placeholder={t('checkout.promo_placeholder')}
         value={promoCode}
         onChange={(e) => setPromoCode(e.target.value)}
         style={{ marginBottom: 16, textTransform: 'uppercase' }}
@@ -412,7 +412,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
 
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleBook} disabled={booking}>
-        {booking ? 'Booking…' : 'Book now'}
+        {booking ? t('checkout.booking') : t('common.book_now')}
       </button>
 
       {slotFull && <WaitlistButton listingId={listing.id} slotStart={slotStart} />}
@@ -437,6 +437,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
 // (bookings.js/orders.js's GET /mine). Placeholder (not-signed-up) members
 // have no account to surface it in, so they're excluded from the list.
 function GroupMemberPicker({ selectedIds, onToggle }) {
+  const { t } = useLanguage();
   const [group, setGroup] = useState(null);
 
   useEffect(() => {
@@ -453,7 +454,7 @@ function GroupMemberPicker({ selectedIds, onToggle }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <p id="group-members-label" style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-        Book for your group (optional)
+        {t('checkout.book_for_group')}
       </p>
       <div role="group" aria-labelledby="group-members-label" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {others.map((m) => (
@@ -469,7 +470,7 @@ function GroupMemberPicker({ selectedIds, onToggle }) {
       </div>
       {selectedIds.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-          Booking for you + {selectedIds.length} other{selectedIds.length > 1 ? 's' : ''}.
+          {t('checkout.booking_for_group_note', { count: selectedIds.length })}
         </p>
       )}
     </div>
@@ -484,6 +485,7 @@ function GroupMemberPicker({ selectedIds, onToggle }) {
 // through once online payment is re-enabled (config/payments.js), so no
 // separate payment-specific wiring is needed later.
 function CheckoutFailurePopup({ message, onRetry, onCancel }) {
+  const { t } = useLanguage();
   const modalRef = useModalA11y(onCancel);
   return (
     <div
@@ -498,19 +500,19 @@ function CheckoutFailurePopup({ message, onRetry, onCancel }) {
         className="card"
         role="dialog"
         aria-modal="true"
-        aria-label="Checkout failed"
+        aria-label={t('checkout.failed_title')}
         style={{ width: '100%', maxWidth: 380, padding: 20 }}
         onClick={(e) => e.stopPropagation()}
       >
         <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          Couldn't complete checkout
+          {t('checkout.failed_title')}
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
-          {message || 'Something went wrong. You can try again or cancel.'}
+          {message || t('checkout.failed_body')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={onRetry}>Try Again</button>
+          <button className="btn-secondary" style={{ flex: 1 }} onClick={onCancel}>{t('common.cancel')}</button>
+          <button className="btn-primary" style={{ flex: 1 }} onClick={onRetry}>{t('checkout.try_again')}</button>
         </div>
       </div>
     </div>
@@ -521,6 +523,7 @@ function CheckoutFailurePopup({ message, onRetry, onCancel }) {
 // notified (see backend/src/routes/bookings.js's cancel handler) if it
 // opens back up. Doesn't reserve the slot; still first-come at that point.
 function WaitlistButton({ listingId, slotStart }) {
+  const { t } = useLanguage();
   const [status, setStatus] = useState('idle'); // idle | joining | joined | error
   const [message, setMessage] = useState('');
 
@@ -543,7 +546,7 @@ function WaitlistButton({ listingId, slotStart }) {
   return (
     <div style={{ marginTop: 10 }}>
       <button className="btn-secondary" style={{ width: '100%' }} onClick={handleJoin} disabled={status === 'joining'}>
-        {status === 'joining' ? 'Joining…' : 'Join waitlist for this slot'}
+        {status === 'joining' ? t('checkout.joining') : t('checkout.join_waitlist')}
       </button>
       {status === 'error' && <p className="error-text">{message}</p>}
     </div>
@@ -555,6 +558,7 @@ function WaitlistButton({ listingId, slotStart }) {
 // listings from the same shop aren't built on the frontend yet even though
 // POST /api/orders' items array supports it — that's a real, separate gap.
 function ShopCheckout({ listing, onSuccess, error, setError }) {
+  const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [fulfillment, setFulfillment] = useState(
     Array.isArray(listing.fulfillment_options) && listing.fulfillment_options.length > 0
@@ -627,13 +631,13 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
   }
 
   if (outOfStock) {
-    return <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Currently out of stock.</p>;
+    return <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('checkout.out_of_stock')}</p>;
   }
 
   return (
     <>
       <label htmlFor="shop-quantity" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-        Quantity
+        {t('checkout.quantity')}
       </label>
       <input
         id="shop-quantity"
@@ -649,7 +653,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       {fulfillmentOptions.length > 0 && (
         <>
           <label htmlFor="shop-fulfillment" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-            How would you like it?
+            {t('checkout.how_fulfill')}
           </label>
           <select
             id="shop-fulfillment"
@@ -660,7 +664,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
           >
             {fulfillmentOptions.map((opt) => (
               <option key={opt} value={opt}>
-                {opt === 'pickup' ? 'In-store pickup' : 'Delivery'}
+                {opt === 'pickup' ? t('checkout.pickup') : t('checkout.delivery')}
               </option>
             ))}
           </select>
@@ -669,14 +673,14 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 
       {listing.stock_count != null && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-          {listing.stock_count} left in stock
+          {t('checkout.left_in_stock', { count: listing.stock_count })}
         </p>
       )}
 
       {isDelivery && (
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="shop-delivery-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-            Delivering to which island?
+            {t('checkout.delivering_where')}
           </label>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input
@@ -693,7 +697,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
               onClick={handleCheckDelivery}
               disabled={!deliveryIsland.trim() || checkingDelivery}
             >
-              {checkingDelivery ? 'Checking…' : 'Check'}
+              {checkingDelivery ? t('checkout.checking') : t('checkout.check')}
             </button>
           </div>
 
@@ -735,12 +739,12 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
       <GroupMemberPicker selectedIds={memberIds} onToggle={toggleMember} />
 
       <label htmlFor="shop-promo" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-        Promo code (optional)
+        {t('checkout.promo_code')}
       </label>
       <input
         id="shop-promo"
         className="input-field"
-        placeholder="e.g. WELCOME10"
+        placeholder={t('checkout.promo_placeholder')}
         value={promoCode}
         onChange={(e) => setPromoCode(e.target.value)}
         style={{ marginBottom: 16, textTransform: 'uppercase' }}
@@ -750,7 +754,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 
       {error && <p className="error-text">{error}</p>}
       <button className="btn-primary" style={{ width: '100%' }} onClick={handleOrder} disabled={ordering}>
-        {ordering ? 'Placing order…' : 'Buy now'}
+        {ordering ? t('checkout.placing_order') : t('common.buy_now')}
       </button>
 
       {showFailurePopup && (
@@ -772,6 +776,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 // 'online' Stripe path still exists on the backend for later, but isn't
 // exposed here.
 function PendingPayment({ result, onDone }) {
+  const { t } = useLanguage();
   const isOrder = Boolean(result.order);
   // Section 4.2: a restaurant reservation lands in 'pending_approval'
   // rather than 'confirmed' until the business accepts it.
@@ -780,17 +785,17 @@ function PendingPayment({ result, onDone }) {
     <div style={{ maxWidth: 420, margin: '60px auto', padding: 20, textAlign: 'center' }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          {isPendingApproval ? 'Reservation requested' : isOrder ? 'Order confirmed' : 'Booking confirmed'}
+          {isPendingApproval ? t('pay.reservation_requested') : isOrder ? t('pay.order_confirmed') : t('pay.booking_confirmed')}
         </p>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
           {result.message}
         </p>
         <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
-          <PriceLine label="Base price" value={result.price_breakdown.base_price} />
+          <PriceLine label={t('pay.base_price')} value={result.price_breakdown.base_price} />
           {result.price_breakdown.promo_discount > 0 && (
-            <PriceLine label="Promo discount" value={-result.price_breakdown.promo_discount} />
+            <PriceLine label={t('pay.promo_discount')} value={-result.price_breakdown.promo_discount} />
           )}
-          <PriceLine label="Total to pay in person" value={result.price_breakdown.total_charged} bold />
+          <PriceLine label={t('pay.total_in_person')} value={result.price_breakdown.total_charged} bold />
         </div>
         {result.delivery && (
           <p style={{ fontSize: 13, color: 'var(--navy)', marginBottom: 16 }}>
@@ -801,10 +806,10 @@ function PendingPayment({ result, onDone }) {
           </p>
         )}
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          You'll find this in "My bookings &amp; orders" on your profile.
+          {t('pay.find_in_activity')}
         </p>
         <button className="btn-primary" onClick={onDone} style={{ width: '100%' }}>
-          Done
+          {t('pay.done')}
         </button>
       </div>
     </div>
@@ -818,10 +823,11 @@ function PendingPayment({ result, onDone }) {
 // disabled rather than hiding it, so it's clear it's coming rather than
 // missing. Shared by both SlotCheckout and ShopCheckout.
 function PaymentMethodOptions() {
+  const { t } = useLanguage();
   return (
     <div style={{ marginBottom: 16 }}>
       <p id="payment-method-label" style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-        Payment method
+        {t('pay.method')}
       </p>
       <div role="group" aria-labelledby="payment-method-label" style={{ display: 'flex', gap: 8 }}>
         <div
@@ -836,7 +842,7 @@ function PaymentMethodOptions() {
             textAlign: 'center',
           }}
         >
-          Pay at Visit
+          {t('pay.pay_at_visit')}
         </div>
         <button
           type="button"
@@ -855,7 +861,7 @@ function PaymentMethodOptions() {
             cursor: 'not-allowed',
           }}
         >
-          Online payment — coming soon
+          {t('pay.online_coming_soon')}
         </button>
       </div>
     </div>

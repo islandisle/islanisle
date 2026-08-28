@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getMyBookings, getMyOrders, cancelBooking, getCancelPreview, fileDispute, getMyReviews, submitReview, getMyWaitlist, getMyReturns, requestReturn, getMyDisputes } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import EmptyState from '../components/EmptyState';
+import { useLanguage } from '../i18n';
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -12,6 +13,7 @@ import EmptyState from '../components/EmptyState';
 // has existed the whole time — this is the first UI to actually use it.
 export default function MyActivity() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
@@ -140,7 +142,7 @@ export default function MyActivity() {
       </button>
 
       <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 20 }}>
-        My bookings &amp; orders
+        {t('activity.title')}
       </h1>
 
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
@@ -148,18 +150,18 @@ export default function MyActivity() {
 
       {!loading && bookings.length === 0 && orders.length === 0 ? (
         <EmptyState
-          message="You haven't booked or ordered anything yet. Pick an island and find a room, a table, an excursion or a transfer."
-          actionLabel="Start browsing"
+          message={t('activity.empty')}
+          actionLabel={t('activity.start_browsing')}
           actionTo="/"
         />
       ) : (
         <>
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-            Bookings
+            {t('activity.bookings')}
           </p>
           {!loading && bookings.length === 0 && (
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-              No bookings yet.
+              {t('activity.no_bookings')}
             </p>
           )}
         </>
@@ -176,12 +178,12 @@ export default function MyActivity() {
 
       {(bookings.length > 0 || orders.length > 0) && (
         <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
-          Orders
+          {t('activity.orders')}
         </p>
       )}
       {!loading && orders.length === 0 && bookings.length > 0 && (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          No shop orders yet.
+          {t('activity.no_orders')}
         </p>
       )}
       {orders.map((o) => (
@@ -198,7 +200,7 @@ export default function MyActivity() {
       {waitlist.length > 0 && (
         <>
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
-            Waitlist
+            {t('activity.waitlist')}
           </p>
           {waitlist.map((w) => (
             <WaitlistRow key={w.id} entry={w} />
@@ -209,7 +211,7 @@ export default function MyActivity() {
       {disputes.length > 0 && (
         <>
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '24px 0 10px' }}>
-            My disputes
+            {t('activity.my_disputes')}
           </p>
           {disputes.map((d) => (
             <DisputeRow key={d.id} dispute={d} />
@@ -351,6 +353,7 @@ function ReviewPopup({ target, onDone, onSkip }) {
 // actual cancel applies) so the tourist sees real numbers before
 // committing, instead of the old generic window.confirm().
 function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
+  const { t } = useLanguage();
   const modalRef = useModalA11y(onClose);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState('');
@@ -380,33 +383,33 @@ function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
         className="card"
         role="dialog"
         aria-modal="true"
-        aria-label="Confirm cancellation"
+        aria-label={t('activity.confirm_cancellation')}
         style={{ width: '100%', maxWidth: 380, padding: 20 }}
         onClick={(e) => e.stopPropagation()}
       >
         <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
-          Cancel this booking?
+          {t('activity.cancel_title')}
         </p>
 
         {error && <p className="error-text">{error}</p>}
         {!preview && !error && (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Calculating your refund…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('activity.calculating_refund')}</p>
         )}
 
         {preview && (
           <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span>Amount paid</span>
+              <span>{t('activity.amount_paid')}</span>
               <span>${preview.gross_refund_amount}</span>
             </div>
             {withheld > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: 'var(--coral)' }}>
-                <span>Refund charge withheld</span>
+                <span>{t('activity.refund_withheld')}</span>
                 <span>-${withheld}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, paddingTop: 6, marginTop: 4, borderTop: '1px solid var(--border)' }}>
-              <span>You'll receive back</span>
+              <span>{t('activity.receive_back')}</span>
               <span>${preview.refund_amount}</span>
             </div>
           </div>
@@ -414,7 +417,7 @@ function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={confirming}>
-            Go Back
+            {t('activity.go_back')}
           </button>
           <button
             className="btn-primary"
@@ -422,7 +425,7 @@ function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
             onClick={handleConfirm}
             disabled={confirming || !preview}
           >
-            {confirming ? 'Cancelling…' : 'Confirm Cancellation'}
+            {confirming ? t('activity.cancelling') : t('activity.confirm_cancellation')}
           </button>
         </div>
       </div>
@@ -430,19 +433,20 @@ function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
   );
 }
 
-const WAITLIST_STATUS_LABEL = {
-  waiting: 'Waiting for a spot',
-  notified: 'A spot opened — book now!',
+const WAITLIST_STATUS_TKEY = {
+  waiting: 'waitlist_status.waiting',
+  notified: 'waitlist_status.notified',
 };
 
 function WaitlistRow({ entry }) {
+  const { t } = useLanguage();
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {entry.title} — {entry.business_name}
       </p>
       <p style={{ fontSize: 12, color: entry.status === 'notified' ? 'var(--lagoon)' : 'var(--text-secondary)', margin: 0 }}>
-        {new Date(entry.requested_slot).toLocaleString()} · {WAITLIST_STATUS_LABEL[entry.status] || entry.status}
+        {new Date(entry.requested_slot).toLocaleString()} · {WAITLIST_STATUS_TKEY[entry.status] ? t(WAITLIST_STATUS_TKEY[entry.status]) : entry.status}
       </p>
     </div>
   );
@@ -451,19 +455,20 @@ function WaitlistRow({ entry }) {
 // Batch 22 — GET /api/disputes/mine existed with nothing in the UI ever
 // calling it, so a tourist who filed a "Report a problem" (Section 7.1)
 // had no way to check back on it afterward.
-const DISPUTE_STATUS_LABEL = {
-  open: 'Under review',
-  resolved: 'Resolved',
+const DISPUTE_STATUS_TKEY = {
+  open: 'dispute_status.open',
+  resolved: 'dispute_status.resolved',
 };
 
 function DisputeRow({ dispute }) {
+  const { t } = useLanguage();
   return (
     <div className="card" style={{ padding: 12, marginBottom: 8 }}>
       <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
         {dispute.reason}
       </p>
       <p style={{ fontSize: 12, color: dispute.status === 'resolved' ? 'var(--lagoon)' : 'var(--text-secondary)', margin: 0 }}>
-        Filed {new Date(dispute.created_at).toLocaleDateString()} · {DISPUTE_STATUS_LABEL[dispute.status] || dispute.status}
+        {t('activity.filed_on', { date: new Date(dispute.created_at).toLocaleDateString() })} · {DISPUTE_STATUS_TKEY[dispute.status] ? t(DISPUTE_STATUS_TKEY[dispute.status]) : dispute.status}
       </p>
       {dispute.resolution && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
@@ -474,14 +479,16 @@ function DisputeRow({ dispute }) {
   );
 }
 
-const BOOKING_STATUS_LABEL = {
-  pending_payment: 'Payment pending',
-  confirmed: 'Confirmed',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+const BOOKING_STATUS_TKEY = {
+  pending_payment: 'status.pending_payment',
+  pending_approval: 'status.pending_approval',
+  confirmed: 'status.confirmed',
+  completed: 'status.completed',
+  cancelled: 'status.cancelled',
 };
 
 function BookingRow({ booking, onCancel, review, onReviewed }) {
+  const { t } = useLanguage();
   // A booking made by another travel-group member for you (Section 2.2)
   // shows up here too (bookings.js's GET /mine), but only the actual
   // booker can cancel it — the backend enforces this too (PATCH /:id/cancel).
@@ -497,14 +504,14 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
       </p>
       {booking.booked_by_someone_else && (
         <p style={{ fontSize: 11, color: 'var(--lagoon)', margin: '0 0 4px' }}>
-          Booked by {booking.booked_by_name} for your group
+          {t('activity.booked_by_group', { name: booking.booked_by_name })}
         </p>
       )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
         {new Date(booking.slot_start).toLocaleString()} · ${booking.price_charged} ·{' '}
-        {BOOKING_STATUS_LABEL[booking.status] || booking.status}
-        {isGuesthouse && isCheckedIn && ` · Checked in — Room ${booking.room_number}`}
-        {isGuesthouse && !isCheckedIn && booking.status === 'confirmed' && ' · Not checked in yet'}
+        {BOOKING_STATUS_TKEY[booking.status] ? t(BOOKING_STATUS_TKEY[booking.status]) : booking.status}
+        {isGuesthouse && isCheckedIn && ` · ${t('activity.checked_in_room', { room: booking.room_number })}`}
+        {isGuesthouse && !isCheckedIn && booking.status === 'confirmed' && ` · ${t('activity.not_checked_in')}`}
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
         {canCancel && (
@@ -513,7 +520,7 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
             style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)' }}
             onClick={() => onCancel(booking.id)}
           >
-            Cancel booking
+            {t('activity.cancel_booking')}
           </button>
         )}
       </div>
@@ -533,6 +540,7 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
 // code" (QRPopup, which encodes the user's own id and whose scan-in half
 // is for joining a travel group) — the two QR systems aren't unified.
 function CheckInQR({ bookingId }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
 
   if (!open) {
@@ -542,7 +550,7 @@ function CheckInQR({ bookingId }) {
         style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
         onClick={() => setOpen(true)}
       >
-        Show check-in QR
+        {t('activity.show_checkin_qr')}
       </button>
     );
   }
@@ -550,7 +558,7 @@ function CheckInQR({ bookingId }) {
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-        Show this to the guesthouse front desk to check in.
+        {t('activity.checkin_qr_hint')}
       </p>
       <QRCodeSVG value={bookingId} size={140} fgColor="#0b2e3d" />
       <button
@@ -558,22 +566,23 @@ function CheckInQR({ bookingId }) {
         style={{ display: 'block', margin: '10px auto 0', padding: '4px 10px', fontSize: 12 }}
         onClick={() => setOpen(false)}
       >
-        Hide
+        {t('activity.hide')}
       </button>
     </div>
   );
 }
 
-const ORDER_STATUS_LABEL = {
-  pending_payment: 'Payment pending',
-  confirmed: 'Confirmed',
-  ready: 'Ready',
-  out_for_delivery: 'Out for delivery',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+const ORDER_STATUS_TKEY = {
+  pending_payment: 'status.pending_payment',
+  confirmed: 'status.confirmed',
+  ready: 'status.ready',
+  out_for_delivery: 'status.out_for_delivery',
+  completed: 'status.completed',
+  cancelled: 'status.cancelled',
 };
 
 function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
+  const { t } = useLanguage();
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
   return (
     <div id={`order-${order.id}`} className="card" style={{ padding: 12, marginBottom: 8 }}>
@@ -582,11 +591,11 @@ function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
       </p>
       {order.booked_by_someone_else && (
         <p style={{ fontSize: 11, color: 'var(--lagoon)', margin: '0 0 4px' }}>
-          Ordered by {order.booked_by_name} for your group
+          {t('activity.ordered_by_group', { name: order.booked_by_name })}
         </p>
       )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-        ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
+        ${order.price_charged} · {ORDER_STATUS_TKEY[order.status] ? t(ORDER_STATUS_TKEY[order.status]) : order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
       </p>
       {order.status === 'completed' && (
@@ -600,17 +609,18 @@ function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
   );
 }
 
-const RETURN_STATUS_LABEL = {
-  requested: 'Requested — waiting on the business',
-  approved: 'Approved — awaiting processing',
-  declined: 'Declined',
-  completed: 'Completed',
+const RETURN_STATUS_TKEY = {
+  requested: 'return_status.requested',
+  approved: 'return_status.approved',
+  declined: 'return_status.declined',
+  completed: 'return_status.completed',
 };
 
 // POST /api/returns — request a return or exchange on a completed order,
 // within the backend's 14-day window. Business approves/rejects/processes
 // from frontend-business's Dashboard.
 function ReturnPrompt({ orderId, existingReturn, onReturned }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState('return');
   const [reason, setReason] = useState('');
@@ -620,8 +630,8 @@ function ReturnPrompt({ orderId, existingReturn, onReturned }) {
   if (existingReturn) {
     return (
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
-        {existingReturn.type === 'exchange' ? 'Exchange' : 'Return'}: {RETURN_STATUS_LABEL[existingReturn.status] || existingReturn.status}
-        {existingReturn.status === 'completed' && existingReturn.refund_amount > 0 && ` — $${existingReturn.refund_amount} refunded`}
+        {existingReturn.type === 'exchange' ? t('activity.exchange_word') : t('activity.return_word')}: {RETURN_STATUS_TKEY[existingReturn.status] ? t(RETURN_STATUS_TKEY[existingReturn.status]) : existingReturn.status}
+        {existingReturn.status === 'completed' && existingReturn.refund_amount > 0 && ` — ${t('activity.amount_refunded', { amount: `$${existingReturn.refund_amount}` })}`}
       </p>
     );
   }
@@ -651,7 +661,7 @@ function ReturnPrompt({ orderId, existingReturn, onReturned }) {
         style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
         onClick={() => setOpen(true)}
       >
-        Request return / exchange
+        {t('activity.request_return')}
       </button>
     );
   }
@@ -691,6 +701,7 @@ function ReturnPrompt({ orderId, existingReturn, onReturned }) {
 // booking/order, enforced backend-side; here we just reflect whether one
 // already exists (passed down as `review`) instead of re-showing the form.
 function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
@@ -730,7 +741,7 @@ function ReviewPrompt({ bookingId, orderId, review, onReviewed }) {
         style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
         onClick={() => setOpen(true)}
       >
-        Leave a review
+        {t('activity.leave_review')}
       </button>
     );
   }
@@ -813,6 +824,7 @@ const DISPUTE_REASONS = [
 // Each row owns its own open/submit/success state so reporting one booking
 // or order doesn't affect any other row on the page.
 function ReportProblem({ bookingId, orderId }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(DISPUTE_REASONS[0].value);
   const [description, setDescription] = useState('');
@@ -847,7 +859,7 @@ function ReportProblem({ bookingId, orderId }) {
         style={{ padding: '4px 10px', fontSize: 12, color: 'var(--coral)', marginTop: 8 }}
         onClick={() => setOpen(true)}
       >
-        Report a problem
+        {t('activity.report_problem')}
       </button>
     );
   }
