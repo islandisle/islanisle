@@ -33,6 +33,14 @@ export async function createBusiness({ type, name, location_island }) {
   return handleResponse(res);
 }
 
+// Batch 40 — full atoll → island list for IslandPicker, built server-side
+// from external_places + islands with real approved businesses. Public,
+// no auth needed.
+export async function getIslands() {
+  const res = await fetch(`${API_BASE}/api/islands`);
+  return handleResponse(res);
+}
+
 export async function getMyListings(businessId) {
   const res = await fetch(`${API_BASE}/api/business/${businessId}/listings`, { headers: authHeaders() });
   return handleResponse(res);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getArrivalTransfers } from '../api/client';
+import IslandPicker from '../components/IslandPicker';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -59,13 +60,14 @@ export default function Transfers() {
       </p>
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input
-          className="input-field"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Destination island"
-          style={{ flex: 1 }}
-        />
+        <div style={{ flex: 1 }}>
+          <IslandPicker
+            value={destination}
+            onChange={setDestination}
+            id="transfers-destination"
+            placeholder="Destination island"
+          />
+        </div>
         <button className="btn-primary" type="submit" disabled={loading}>
           {loading ? 'Searching…' : 'Search'}
         </button>

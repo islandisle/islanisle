@@ -1,48 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useModalA11y } from '../useModalA11y';
+import { getIslands } from '../api/client';
 
 // Section 3.2/11: "a searchable popup organized by atoll — never a native
-// dropdown." Same duplicated dataset as frontend-tourist's IslandPicker.jsx
-// (no shared-constants package between apps) — representative, not
-// exhaustive: covers the 20 atolls and their better-known inhabited/
-// tourist islands, enough to demonstrate the pick-by-atoll pattern
-// wherever a business sets its own location_island.
+// dropdown."
+//
+// Batch 40 — the list now comes from GET /api/islands, built server-side
+// from Batch 25's external_places import plus any island with a real
+// approved business. ATOLLS below is only the offline/first-paint fallback
+// (a representative subset; raw atoll keys matching the API shape). Kept in
+// its own copy per app — no shared-constants package between the frontends.
 export const ATOLLS = [
-  { atoll: 'Kaafu (Malé)', islands: ['Malé', 'Hulhumalé', 'Maafushi', 'Gulhi', 'Guraidhoo', 'Thulusdhoo'] },
-  { atoll: 'Alifu Alifu (North Ari)', islands: ['Rasdhoo', 'Thoddoo', 'Mathiveri'] },
-  { atoll: 'Alifu Dhaalu (South Ari)', islands: ['Dhigurah', 'Dhangethi', 'Mahibadhoo', 'Maamigili'] },
+  { atoll: 'Kaafu', islands: ["Male'", 'Hulhumale', 'Maafushi', 'Gulhi', 'Guraidhoo', 'Thulusdhoo'] },
+  { atoll: 'Alifu Alifu', islands: ['Rasdhoo', 'Thoddoo', 'Mathiveri', 'Ukulhas'] },
+  { atoll: 'Alifu Dhaalu', islands: ['Dhigurah', 'Dhangethi', 'Mahibadhoo', 'Maamigili'] },
   { atoll: 'Baa', islands: ['Eydhafushi', 'Dharavandhoo', 'Thulhaadhoo', 'Hithaadhoo'] },
   { atoll: 'Vaavu', islands: ['Felidhoo', 'Keyodhoo', 'Fulidhoo'] },
-  { atoll: 'Meemu', islands: ['Muli', 'Naalaafushi', 'Maduvvari'] },
-  { atoll: 'Faafu', islands: ['Nilandhoo', 'Magoodhoo'] },
-  { atoll: 'Dhaalu', islands: ['Kudahuvadhoo', 'Meedhoo'] },
-  { atoll: 'Laamu', islands: ['Fonadhoo', 'Gan', 'Maabaidhoo'] },
+  { atoll: 'Meemu', islands: ['Muli', 'Mulah', 'Maduvvari'] },
+  { atoll: 'Faafu', islands: ['Nilandhoo', 'Magoodhoo', 'Feeali'] },
+  { atoll: 'Dhaalu', islands: ['Kudahuvadhoo', 'Bandidhoo'] },
+  { atoll: 'Laamu', islands: ['Gan', 'Kalaidhoo'] },
   { atoll: 'Gaafu Alifu', islands: ['Villingili', 'Kolamaafushi'] },
-  { atoll: 'Gaafu Dhaalu', islands: ['Thinadhoo', 'Madaveli'] },
-  { atoll: 'Addu (Seenu)', islands: ['Hithadhoo', 'Maradhoo', 'Feydhoo', 'Hulhudhoo'] },
-  { atoll: 'Haa Alifu', islands: ['Dhidhdhoo', 'Hoarafushi'] },
-  { atoll: 'Haa Dhaalu', islands: ['Kulhudhuffushi', 'Nolhivaranfaru'] },
+  { atoll: 'Gaafu Dhaalu', islands: ['Gadhdhoo', 'Vaadhoo'] },
+  { atoll: 'Seenu', islands: ['Hithadhoo', 'Maradhoo', 'Feydhoo', 'Meedhoo'] },
+  { atoll: 'Haa Alifu', islands: ['Dhidhdhoo', 'Hoarafushi', 'Kelaa'] },
+  { atoll: 'Haa Dhaalu', islands: ['Kulhudhuffushi', 'Hanimaadhoo'] },
   { atoll: 'Shaviyani', islands: ['Funadhoo', 'Milandhoo'] },
   { atoll: 'Noonu', islands: ['Manadhoo', 'Velidhoo'] },
-  { atoll: 'Raa', islands: ['Ungoofaaru', 'Dhuvaafaru'] },
-  { atoll: 'Lhaviyani', islands: ['Naifaru', 'Hinnavaru'] },
+  { atoll: 'Raa', islands: ['Alifushi', 'Inguraidhoo'] },
+  { atoll: 'Lhaviyani', islands: ['Naifaru'] },
   { atoll: 'Thaa', islands: ['Veymandoo', 'Buruni'] },
-  { atoll: 'Gnaviyani (Fuvahmulah)', islands: ['Fuvahmulah'] },
+  { atoll: 'Gnaviyani', islands: ['Fuvahmulah'] },
 ];
+
+const ATOLL_LABELS = {
+  Kaafu: 'Kaafu (Malé)',
+  Seenu: 'Addu (Seenu)',
+  Gnaviyani: 'Gnaviyani (Fuvahmulah)',
+  'Alifu Alifu': 'Alifu Alifu (North Ari)',
+  'Alifu Dhaalu': 'Alifu Dhaalu (South Ari)',
+};
+const atollLabel = (a) => ATOLL_LABELS[a] || a;
+
+let islandsPromise = null;
+function loadAtolls() {
+  if (!islandsPromise) {
+    islandsPromise = getIslands()
+      .then((d) => (Array.isArray(d.atolls) && d.atolls.length ? d.atolls : ATOLLS))
+      .catch(() => ATOLLS);
+  }
+  return islandsPromise;
+}
 
 export default function IslandPicker({ value, onChange, id, placeholder = 'Select an island…' }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [atolls, setAtolls] = useState(ATOLLS);
   const modalRef = useModalA11y(() => setOpen(false));
 
+  useEffect(() => {
+    let alive = true;
+    loadAtolls().then((a) => { if (alive) setAtolls(a); });
+    return () => { alive = false; };
+  }, []);
+
   const q = search.trim().toLowerCase();
-  const filtered = ATOLLS
-    .map((a) => ({
-      atoll: a.atoll,
-      islands: q
-        ? a.islands.filter((isl) => isl.toLowerCase().includes(q) || a.atoll.toLowerCase().includes(q))
-        : a.islands,
-    }))
+  const filtered = atolls
+    .map((a) => {
+      const atollMatch = atollLabel(a.atoll).toLowerCase().includes(q) || a.atoll.toLowerCase().includes(q);
+      return {
+        atoll: a.atoll,
+        islands: q
+          ? a.islands.filter((isl) => isl.toLowerCase().includes(q) || atollMatch)
+          : a.islands,
+      };
+    })
     .filter((a) => a.islands.length > 0);
 
   function handlePick(island) {
@@ -95,7 +127,7 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
               {filtered.map((a) => (
                 <div key={a.atoll} style={{ marginBottom: 12 }}>
                   <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.03, color: 'var(--text-muted)', margin: '0 0 6px' }}>
-                    {a.atoll}
+                    {atollLabel(a.atoll)}
                   </p>
                   {a.islands.map((isl) => (
                     <button

@@ -139,6 +139,13 @@ export async function submitWebauthnLogin(userId, response) {
 
 // --- Islands / listings (routes/listings.js) ---
 
+// Batch 40 — full atoll → island list for IslandPicker, built server-side
+// from the external_places dataset + islands with real approved businesses.
+export async function getIslands() {
+  const res = await fetch(`${API_BASE}/api/islands`);
+  return handleResponse(res);
+}
+
 export async function getIslandListings(island, type, accessibilityFeatures, dietaryTags) {
   const params = new URLSearchParams();
   if (type) params.set('type', type);

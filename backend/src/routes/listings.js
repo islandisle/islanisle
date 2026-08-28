@@ -12,6 +12,85 @@ import { query } from '../config/db.js';
 const router = Router();
 
 /**
+ * GET /api/islands
+ * Batch 40 — the full atoll → island list the IslandPicker (tourist +
+ * business) is populated from. Source of truth is Batch 25's
+ * external_places import (every inhabited island the Ministry of Tourism
+ * dataset covers), unioned with any island that has a real approved
+ * business even with zero external_places rows, so the picker never omits
+ * somewhere you can actually book. Grouped by atoll (atolls + islands each
+ * sorted); a business-only island whose name matches no external_places
+ * island lands in a trailing "Other islands" group.
+ *
+ * The result is effectively static (external_places is seeded once; the
+ * union only grows when a business is approved), so it's cached in-process
+ * for a few minutes rather than recomputed per picker mount.
+ */
+let islandListCache = null;
+let islandListCacheAt = 0;
+const ISLAND_LIST_TTL_MS = 5 * 60 * 1000;
+const OTHER_ISLANDS_GROUP = 'Other islands';
+
+// Loose key for matching island names across sources that spell the same
+// place differently (e.g. "Malé" vs "Male'") — strip everything but
+// letters/digits, lowercase.
+function islandKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+router.get('/', async (_req, res) => {
+  if (islandListCache && Date.now() - islandListCacheAt < ISLAND_LIST_TTL_MS) {
+    return res.json(islandListCache);
+  }
+
+  const [extResult, bizResult] = await Promise.all([
+    query(
+      `SELECT DISTINCT TRIM(atoll) AS atoll, TRIM(island) AS island
+       FROM external_places
+       WHERE atoll IS NOT NULL AND island IS NOT NULL
+         AND TRIM(atoll) <> '' AND TRIM(island) <> ''
+         AND LOWER(TRIM(atoll)) <> 'unknown' AND LOWER(TRIM(island)) <> 'unknown'`
+    ),
+    query(
+      `SELECT DISTINCT TRIM(location_island) AS island
+       FROM businesses
+       WHERE approval_status = 'approved'
+         AND location_island IS NOT NULL AND TRIM(location_island) <> ''`
+    ),
+  ]);
+
+  const byAtoll = new Map();
+  const knownIslandKeys = new Set();
+  for (const { atoll, island } of extResult.rows) {
+    if (!byAtoll.has(atoll)) byAtoll.set(atoll, new Set());
+    byAtoll.get(atoll).add(island);
+    knownIslandKeys.add(islandKey(island));
+  }
+
+  for (const { island } of bizResult.rows) {
+    if (knownIslandKeys.has(islandKey(island))) continue; // already covered by external_places
+    if (!byAtoll.has(OTHER_ISLANDS_GROUP)) byAtoll.set(OTHER_ISLANDS_GROUP, new Set());
+    byAtoll.get(OTHER_ISLANDS_GROUP).add(island);
+    knownIslandKeys.add(islandKey(island));
+  }
+
+  const atolls = [...byAtoll.entries()]
+    .map(([atoll, islands]) => ({
+      atoll,
+      islands: [...islands].sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => {
+      if (a.atoll === OTHER_ISLANDS_GROUP) return 1;
+      if (b.atoll === OTHER_ISLANDS_GROUP) return -1;
+      return a.atoll.localeCompare(b.atoll);
+    });
+
+  islandListCache = { atolls };
+  islandListCacheAt = Date.now();
+  res.json(islandListCache);
+});
+
+/**
  * GET /api/islands/:island/listings?type=guesthouse&accessibility=wheelchair_accessible,step_free_access
  * Section 3.2: everything available on the selected island, optionally
  * filtered by business type. No auth required (browse-as-guest, Section 7.4).
