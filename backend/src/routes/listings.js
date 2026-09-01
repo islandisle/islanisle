@@ -130,9 +130,18 @@ router.get('/:island/listings', optionalAuthenticate, async (req, res) => {
   const { island } = req.params;
   const { type, accessibility, dietary, atoll } = req.query;
 
-  // $1 island, $2 atoll (nullable — see the WHERE clause below); every
-  // other filter appends after these and reads its own $n off params.length.
-  const params = [island, atoll || null];
+  // `island === 'all'` is the nationwide feed (fix #1) — a tourist who's
+  // abroad, or who picked "I'm not in the Maldives yet", browses every
+  // island's listings at once instead of one island's. All the other
+  // filters (type / accessibility / dietary) still apply; only the
+  // island + atoll scoping is dropped. location_island/location_atoll are
+  // selected so the frontend can label which island each card is on.
+  const nationwide = String(island).toLowerCase() === 'all';
+
+  // Scoped browse: $1 island, $2 atoll (nullable — see the WHERE clause
+  // below). Nationwide: no island/atoll params at all. Either way every
+  // other filter appends after and reads its own $n off params.length.
+  const params = nationwide ? [] : [island, atoll || null];
   let typeFilter = '';
   if (type) {
     params.push(type);
@@ -157,10 +166,21 @@ router.get('/:island/listings', optionalAuthenticate, async (req, res) => {
     }
   }
 
+  const islandScope = nationwide
+    ? ''
+    : `LOWER(TRIM(b.location_island)) = LOWER(TRIM($1))
+       AND (
+         $2::text IS NULL
+         OR b.location_atoll IS NULL
+         OR LOWER(TRIM(b.location_atoll)) = LOWER(TRIM($2))
+       )
+       AND `;
+
   const result = await query(
     `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.photos,
             l.accessibility_features, l.dietary_tags,
             b.id AS business_id, b.name AS business_name, b.type AS business_type,
+            b.location_island, b.location_atoll,
             b.verified_badge,
             COALESCE(rv.review_count, 0) AS review_count,
             rv.average_rating,
@@ -174,24 +194,18 @@ router.get('/:island/listings', optionalAuthenticate, async (req, res) => {
        SELECT COUNT(*)::int AS review_count, AVG(rating)::float AS average_rating
        FROM reviews r WHERE r.business_id = b.id
      ) rv ON true
-     WHERE LOWER(TRIM(b.location_island)) = LOWER(TRIM($1))
-       AND (
-         $2::text IS NULL
-         OR b.location_atoll IS NULL
-         OR LOWER(TRIM(b.location_atoll)) = LOWER(TRIM($2))
-       )
-       AND l.approval_status = 'approved'
+     WHERE ${islandScope}l.approval_status = 'approved'
        AND b.approval_status = 'approved'
        AND b.account_status = 'active'
        ${typeFilter}
        ${accessibilityFilter}
        ${dietaryFilter}
-     ORDER BY l.created_at DESC`,
+     ORDER BY ${nationwide ? 'b.location_island ASC, l.created_at DESC' : 'l.created_at DESC'}`,
     params
   );
 
   const listings = await applyAgentMarkupToRows(result.rows, req.user?.id);
-  res.json({ island, listings });
+  res.json({ island: nationwide ? 'all' : island, listings });
 });
 
 /**

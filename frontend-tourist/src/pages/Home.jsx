@@ -9,6 +9,7 @@ import NavMenu from '../components/NavMenu';
 import { buildNavMenuItems } from '../navConfig';
 import { runSOS, reportSOSToast } from '../sos';
 import { isMaldivesNight } from '../maldivesTime';
+import { getStoredHomeScope, rememberIslandScope, rememberNationwideScope, detectHomeScope } from '../homeScope';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { LeafBackdrop } from '../components/LeafBackdrop';
@@ -68,9 +69,22 @@ function getCurrentUser() {
   }
 }
 
+// Fix #1 — the Home "scope": one island, or the nationwide all-islands
+// feed. Seeded from what the visitor last landed on (localStorage), so a
+// returning user goes straight back there; a first-time visitor with no
+// stored scope gets a one-off GPS check in the mount effect below.
+const STORED_SCOPE = getStoredHomeScope();
+
 export default function Home() {
-  const [island, setIsland] = useState(DEFAULT_ISLAND);
-  const [atoll, setAtoll] = useState(DEFAULT_ATOLL); // set together with `island` from IslandPicker
+  const [island, setIsland] = useState(
+    STORED_SCOPE?.mode === 'nationwide' ? 'all' : (STORED_SCOPE?.island || DEFAULT_ISLAND)
+  );
+  const [atoll, setAtoll] = useState(
+    STORED_SCOPE?.mode === 'nationwide' ? '' : (STORED_SCOPE?.atoll ?? DEFAULT_ATOLL)
+  );
+  const [scope, setScope] = useState(STORED_SCOPE?.mode === 'nationwide' ? 'nationwide' : 'island');
+  const [pickerAutoOpen, setPickerAutoOpen] = useState(false);
+  const nationwide = scope === 'nationwide';
   const [typeFilter, setTypeFilter] = useState('');
   const [accessibilityFilter, setAccessibilityFilter] = useState([]);
   const [showAccessibilityFilters, setShowAccessibilityFilters] = useState(false);
@@ -96,6 +110,37 @@ export default function Home() {
   const isLocal = user?.type === 'local';
   const { t } = useLanguage();
   const { showToast } = useToast();
+
+  // Fix #1 — pick a single island (remembered for next time) or switch to
+  // the nationwide feed. Every place that changes the island funnels
+  // through these so the choice always persists.
+  function selectIsland(isl, atl) {
+    setIsland(isl);
+    setAtoll(atl || '');
+    setScope('island');
+    rememberIslandScope(isl, atl || '');
+  }
+  function selectNationwide() {
+    setIsland('all');
+    setAtoll('');
+    setScope('nationwide');
+    rememberNationwideScope();
+  }
+
+  // First visit only (no scope stored yet): one GPS check. In the Maldives
+  // -> open the picker so they choose their island (there are no per-island
+  // coordinates to auto-match against). Abroad / denied / unavailable ->
+  // the nationwide view. See homeScope.js.
+  useEffect(() => {
+    if (STORED_SCOPE) return;
+    let cancelled = false;
+    detectHomeScope().then((result) => {
+      if (cancelled) return;
+      if (result === 'abroad') selectNationwide();
+      else setPickerAutoOpen(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Batch 30 — the page background (styles/theme.css's --page-bg, with a
   // crossfade on `body`) is tinted per selected category. Kept synced here;
@@ -226,6 +271,8 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     setWeather(null);
+    // Nationwide view has no single island to show conditions for.
+    if (nationwide) return undefined;
 
     function refresh() {
       getWeather(island)
@@ -236,13 +283,13 @@ export default function Home() {
     refresh();
     const intervalId = setInterval(refresh, 15 * 60 * 1000);
     return () => { cancelled = true; clearInterval(intervalId); };
-  }, [island]);
+  }, [island, nationwide]);
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <AmbientBackground type={typeFilter || 'all'} />
       <LeafBackdrop />
-      <Header island={island} weather={weather} />
+      <Header island={island} weather={weather} nationwide={nationwide} />
 
       <div style={{ padding: 16 }}>
         <WelcomeBack context={tripContext} />
@@ -258,25 +305,30 @@ export default function Home() {
 
         <div style={{ marginBottom: 14 }}>
           <IslandPicker
-            value={island}
-            onChange={(isl, atl) => { setIsland(isl); setAtoll(atl || ''); }}
+            value={nationwide ? '' : island}
+            onChange={(isl, atl) => selectIsland(isl, atl)}
             id="home-island-picker"
+            autoOpen={pickerAutoOpen}
+            onNotInMaldives={selectNationwide}
+            placeholder={nationwide ? 'Browsing all islands — pick one to narrow down' : undefined}
           />
         </div>
 
-        <WeatherForecast island={island} />
+        {!nationwide && <WeatherForecast island={island} />}
 
-        <Link
-          to={`/transfers?from=${encodeURIComponent(island)}`}
-          className="card"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 14px', marginBottom: 14, textDecoration: 'none',
-          }}
-        >
-          <span style={{ fontSize: 13, color: 'var(--navy)' }}>🏝️ Heading to another island?</span>
-          <span style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 600 }}>Find a transfer →</span>
-        </Link>
+        {!nationwide && (
+          <Link
+            to={`/transfers?from=${encodeURIComponent(island)}`}
+            className="card"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 14px', marginBottom: 14, textDecoration: 'none',
+            }}
+          >
+            <span style={{ fontSize: 13, color: 'var(--navy)' }}>🏝️ Heading to another island?</span>
+            <span style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 600 }}>Find a transfer →</span>
+          </Link>
+        )}
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <FilterPill label={t('home.filter_all')} active={typeFilter === ''} onClick={() => setTypeFilter('')} />
@@ -397,22 +449,24 @@ export default function Home() {
           {t('home.arriving_by_air')}
         </Link>
 
-        <Link
-          to={`/local-guide?island=${encodeURIComponent(island)}`}
-          style={{
-            display: 'block',
-            fontSize: 13,
-            color: 'var(--lagoon)',
-            textDecoration: 'none',
-            marginBottom: 14,
-          }}
-        >
-          {t('home.local_guide_link')}
-        </Link>
+        {!nationwide && (
+          <Link
+            to={`/local-guide?island=${encodeURIComponent(island)}`}
+            style={{
+              display: 'block',
+              fontSize: 13,
+              color: 'var(--lagoon)',
+              textDecoration: 'none',
+              marginBottom: 14,
+            }}
+          >
+            {t('home.local_guide_link')}
+          </Link>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
-            {t('home.whats_on', { island })}
+            {nationwide ? "What's on across the Maldives" : t('home.whats_on', { island })}
           </p>
           {/* "Nearby now" scoped to "open now" on the current island — see
               schema.sql's comment on the favorites table for why: no lat/lng
@@ -423,15 +477,24 @@ export default function Home() {
           </label>
         </div>
 
-        {typeFilter && <SectionArt type={typeFilter} subtitle={t('home.staying_on', { island })} />}
+        {typeFilter && (
+          <SectionArt
+            type={typeFilter}
+            subtitle={nationwide ? "Across the Maldives" : t('home.staying_on', { island })}
+          />
+        )}
 
         {loading && <SkeletonList count={5} />}
         {error && <p className="error-text">{error}</p>}
         {!loading && !error && listings.length === 0 && (
-          <IslandEmptyState
-            island={island}
-            onPickIsland={(isl) => { setIsland(isl); setAtoll(''); }}
-          />
+          nationwide ? (
+            <EmptyState message="Nothing is listed anywhere yet — the app is rolling out island by island." />
+          ) : (
+            <IslandEmptyState
+              island={island}
+              onPickIsland={(isl) => selectIsland(isl, '')}
+            />
+          )
         )}
 
         {listings.filter((l) => !openNowOnly || !l.is_closed).map((listing) => (
@@ -439,15 +502,16 @@ export default function Home() {
             key={listing.id}
             listing={listing}
             isLocal={isLocal}
+            showIsland={nationwide}
             isFavorited={favoriteIds.has(listing.id)}
             onToggleFavorite={localStorage.getItem('atollisle_token') ? toggleFavorite : undefined}
           />
         ))}
 
-        <ExternalPlacesSection island={island} atoll={atoll} typeFilter={typeFilter} />
+        {!nationwide && <ExternalPlacesSection island={island} atoll={atoll} typeFilter={typeFilter} />}
       </div>
 
-      <SOSButton island={island} />
+      <SOSButton island={nationwide ? null : island} />
       <FirstRunTour />
     </div>
   );
@@ -756,12 +820,12 @@ function FilterPill({ label, active, onClick }) {
   );
 }
 
-function Header({ island, weather }) {
+function Header({ island, weather, nationwide }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const isNight = isMaldivesNight();
   const menuItems = buildNavMenuItems({
-    onSOS: () => runSOS({ island, report: reportSOSToast(showToast) }),
+    onSOS: () => runSOS({ island: nationwide ? null : island, report: reportSOSToast(showToast) }),
   });
   return (
     <div style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
@@ -775,8 +839,10 @@ function Header({ island, weather }) {
         <div>
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>{t('home.staying_on', { island })}</p>
-            {weather && <WeatherBadge weather={weather} />}
+            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>
+              {nationwide ? 'Browsing every island' : t('home.staying_on', { island })}
+            </p>
+            {!nationwide && weather && <WeatherBadge weather={weather} />}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
@@ -1052,7 +1118,7 @@ function TripStagePriority({ context, isLocal }) {
   return null;
 }
 
-export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite }) {
+export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite, showIsland }) {
   const { t } = useLanguage();
   const price = isLocal ? listing.local_price : listing.tourist_price;
   return (
@@ -1090,6 +1156,9 @@ export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite })
         )}
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 6px' }}>
           {listing.business_name}
+          {showIsland && listing.location_island && (
+            <span> · 📍 {listing.location_island}</span>
+          )}
           {listing.verified_badge && <span style={{ color: 'var(--lagoon)' }}> · Verified</span>}
           {listing.review_count > 0 && (
             <span> · {Number(listing.average_rating).toFixed(1)} ★ ({listing.review_count})</span>

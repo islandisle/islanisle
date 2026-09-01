@@ -61,10 +61,10 @@ function loadAtolls() {
   return islandsPromise;
 }
 
-export default function IslandPicker({ value, onChange, id, placeholder }) {
+export default function IslandPicker({ value, onChange, id, placeholder, autoOpen = false, onNotInMaldives }) {
   const { t } = useLanguage();
   const resolvedPlaceholder = placeholder ?? t('home.island_picker_placeholder');
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(autoOpen));
   const [search, setSearch] = useState('');
   const [atolls, setAtolls] = useState(ATOLLS);
   const modalRef = useModalA11y(() => setOpen(false));
@@ -74,6 +74,13 @@ export default function IslandPicker({ value, onChange, id, placeholder }) {
     loadAtolls().then((a) => { if (alive) setAtolls(a); });
     return () => { alive = false; };
   }, []);
+
+  // autoOpen can flip to true asynchronously (Home's first-visit GPS check
+  // resolves after this component has already mounted), so react to it
+  // rather than only reading it as the initial state.
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+  }, [autoOpen]);
 
   const q = search.trim().toLowerCase();
   const filtered = atolls
@@ -137,6 +144,25 @@ export default function IslandPicker({ value, onChange, id, placeholder }) {
               onChange={(e) => setSearch(e.target.value)}
               style={{ marginBottom: 10 }}
             />
+
+            {/* Fix #1 — the explicit "not here yet" escape hatch. Given only
+                when the caller wants it (Home), it switches to the
+                nationwide, all-islands view. */}
+            {onNotInMaldives && (
+              <button
+                type="button"
+                onClick={() => { onNotInMaldives(); setOpen(false); setSearch(''); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '10px 12px', marginBottom: 10,
+                  background: 'var(--lagoon-tint)', border: '1px solid var(--border)',
+                  borderRadius: 8, fontSize: 13, color: 'var(--navy)', cursor: 'pointer',
+                }}
+              >
+                ✈️ I'm not in the Maldives yet — show me everything
+              </button>
+            )}
+
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filtered.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No islands match "{search}".</p>
