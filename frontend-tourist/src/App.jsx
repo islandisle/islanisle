@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './i18n';
 import { ToastProvider } from './components/Toast';
 import OfflineIndicator from './components/OfflineIndicator';
+import AppShell from './components/AppShell';
 import Home from './pages/Home';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -25,21 +26,27 @@ export default function App() {
         <BrowserRouter>
           <OfflineIndicator />
           <Routes>
+            {/* Auth screens and Home render their own headers — everything
+                else renders inside AppShell, which puts the hamburger menu
+                in the same fixed spot on every screen (fix #3). */}
             <Route path="/" element={<Home />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/listing/:id" element={<ListingDetail />} />
-            <Route path="/bookings" element={<MyActivity />} />
-            <Route path="/transfers" element={<Transfers />} />
-            <Route path="/trips" element={<Trips />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/emergency-contacts" element={<EmergencyContacts />} />
-            <Route path="/local-guide" element={<LocalGuide />} />
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/find-agent" element={<FindAgent />} />
+
+            <Route element={<AppShell />}>
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/listing/:id" element={<ListingDetail />} />
+              <Route path="/bookings" element={<MyActivity />} />
+              <Route path="/transfers" element={<Transfers />} />
+              <Route path="/trips" element={<Trips />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/emergency-contacts" element={<EmergencyContacts />} />
+              <Route path="/local-guide" element={<LocalGuide />} />
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/find-agent" element={<FindAgent />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </ToastProvider>

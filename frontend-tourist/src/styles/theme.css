@@ -24,7 +24,7 @@
   --coral-light: #ffeae3; /* accent-card background — flips dark below */
   --navy: #0b2e3d; /* primary text color — flips light below */
   --ink: #0b2e3d; /* fixed "Deep Reef Navy" brand fill (buttons, camera/scan placeholders) — deliberately constant across themes */
-  --night-sky: #0a1a30; /* fixed deep-night header background for Home, driven by actual Maldives local time, independent of light/dark UI mode */
+  --night-sky: #0a2620; /* fixed deep-night header background for Home, driven by actual Maldives local time, independent of light/dark UI mode. A darkened lagoon-teal (not a blue/navy) so it reads as the same palette as dark mode's neutrals rather than standing out. */
   --text-secondary: #5b7570;
   --text-muted: #8fa39d;
   --border: #e2e8e5;

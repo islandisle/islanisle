@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications, getWeather, getWeatherForecast, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
+import { getIslandListings, getNotifications, getWeather, getWeatherForecast, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
 import Hint from '../components/Hint';
 import NavMenu from '../components/NavMenu';
+import { buildNavMenuItems } from '../navConfig';
+import { runSOS, reportSOSToast } from '../sos';
+import { isMaldivesNight } from '../maldivesTime';
 import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { LeafBackdrop } from '../components/LeafBackdrop';
@@ -19,38 +22,9 @@ import { formatPrice } from '../utils/currency';
 // has nothing yet (the app rolls out island by island).
 const SUGGESTED_ISLANDS = ['Maafushi', 'Malé', 'Hulhumalé', 'Thulusdhoo', 'Dhigurah'];
 
-// Batch 27 — tourist navigation, consolidated from links previously split
-// between the Home header and the Profile page's button column.
-const NAV_ITEMS = [
-  { to: '/', end: true, label: 'Home', icon: 'home' },
-  { to: '/bookings', label: 'My bookings & orders', icon: 'bookings' },
-  { to: '/trips', label: 'My trips', icon: 'trips' },
-  { to: '/favorites', label: 'Favorites', icon: 'favorites' },
-  { to: '/messages', label: 'Messages', icon: 'messages' },
-  { to: '/find-agent', label: 'Find an agent', icon: 'guests' },
-  { to: '/transfers', label: 'Arrival transfers', icon: 'transfers' },
-  { to: '/local-guide', label: 'Local guide', icon: 'guide' },
-  { to: '/emergency-contacts', label: 'Emergency contacts', icon: 'sos' },
-  { to: '/support', label: 'Support', icon: 'support' },
-  { to: '/profile', label: 'Profile & settings', icon: 'profile' },
-];
-
 const DEFAULT_ISLAND = 'Maafushi';
 const DEFAULT_ATOLL = 'Kaafu'; // Maafushi's real atoll — paired with DEFAULT_ISLAND so
                                // downstream lookups can disambiguate same-named islands
-
-// Maldives runs on a fixed UTC+5 offset (Asia/Colombo — same zone the
-// backend's Open-Meteo calls already use for consistency). "Night" here
-// means the header/weather-icon switch to the moon, not a literal sunrise/
-// sunset calculation — a simple 6pm-6am window matches the tropics closely
-// enough (day length barely varies near the equator) without needing a
-// sun-position library for a decorative header.
-function isMaldivesNight() {
-  const maldivesHour = Number(
-    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Colombo' }).format(new Date())
-  );
-  return maldivesHour >= 18 || maldivesHour < 6;
-}
 
 // Script Section 4.9 / spec's business_type enum — used here to build the
 // type filter pills. Kept in sync manually with backend/database/schema.sql
@@ -668,36 +642,17 @@ function SOSButton({ island }) {
 
   function handleClick() {
     if (status === 'sending') return;
-    const confirmed = window.confirm('Send an SOS alert with your location?');
-    if (!confirmed) return;
-
-    setStatus('sending');
-    setMessage('');
-
-    if (!navigator.geolocation) {
-      sendAlert(null, null);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => sendAlert(position.coords.latitude, position.coords.longitude),
-      // Still send the alert without coordinates rather than blocking on a
-      // denied/unavailable location — an emergency alert with no location
-      // beats none at all.
-      () => sendAlert(null, null),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
-  async function sendAlert(latitude, longitude) {
-    try {
-      const res = await sendSOS({ latitude, longitude, island });
-      setMessage(res.message || 'Alert sent.');
-      setStatus('sent');
-    } catch (err) {
-      setMessage(err.message);
-      setStatus('error');
-    }
+    // Shared flow (sos.js) — same confirm + best-effort geolocation + alert
+    // as the nav-menu SOS item; this button just renders its own progress
+    // and result inline instead of via a toast.
+    runSOS({
+      island,
+      report: ({ phase, message: msg }) => {
+        if (phase === 'sending') { setStatus('sending'); setMessage(''); }
+        else if (phase === 'sent') { setStatus('sent'); setMessage(msg || 'Alert sent.'); }
+        else if (phase === 'error') { setStatus('error'); setMessage(msg || ''); }
+      },
+    });
   }
 
   return (
@@ -803,7 +758,11 @@ function FilterPill({ label, active, onClick }) {
 
 function Header({ island, weather }) {
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const isNight = isMaldivesNight();
+  const menuItems = buildNavMenuItems({
+    onSOS: () => runSOS({ island, report: reportSOSToast(showToast) }),
+  });
   return (
     <div style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
       {/* Line-art behind the logo, per Section 6.2 / 11 — driven by
@@ -822,7 +781,7 @@ function Header({ island, weather }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
           <NotificationBell />
-          <NavMenu items={NAV_ITEMS} label={t('nav.menu')} />
+          <NavMenu items={menuItems} label={t('nav.menu')} />
         </div>
       </div>
     </div>

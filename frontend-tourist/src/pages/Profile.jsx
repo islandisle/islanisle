@@ -10,7 +10,7 @@ import {
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
-import { useTextSize, TEXT_SIZE_OPTIONS } from '../textSize';
+import { useTextSize, TEXT_SIZE_MIN, TEXT_SIZE_MAX, TEXT_SIZE_STEP, TEXT_SIZE_DEFAULT } from '../textSize';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 import { useModalA11y } from '../useModalA11y';
 import Tabs from '../components/Tabs';
@@ -848,34 +848,40 @@ function LanguageSection() {
 
 function TextSizeSection() {
   const { scale, setScale } = useTextSize();
+  const pct = Math.round(scale * 100);
 
   return (
     <div className="card" style={{ padding: 16, marginBottom: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-        Text size
-      </p>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {TEXT_SIZE_OPTIONS.map((opt) => (
-          <button
-            key={opt.label}
-            type="button"
-            onClick={() => setScale(opt.value)}
-            style={{
-              flex: 1,
-              padding: '8px 0',
-              borderRadius: 'var(--radius-sm)',
-              border: scale === opt.value ? 'none' : '1px solid var(--border)',
-              background: scale === opt.value ? 'var(--lagoon)' : 'var(--surface)',
-              color: scale === opt.value ? '#fff' : 'var(--text-secondary)',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
+          Text size
+        </p>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          {scale === TEXT_SIZE_DEFAULT ? 'Default' : `${pct}%`}
+        </span>
       </div>
+
+      {/* Horizontal slider — floor is a step below the old Default, ceiling
+          is the old "Extra large". The underlying scale + storage + CSS zoom
+          are unchanged (see textSize.js); this only swaps the control. */}
+      <input
+        type="range"
+        aria-label="Text size"
+        min={TEXT_SIZE_MIN}
+        max={TEXT_SIZE_MAX}
+        step={TEXT_SIZE_STEP}
+        value={scale}
+        onChange={(e) => setScale(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: 'var(--lagoon)', cursor: 'pointer' }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Smaller</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Larger</span>
+      </div>
+
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0' }}>
+        The quick brown fox jumps over the lazy dog.
+      </p>
     </div>
   );
 }
