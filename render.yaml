@@ -5,7 +5,8 @@
 #   New  ->  Blueprint  ->  connect  github.com/islandisle/islanisle  ->  main
 #
 # Render matches services by `name`, so re-applying this adopts the existing
-# atoll-isle-api service instead of creating a duplicate.
+# atoll-isle-api service instead of creating a duplicate. (Decision made
+# 2026-09-01: keep the existing backend, don't spin up a fresh one.)
 #
 # ONE-TIME, before the first successful deploy:
 #   1. A production Neon database must exist and its full connection string
@@ -16,16 +17,14 @@
 #      TABLE, so it is a first-run-only step). Every schema change after that
 #      is picked up automatically by `npm run migrate`, which runs in the
 #      backend buildCommand below and is safe to run on every deploy.
-#   3. When Render prompts for the `sync: false` variables, paste the real
-#      values (see the .env.example file in each folder for what each is).
+#   3. When Render prompts for the four `sync: false` backend secrets, paste
+#      the real values (see backend/.env.example for what each one is).
 #
-# AFTER the first deploy, the cross-service URLs cannot be auto-filled — a
-# Blueprint cannot prepend "https://" to another service's hostname. Copy
-# each site's real URL from the dashboard into the `sync: false` VITE_ vars:
-#   - every site's  VITE_API_BASE      = https://atoll-isle-api.onrender.com
-#   - atoll-landing  VITE_TOURIST_APP_URL / _BUSINESS_ / _AGENT_
-#                                       = the three site URLs below
-# then trigger a manual redeploy of the sites so Vite rebuilds with them.
+# The frontend VITE_* values are hardcoded on purpose — they are not
+# secrets, just the predictable https://<service-name>.onrender.com URL of
+# each sibling service, derivable straight from the `name:` fields below.
+# If you rename any service in the dashboard during setup, update the
+# matching URL(s) here to keep them in sync.
 
 services:
   # --------------------------------------------------------------- backend
@@ -69,7 +68,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE
-        sync: false
+        value: https://atoll-isle-api.onrender.com
 
   # -------------------------------------------------------------- business
   - type: web
@@ -86,7 +85,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE
-        sync: false
+        value: https://atoll-isle-api.onrender.com
 
   # ----------------------------------------------------------------- agent
   - type: web
@@ -103,7 +102,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE
-        sync: false
+        value: https://atoll-isle-api.onrender.com
 
   # ----------------------------------------------------------------- admin
   - type: web
@@ -120,7 +119,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE
-        sync: false
+        value: https://atoll-isle-api.onrender.com
 
   # --------------------------------------------------------------- landing
   - type: web
@@ -137,8 +136,8 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_TOURIST_APP_URL
-        sync: false
+        value: https://atoll-tourist.onrender.com
       - key: VITE_BUSINESS_APP_URL
-        sync: false
+        value: https://atoll-business.onrender.com
       - key: VITE_AGENT_APP_URL
-        sync: false
+        value: https://atoll-agent.onrender.com
