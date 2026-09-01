@@ -7,6 +7,21 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonList } from '../components/Skeleton';
 import { friendlyError } from '../friendlyError';
 import { useLanguage } from '../i18n';
+import { formatPrice } from '../utils/currency';
+
+// Section 3.4 pricing visibility — a Local account sees MVR everywhere a
+// price shows (see utils/currency.js). These are already-charged/refund
+// amounts rather than a tourist_price/local_price choice, but they're
+// shown in the same currency the rest of the app would show this account,
+// for consistency — the underlying charge is unchanged (payment is
+// deferred; this is display only).
+function currentUserIsLocal() {
+  try {
+    return JSON.parse(localStorage.getItem('atollisle_user') || 'null')?.type === 'local';
+  } catch {
+    return false;
+  }
+}
 
 // Same class of gap as the business dashboard's old "type in a Booking ID"
 // box: a tourist could book or order something, but had no page anywhere
@@ -16,6 +31,7 @@ import { useLanguage } from '../i18n';
 export default function MyActivity() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const isLocal = currentUserIsLocal();
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
@@ -172,6 +188,7 @@ export default function MyActivity() {
         <BookingRow
           key={b.id}
           booking={b}
+          isLocal={isLocal}
           onCancel={handleCancel}
           review={reviewsByTarget[`booking:${b.id}`]}
           onReviewed={loadAll}
@@ -192,6 +209,7 @@ export default function MyActivity() {
         <OrderRow
           key={o.id}
           order={o}
+          isLocal={isLocal}
           review={reviewsByTarget[`order:${o.id}`]}
           onReviewed={loadAll}
           existingReturn={returnsByOrder[o.id]}
@@ -224,6 +242,7 @@ export default function MyActivity() {
       {cancelTargetId && (
         <CancelConfirmPopup
           bookingId={cancelTargetId}
+          isLocal={isLocal}
           onConfirm={() => confirmCancel(cancelTargetId)}
           onClose={() => setCancelTargetId(null)}
         />
@@ -354,7 +373,7 @@ function ReviewPopup({ target, onDone, onSkip }) {
 // math (bookings.js's GET /:id/cancel-preview, the same computeRefund() the
 // actual cancel applies) so the tourist sees real numbers before
 // committing, instead of the old generic window.confirm().
-function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
+function CancelConfirmPopup({ bookingId, isLocal, onConfirm, onClose }) {
   const { t } = useLanguage();
   const modalRef = useModalA11y(onClose);
   const [preview, setPreview] = useState(null);
@@ -402,17 +421,17 @@ function CancelConfirmPopup({ bookingId, onConfirm, onClose }) {
           <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>{t('activity.amount_paid')}</span>
-              <span>${preview.gross_refund_amount}</span>
+              <span>{formatPrice(preview.gross_refund_amount, isLocal)}</span>
             </div>
             {withheld > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: 'var(--coral)' }}>
                 <span>{t('activity.refund_withheld')}</span>
-                <span>-${withheld}</span>
+                <span>-{formatPrice(withheld, isLocal)}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, paddingTop: 6, marginTop: 4, borderTop: '1px solid var(--border)' }}>
               <span>{t('activity.receive_back')}</span>
-              <span>${preview.refund_amount}</span>
+              <span>{formatPrice(preview.refund_amount, isLocal)}</span>
             </div>
           </div>
         )}
@@ -489,7 +508,7 @@ const BOOKING_STATUS_TKEY = {
   cancelled: 'status.cancelled',
 };
 
-function BookingRow({ booking, onCancel, review, onReviewed }) {
+function BookingRow({ booking, isLocal, onCancel, review, onReviewed }) {
   const { t } = useLanguage();
   // A booking made by another travel-group member for you (Section 2.2)
   // shows up here too (bookings.js's GET /mine), but only the actual
@@ -510,7 +529,7 @@ function BookingRow({ booking, onCancel, review, onReviewed }) {
         </p>
       )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-        {new Date(booking.slot_start).toLocaleString()} · ${booking.price_charged} ·{' '}
+        {new Date(booking.slot_start).toLocaleString()} · {formatPrice(booking.price_charged, isLocal)} ·{' '}
         {BOOKING_STATUS_TKEY[booking.status] ? t(BOOKING_STATUS_TKEY[booking.status]) : booking.status}
         {isGuesthouse && isCheckedIn && ` · ${t('activity.checked_in_room', { room: booking.room_number })}`}
         {isGuesthouse && !isCheckedIn && booking.status === 'confirmed' && ` · ${t('activity.not_checked_in')}`}
@@ -583,7 +602,7 @@ const ORDER_STATUS_TKEY = {
   cancelled: 'status.cancelled',
 };
 
-function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
+function OrderRow({ order, isLocal, review, onReviewed, existingReturn, onReturned }) {
   const { t } = useLanguage();
   const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.title}`).join(', ');
   return (
@@ -597,14 +616,14 @@ function OrderRow({ order, review, onReviewed, existingReturn, onReturned }) {
         </p>
       )}
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-        ${order.price_charged} · {ORDER_STATUS_TKEY[order.status] ? t(ORDER_STATUS_TKEY[order.status]) : order.status}
+        {formatPrice(order.price_charged, isLocal)} · {ORDER_STATUS_TKEY[order.status] ? t(ORDER_STATUS_TKEY[order.status]) : order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
       </p>
       {order.status === 'completed' && (
         <ReviewPrompt orderId={order.id} review={review} onReviewed={onReviewed} />
       )}
       {order.status === 'completed' && (
-        <ReturnPrompt orderId={order.id} existingReturn={existingReturn} onReturned={onReturned} />
+        <ReturnPrompt orderId={order.id} isLocal={isLocal} existingReturn={existingReturn} onReturned={onReturned} />
       )}
       <ReportProblem orderId={order.id} />
     </div>
@@ -621,7 +640,7 @@ const RETURN_STATUS_TKEY = {
 // POST /api/returns — request a return or exchange on a completed order,
 // within the backend's 14-day window. Business approves/rejects/processes
 // from frontend-business's Dashboard.
-function ReturnPrompt({ orderId, existingReturn, onReturned }) {
+function ReturnPrompt({ orderId, isLocal, existingReturn, onReturned }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState('return');
@@ -633,7 +652,7 @@ function ReturnPrompt({ orderId, existingReturn, onReturned }) {
     return (
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
         {existingReturn.type === 'exchange' ? t('activity.exchange_word') : t('activity.return_word')}: {RETURN_STATUS_TKEY[existingReturn.status] ? t(RETURN_STATUS_TKEY[existingReturn.status]) : existingReturn.status}
-        {existingReturn.status === 'completed' && existingReturn.refund_amount > 0 && ` — ${t('activity.amount_refunded', { amount: `$${existingReturn.refund_amount}` })}`}
+        {existingReturn.status === 'completed' && existingReturn.refund_amount > 0 && ` — ${t('activity.amount_refunded', { amount: formatPrice(existingReturn.refund_amount, isLocal) })}`}
       </p>
     );
   }

@@ -71,11 +71,14 @@ export async function checkAvailability(listingId, slotStart) {
 
 // --- Bookings & commissions ---
 
-export async function createAgentBooking({ business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name, commission_rate }) {
+// commission_rate is intentionally NOT sent — the backend sets it from what
+// the business configured for this agent (agent_connected_businesses), and
+// ignores anything in the request body. See routes/agents.js's POST /bookings.
+export async function createAgentBooking({ business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name }) {
   const res = await fetch(`${API_BASE}/api/agents/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name, commission_rate }),
+    body: JSON.stringify({ business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name }),
   });
   return handleResponse(res);
 }
@@ -124,6 +127,17 @@ export async function updateMySettings({ payout_bank_details }) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ payout_bank_details }),
+  });
+  return handleResponse(res);
+}
+
+// Discovery profile (routes/agents.js PATCH /profile) — what tourists
+// filter on in the "Find an agent" screen.
+export async function updateMyProfile({ specialty, service_islands }) {
+  const res = await fetch(`${API_BASE}/api/agents/profile`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ specialty, service_islands }),
   });
   return handleResponse(res);
 }

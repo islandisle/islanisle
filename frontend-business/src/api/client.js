@@ -24,11 +24,25 @@ export async function login({ contact_email, password }) {
   return handleResponse(res);
 }
 
-export async function createBusiness({ type, name, location_island }) {
+// Separate from the owner login above — see businessSettings.js's
+// staff-login route for why staff accounts need their own token shape.
+// Uses the same 'atollisle_business_token' storage slot as the owner
+// session so every existing authHeaders()-based API call (getArrivals,
+// checkInBooking, etc.) works unmodified for a logged-in staff member.
+export async function staffLogin({ login_email, password }) {
+  const res = await fetch(`${API_BASE}/api/business/staff-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login_email, password }),
+  });
+  return handleResponse(res);
+}
+
+export async function createBusiness({ type, name, location_island, location_atoll }) {
   const res = await fetch(`${API_BASE}/api/business/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ type, name, location_island }),
+    body: JSON.stringify({ type, name, location_island, location_atoll }),
   });
   return handleResponse(res);
 }
@@ -98,8 +112,11 @@ export async function getAvailabilitySummary(businessId) {
 
 // --- External places / claim flow (routes/externalPlaces.js) — Batch 25, not in the original spec ---
 
-export async function getExternalPlaces(island) {
-  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}`, { headers: authHeaders() });
+export async function getExternalPlaces(island, atoll) {
+  // ?atoll disambiguates same-named islands in different atolls — see
+  // externalPlaces.js's route comment.
+  const qs = atoll ? `?atoll=${encodeURIComponent(atoll)}` : '';
+  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}${qs}`, { headers: authHeaders() });
   return handleResponse(res);
 }
 
@@ -405,6 +422,22 @@ export async function revokeStaff(businessId, staffId) {
   const res = await fetch(`${API_BASE}/api/business/${businessId}/staff/${staffId}/revoke`, {
     method: 'POST',
     headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// --- Connected agents (routes/businessSettings.js) ---
+
+export async function getConnectedAgents(businessId) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/agents`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function updateAgentCommissionRate(businessId, agentId, commissionRate) {
+  const res = await fetch(`${API_BASE}/api/business/${businessId}/agents/${agentId}/commission-rate`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ commission_rate: commissionRate }),
   });
   return handleResponse(res);
 }

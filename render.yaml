@@ -1,0 +1,144 @@
+# render.yaml — Atoll Isle full-stack Blueprint
+# ---------------------------------------------------------------------------
+# One backend API (Node web service, already live as "atoll-isle-api") plus
+# five static React sites. Apply from the Render dashboard:
+#   New  ->  Blueprint  ->  connect  github.com/islandisle/islanisle  ->  main
+#
+# Render matches services by `name`, so re-applying this adopts the existing
+# atoll-isle-api service instead of creating a duplicate.
+#
+# ONE-TIME, before the first successful deploy:
+#   1. A production Neon database must exist and its full connection string
+#      must be set as DATABASE_URL on atoll-isle-api (it already is — this is
+#      only relevant if you point at a fresh Neon project).
+#   2. On a brand-new database only: open the Neon SQL editor and run the
+#      entire contents of database/schema.sql once (it uses bare CREATE
+#      TABLE, so it is a first-run-only step). Every schema change after that
+#      is picked up automatically by `npm run migrate`, which runs in the
+#      backend buildCommand below and is safe to run on every deploy.
+#   3. When Render prompts for the `sync: false` variables, paste the real
+#      values (see the .env.example file in each folder for what each is).
+#
+# AFTER the first deploy, the cross-service URLs cannot be auto-filled — a
+# Blueprint cannot prepend "https://" to another service's hostname. Copy
+# each site's real URL from the dashboard into the `sync: false` VITE_ vars:
+#   - every site's  VITE_API_BASE      = https://atoll-isle-api.onrender.com
+#   - atoll-landing  VITE_TOURIST_APP_URL / _BUSINESS_ / _AGENT_
+#                                       = the three site URLs below
+# then trigger a manual redeploy of the sites so Vite rebuilds with them.
+
+services:
+  # --------------------------------------------------------------- backend
+  - type: web
+    name: atoll-isle-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run migrate
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true          # Render generates a strong value once
+      - key: DATABASE_URL
+        sync: false                  # Neon pooled connection string
+      - key: STRIPE_SECRET_KEY
+        sync: false                  # sk_test_... for a demo
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false                  # whsec_... (leave blank if no webhook)
+      - key: WEBAUTHN_RP_ID
+        sync: false                  # e.g. atoll-tourist.onrender.com
+      - key: WEBAUTHN_ORIGINS
+        sync: false                  # comma-sep https origins allowed to use passkeys
+
+  # --------------------------------------------------------------- tourist
+  - type: web
+    name: atoll-tourist
+    runtime: static
+    rootDir: frontend-tourist
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+
+  # -------------------------------------------------------------- business
+  - type: web
+    name: atoll-business
+    runtime: static
+    rootDir: frontend-business
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+
+  # ----------------------------------------------------------------- agent
+  - type: web
+    name: atoll-agent
+    runtime: static
+    rootDir: frontend-agent
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+
+  # ----------------------------------------------------------------- admin
+  - type: web
+    name: atoll-admin
+    runtime: static
+    rootDir: frontend-admin
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
+
+  # --------------------------------------------------------------- landing
+  - type: web
+    name: atoll-landing
+    runtime: static
+    rootDir: frontend-landing
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_TOURIST_APP_URL
+        sync: false
+      - key: VITE_BUSINESS_APP_URL
+        sync: false
+      - key: VITE_AGENT_APP_URL
+        sync: false

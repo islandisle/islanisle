@@ -46,6 +46,7 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
+import { requireFlightTicketForCrossIsland } from '../middleware/flightTicketGate.js';
 import { stripe } from '../config/stripe.js';
 import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
@@ -53,6 +54,7 @@ import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
 import { round2, computeRefund } from '../services/refunds.js';
+import { getAgentConnection, recordAgentCommission } from '../services/agentPricing.js';
 import { recordRefundFailure } from '../services/refundFailures.js';
 import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
 import { reportUnpaidPayAtVisit } from '../services/payAtVisitIncidents.js';
@@ -93,7 +95,7 @@ function getSlotCapacity(businessType, typeSpecificFields) {
  * — never optimistically before that, since a booking marked confirmed
  * with no real payment behind it would break the escrow model entirely.
  */
-router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
+router.post('/', authenticate, requireDocumentOnFile, requireFlightTicketForCrossIsland, async (req, res) => {
   const client = await pool.connect();
   try {
     const { listing_id, slot_start, slot_end, payment_method, promo_code, member_ids } = req.body;
@@ -214,6 +216,21 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     // Dual pricing (Section 3.4): tourist sees tourist_price, local sees local_price.
     const basePrice = payerType === 'tourist' ? listing.tourist_price : listing.local_price;
 
+    // Invisible agent-commission markup (services/agentPricing.js): when
+    // this tourist has an assigned agent that's approved-connected to this
+    // business, the price they're charged is quietly the marked-up one —
+    // the same number the browse/detail endpoints already showed them. The
+    // markup amount IS the agent's commission and is recorded via
+    // agent_bookings after the booking is created (below). bookings.base_price
+    // stays the raw listed price (that's what the business is owed and what
+    // its own 1% is computed from); only price_charged carries the markup.
+    // Never applies to a local payer.
+    const agentConn = payerType === 'tourist'
+      ? await getAgentConnection(req.user.id, listing.business_id)
+      : null;
+    const agentCommissionAmount = agentConn ? round2(Number(basePrice) * (agentConn.rate / 100)) : 0;
+    const chargedBase = round2(Number(basePrice) + agentCommissionAmount);
+
     // Capacity-aware conflict check: count CONFIRMED bookings, plus any
     // still-within-hold-window PENDING_PAYMENT booking (the slot-hold — see
     // this file's top comment), already on this exact slot, and compare
@@ -259,7 +276,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         basePrice,
       }));
     }
-    const priceCharged = round2(basePrice + touristCommission - promoDiscountAmount);
+    const priceCharged = round2(chargedBase + touristCommission - promoDiscountAmount);
 
     // Restaurant manual accept/reject (Section 4.2): "Accept/reject
     // reservation requests based on real-time availability" — every other
@@ -293,6 +310,28 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
       );
     }
 
+    // Assigned-agent commission (services/agentPricing.js): the markup baked
+    // into price_charged above is this agent's commission — record it
+    // through the exact same agent_bookings row agents.js's own POST
+    // /bookings writes, so it reaches the agent's CommissionsSection and the
+    // existing agent_commissions payout tracking with nothing else to wire.
+    // The guest here is always a real account (the tourist booked for
+    // themselves), so agent_booking_guests just carries their user_id.
+    if (agentConn) {
+      const agentBooking = await recordAgentCommission((t, p) => client.query(t, p), {
+        agentId: agentConn.agentId,
+        businessId: listing.business_id,
+        listingId: listing_id,
+        basePrice,
+        resultingBookingId: booking.id,
+        rate: agentConn.rate,
+      });
+      await client.query(
+        `INSERT INTO agent_booking_guests (agent_booking_id, user_id, plain_name) VALUES ($1, $2, NULL)`,
+        [agentBooking.id, req.user.id]
+      );
+    }
+
     // pay_at_visit: no Stripe involved at all — the booking is already
     // confirmed (or, for a restaurant, awaiting approval) above, so return
     // immediately. Section 6.5's confirmation notification, normally sent
@@ -315,8 +354,10 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
            tourist_commission_line, total_charged, payment_method, booking_date, payment_date, status
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now(), NULL, $9)`,
         [
+          // chargedBase (not raw basePrice) on the tourist's receipt so the
+          // agent markup stays invisible — base + fees == total_charged.
           booking.id, listing.business_id, req.user.id, listing.title,
-          basePrice, touristCommission, priceCharged, 'pay_at_visit',
+          chargedBase, touristCommission, priceCharged, 'pay_at_visit',
           requiresApproval ? 'pending_approval' : 'confirmed',
         ]
       );
@@ -340,7 +381,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
         });
         return res.status(201).json({
           booking,
-          price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
+          price_breakdown: { base_price: chargedBase, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
           capacity_remaining: capacity - existingCount.rows[0].count - 1,
           message: `Reservation request sent — awaiting the restaurant's confirmation.`,
         });
@@ -379,7 +420,7 @@ router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
     res.status(201).json({
       booking: { ...booking, status: 'pending_payment' },
       price_breakdown: {
-        base_price: basePrice,
+        base_price: chargedBase,
         tourist_service_fee: touristCommission,
         promo_discount: promoDiscountAmount,
         total_charged: priceCharged,

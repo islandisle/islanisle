@@ -24,7 +24,7 @@ function saveClaimDocument(fileBuffer, placeId) {
 }
 
 /**
- * GET /api/external-places/:island
+ * GET /api/external-places/:island?atoll=Baa
  * Section-adjacent to 3.2's island browsing — "More on this island":
  * unclaimed Ministry-of-Tourism places for the tourist's selected island,
  * grouped by type (Guest House / Home Stay / Hotel kept distinct, never
@@ -32,9 +32,17 @@ function saveClaimDocument(fileBuffer, placeId) {
  * tourist deciding where to stay). Works for a guest (no token) same as
  * real listings do; contact info (phone/email) is stripped server-side —
  * never just hidden client-side — for a non-Pro account.
+ *
+ * ?atoll disambiguates the island names that exist in more than one atoll
+ * (e.g. Maalhos in both Alifu Alifu and Baa). Unlike businesses.location_atoll,
+ * external_places.atoll is reliably populated for every row (structured
+ * Ministry of Tourism import, not free text), so a NULL-atoll fallback
+ * isn't needed here — when the atoll is supplied it's a plain equality
+ * filter; when it's omitted, behaviour is unchanged (island name only).
  */
 router.get('/:island', optionalAuthenticate, async (req, res) => {
   const { island } = req.params;
+  const { atoll } = req.query;
 
   let currentUser = null;
   if (req.user?.role === 'user') {
@@ -46,8 +54,9 @@ router.get('/:island', optionalAuthenticate, async (req, res) => {
   const result = await query(
     `SELECT id, name, type, phone, email FROM external_places
      WHERE LOWER(TRIM(island)) = LOWER(TRIM($1)) AND claimed_business_id IS NULL
+       AND ($2::text IS NULL OR LOWER(TRIM(atoll)) = LOWER(TRIM($2)))
      ORDER BY name ASC`,
-    [island]
+    [island, atoll || null]
   );
 
   const places = result.rows.map((p) => ({

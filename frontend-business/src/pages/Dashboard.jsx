@@ -3,16 +3,18 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   createBusiness, getMyListings, createListing, markBookingFulfilled,
   getBusinessBookings, getBusinessOrders, markOrderStatus,
-  getArrivals, checkInBooking, getBookingDocuments, getBusinessReviews, getNotifications,
+  getBusinessReviews, getNotifications,
   getBusinessReturns, approveReturn, rejectReturn, processReturn,
   fileDispute, approveReservation, rejectReservation, sendEtaUpdate,
   getExternalPlaces, claimExternalPlace, getAvailabilitySummary,
+  getConnectedAgents, updateAgentCommissionRate,
 } from '../api/client';
-import CheckInScanner from '../components/CheckInScanner';
+import CheckInSection from '../components/CheckInSection';
 import IslandPicker from '../components/IslandPicker';
 import NavMenu from '../components/NavMenu';
 import { SectionArt } from '../components/SectionArt';
 import { SkeletonList } from '../components/Skeleton';
+import Tabs from '../components/Tabs';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
@@ -95,36 +97,74 @@ export default function Dashboard() {
 
       {error && <p className="error-text">{error}</p>}
 
-      <OnboardingChecklist business={business} listings={listings} />
-
-      <LowAvailabilityNudges businessId={business.id} />
-
-      <SectionArt type={business.type} title="Your listings" compact />
-
-      <AddListingForm businessType={business.type} businessId={business.id} onCreated={loadListings} />
-
-      <div style={{ margin: '24px 0 10px' }}>
-        <SectionArt type={business.type} title="Your listings" compact />
-      </div>
-      {listings.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No listings yet — add one above.</p>
-      )}
-      {listings.map((l) => (
-        <div key={l.id} className="card" style={{ padding: 12, marginBottom: 10 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>{l.title}</p>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-            ${l.tourist_price} tourist · ${l.local_price} local · {l.approval_status}
-          </p>
-        </div>
-      ))}
-
-      {business.type === 'guesthouse' && <CheckInSection businessId={business.id} />}
-
-      <IncomingActivity businessId={business.id} businessType={business.type} />
-
-      {business.type === 'shop' && <ReturnsSection businessId={business.id} />}
-
-      <ReviewsSection businessId={business.id} />
+      <Tabs
+        storageKey="atollisle_business_tab"
+        tabs={[
+          {
+            id: 'overview',
+            label: 'Overview',
+            content: (
+              <>
+                <OnboardingChecklist business={business} listings={listings} />
+                <LowAvailabilityNudges businessId={business.id} />
+              </>
+            ),
+          },
+          {
+            id: 'listings',
+            label: 'Listings',
+            content: (
+              <>
+                <SectionArt type={business.type} title="Your listings" compact />
+                <AddListingForm businessType={business.type} businessId={business.id} onCreated={loadListings} />
+                <div style={{ margin: '20px 0 10px' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>
+                    Your current listings
+                  </p>
+                </div>
+                {listings.length === 0 && (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No listings yet — add one above.</p>
+                )}
+                {listings.map((l) => (
+                  <div key={l.id} className="card" style={{ padding: 12, marginBottom: 10 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>{l.title}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                      ${l.tourist_price} tourist · ${l.local_price} local · {l.approval_status}
+                    </p>
+                  </div>
+                ))}
+              </>
+            ),
+          },
+          {
+            id: 'bookings',
+            label: business.type === 'guesthouse' ? 'Check-in & bookings' : 'Bookings',
+            content: (
+              <>
+                {business.type === 'guesthouse' && <CheckInSection businessId={business.id} />}
+                <IncomingActivity businessId={business.id} businessType={business.type} />
+              </>
+            ),
+          },
+          ...(business.type === 'shop'
+            ? [{
+                id: 'returns',
+                label: 'Returns',
+                content: <ReturnsSection businessId={business.id} />,
+              }]
+            : []),
+          {
+            id: 'reviews',
+            label: 'Reviews',
+            content: <ReviewsSection businessId={business.id} />,
+          },
+          {
+            id: 'agents',
+            label: 'Agents',
+            content: <AgentsSection businessId={business.id} />,
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -248,6 +288,7 @@ function CreateBusinessForm({ onCreated }) {
   const [type, setType] = useState(BUSINESS_TYPES[0]);
   const [name, setName] = useState('');
   const [locationIsland, setLocationIsland] = useState('');
+  const [locationAtoll, setLocationAtoll] = useState(''); // paired with the island — see IslandPicker
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -256,7 +297,7 @@ function CreateBusinessForm({ onCreated }) {
     setSubmitting(true);
     setError('');
     try {
-      const result = await createBusiness({ type, name, location_island: locationIsland });
+      const result = await createBusiness({ type, name, location_island: locationIsland, location_atoll: locationAtoll || null });
       onCreated(result.business);
     } catch (err) {
       setError(err.message);
@@ -293,7 +334,14 @@ function CreateBusinessForm({ onCreated }) {
           Island
         </label>
         <div style={{ marginBottom: 20 }}>
-          <IslandPicker value={locationIsland} onChange={setLocationIsland} id="create-business-island" />
+          <IslandPicker
+            value={locationIsland}
+            onChange={(isl, atl) => { setLocationIsland(isl); setLocationAtoll(atl || ''); }}
+            id="create-business-island"
+          />
+          {locationAtoll && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>Atoll: {locationAtoll}</p>
+          )}
         </div>
 
         {error && <p className="error-text">{error}</p>}
@@ -321,6 +369,7 @@ const EXTERNAL_PLACE_TYPE_TO_BUSINESS_TYPE = {
 // ways to get from "no business yet" to a real one.
 function ClaimBusinessSection() {
   const [island, setIsland] = useState('');
+  const [atoll, setAtoll] = useState(''); // disambiguates same-named islands — see IslandPicker
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [claimingPlace, setClaimingPlace] = useState(null);
@@ -329,9 +378,9 @@ function ClaimBusinessSection() {
   useEffect(() => {
     if (!island) { setData(null); return; }
     let cancelled = false;
-    getExternalPlaces(island).then((d) => { if (!cancelled) setData(d); }).catch((err) => { if (!cancelled) setError(err.message); });
+    getExternalPlaces(island, atoll || undefined).then((d) => { if (!cancelled) setData(d); }).catch((err) => { if (!cancelled) setError(err.message); });
     return () => { cancelled = true; };
-  }, [island]);
+  }, [island, atoll]);
 
   const groups = data
     ? [
@@ -354,7 +403,11 @@ function ClaimBusinessSection() {
         Island
       </label>
       <div style={{ marginBottom: 16 }}>
-        <IslandPicker value={island} onChange={setIsland} id="claim-island" />
+        <IslandPicker
+          value={island}
+          onChange={(isl, atl) => { setIsland(isl); setAtoll(atl || ''); }}
+          id="claim-island"
+        />
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -868,6 +921,316 @@ function AddListingForm({ businessType, businessId, onCreated }) {
   );
 }
 
+// NOTE: NotificationBellButton / ReturnsSection / ReturnRow / ReviewsSection
+// below were dropped from the working tree by an in-progress dashboard
+// refactor (their call sites in the header and tab list were left
+// dangling), which made the whole Dashboard throw for any logged-in owner.
+// Restored verbatim from the last commit here so the Agents tab added
+// alongside is actually reachable — all their imports (getNotifications /
+// getBusinessReturns / approveReturn / rejectReturn / processReturn /
+// getBusinessReviews) were still present at the top of this file.
+
+// GET /api/notifications?business_id= — polled once on mount just for its
+// unread_count, same call the Notifications page itself uses for the list.
+function NotificationBellButton({ businessId, onClick }) {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    getNotifications(businessId)
+      .then((data) => setUnreadCount(data.unread_count || 0))
+      .catch(() => {});
+  }, [businessId]);
+
+  return (
+    <button
+      className="btn-secondary"
+      onClick={onClick}
+      style={{ position: 'relative', padding: '4px 12px', fontSize: 12 }}
+    >
+      Notifications
+      {unreadCount > 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            minWidth: 16,
+            height: 16,
+            padding: '0 3px',
+            borderRadius: 8,
+            background: 'var(--coral)',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Returns/exchanges queue (routes/returns.js) — shop businesses only.
+function ReturnsSection({ businessId }) {
+  const [returns, setReturns] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function load() {
+    setLoading(true);
+    getBusinessReturns(businessId)
+      .then((data) => setReturns(data.returns || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  const open = returns.filter((r) => r.status === 'requested' || r.status === 'approved');
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Returns &amp; exchanges
+      </p>
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && open.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending.</p>
+      )}
+      {open.map((r) => (
+        <ReturnRow key={r.id} ret={r} onChanged={load} />
+      ))}
+    </div>
+  );
+}
+
+function ReturnRow({ ret, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleApprove() {
+    setBusy(true);
+    setError('');
+    try {
+      await approveReturn(ret.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    const reason = window.prompt('Reason for declining (required):');
+    if (!reason) return;
+    setBusy(true);
+    setError('');
+    try {
+      await rejectReturn(ret.id, reason);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleProcess() {
+    setBusy(true);
+    setError('');
+    try {
+      await processReturn(ret.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {ret.type === 'exchange' ? 'Exchange' : 'Return'} — {ret.customer_name}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+        {ret.reason}
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {ret.status === 'requested' && (
+          <>
+            <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleReject} disabled={busy}>
+              Decline
+            </button>
+            <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleApprove} disabled={busy}>
+              Approve
+            </button>
+          </>
+        )}
+        {ret.status === 'approved' && (
+          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleProcess} disabled={busy}>
+            {ret.type === 'exchange' ? 'Mark exchange complete' : 'Process refund'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// GET /api/reviews/business/:businessId — public endpoint, reused here so
+// the owner can see their own average rating and recent reviews.
+function ReviewsSection({ businessId }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getBusinessReviews(businessId)
+      .then(setData)
+      .catch((err) => setError(err.message));
+  }, [businessId]);
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Reviews
+        {data && data.total > 0 && (
+          <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>
+            {' '}· {data.average_rating.toFixed(1)} ★ ({data.total})
+          </span>
+        )}
+      </p>
+      {error && <p className="error-text">{error}</p>}
+      {data && data.total === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No reviews yet.</p>
+      )}
+      {data && data.reviews.map((r) => (
+        <div key={r.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} — {r.reviewer_name}
+          </p>
+          {r.text && (
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.text}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Connected agents (routes/businessSettings.js's GET/PATCH .../agents) — the
+// business's authority over what commission each connected agent earns.
+// Until a rate is set here it shows blank and the platform default (5%)
+// applies to that agent's bookings; the agent can never set it themselves
+// (see routes/agents.js). Same inline-save-per-row shape as PromoCodesSection
+// / StaffSection above.
+function AgentsSection({ businessId }) {
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  function load() {
+    setLoading(true);
+    getConnectedAgents(businessId)
+      .then((data) => setAgents(data.agents || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [businessId]);
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 6px' }}>
+        Connected agents
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+        You set the commission each agent earns per booking. Left blank, the platform default of 5% applies.
+      </p>
+
+      {error && <p className="error-text">{error}</p>}
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {!loading && agents.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No agents connected yet.</p>
+      )}
+
+      {agents.map((a) => (
+        <AgentCommissionRow key={a.id} businessId={businessId} agent={a} />
+      ))}
+    </div>
+  );
+}
+
+function AgentCommissionRow({ businessId, agent }) {
+  const [rate, setRate] = useState(agent.commission_rate != null ? String(agent.commission_rate) : '');
+  const [status, setStatus] = useState('idle'); // idle | saving | saved | error
+  const [message, setMessage] = useState('');
+
+  const original = agent.commission_rate != null ? String(agent.commission_rate) : '';
+
+  async function handleSave() {
+    if (rate === original) return; // nothing changed — don't spam the endpoint
+    const num = Number(rate);
+    if (rate.trim() === '' || !Number.isFinite(num) || num < 0 || num > 100) {
+      setStatus('error');
+      setMessage('Enter a rate between 0 and 100.');
+      return;
+    }
+    setStatus('saving');
+    setMessage('');
+    try {
+      await updateAgentCommissionRate(businessId, agent.id, num);
+      setStatus('saved');
+      setMessage('Saved.');
+    } catch (err) {
+      setStatus('error');
+      setMessage(err.message);
+    }
+  }
+
+  return (
+    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>{agent.name}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {agent.contact_email}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <input
+            className="input-field"
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            placeholder="5"
+            value={rate}
+            onChange={(e) => { setRate(e.target.value); setStatus('idle'); setMessage(''); }}
+            onBlur={handleSave}
+            style={{ width: 90, textAlign: 'right' }}
+            aria-label={`Commission rate for ${agent.name} (%)`}
+          />
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>%</span>
+        </div>
+      </div>
+      {message && (
+        <p
+          style={{ fontSize: 12, margin: '4px 0 0', color: status === 'error' ? 'var(--coral)' : 'var(--lagoon)' }}
+        >
+          {status === 'saving' ? 'Saving…' : message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // Real incoming bookings/orders list — replaces the previous "type in a
 // Booking ID you'd have to already know from somewhere else" stand-in.
 // Pulls from the new GET /api/bookings/business/:id and
@@ -1257,539 +1620,5 @@ function ReportProblem({ businessId, bookingId, orderId }) {
         </button>
       </div>
     </form>
-  );
-}
-
-// Guesthouse check-in. Front desk can either scan a guest's personal QR
-// (the QR shown on their booking in the tourist app — see
-// frontend-tourist/src/pages/MyActivity.jsx — which encodes the booking id)
-// or pick them straight off today's arrivals list without scanning; either
-// way it ends at the same CheckInForm, matching backend/src/routes/checkin.js.
-function CheckInSection({ businessId }) {
-  const [arrivals, setArrivals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanError, setScanError] = useState('');
-  const [openBookingId, setOpenBookingId] = useState(null);
-  const [openViaQr, setOpenViaQr] = useState(false);
-
-  function loadArrivals() {
-    setLoading(true);
-    getArrivals(businessId)
-      .then((data) => setArrivals(data.arrivals || []))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    loadArrivals();
-  }, [businessId]);
-
-  function handleScan(code, resumeScanning) {
-    const match = arrivals.find((a) => a.id === code && a.check_in_status !== 'checked_in');
-    if (!match) {
-      setScanError("That code doesn't match a pending arrival today.");
-      resumeScanning();
-      return;
-    }
-    setScanError('');
-    setScannerOpen(false);
-    setOpenViaQr(true);
-    setOpenBookingId(match.id);
-  }
-
-  const pending = arrivals.filter((a) => a.check_in_status !== 'checked_in');
-  const checkedIn = arrivals.filter((a) => a.check_in_status === 'checked_in');
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
-          Today's arrivals
-        </p>
-        <button
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12 }}
-          onClick={() => { setScanError(''); setScannerOpen((open) => !open); }}
-        >
-          {scannerOpen ? 'Close scanner' : 'Scan to check in'}
-        </button>
-      </div>
-
-      {scannerOpen && (
-        <>
-          <CheckInScanner onScan={handleScan} />
-          {scanError && <p className="error-text">{scanError}</p>}
-        </>
-      )}
-
-      {error && <p className="error-text">{error}</p>}
-      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
-      {!loading && arrivals.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-          No arrivals scheduled for today.
-        </p>
-      )}
-
-      {pending.map((a) => (
-        <ArrivalRow
-          key={a.id}
-          arrival={a}
-          open={openBookingId === a.id}
-          viaQr={openBookingId === a.id && openViaQr}
-          onOpen={() => { setOpenViaQr(false); setOpenBookingId(a.id); }}
-          onClose={() => setOpenBookingId(null)}
-          onCheckedIn={() => { setOpenBookingId(null); loadArrivals(); }}
-        />
-      ))}
-
-      {checkedIn.length > 0 && (
-        <>
-          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', margin: '16px 0 8px' }}>
-            Already checked in
-          </p>
-          {checkedIn.map((a) => (
-            <ArrivalRow key={a.id} arrival={a} open={false} viaQr={false} onOpen={() => {}} onClose={() => {}} onCheckedIn={() => {}} />
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-const CHECK_IN_STATUS_LABEL = {
-  pending: 'Not checked in',
-  partially_checked_in: 'Partially checked in',
-  checked_in: 'Checked in',
-};
-
-function ArrivalRow({ arrival, open, viaQr, onOpen, onClose, onCheckedIn }) {
-  const isCheckedIn = arrival.check_in_status === 'checked_in';
-
-  return (
-    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
-        {arrival.customer_name} — {arrival.title}
-      </p>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-        {CHECK_IN_STATUS_LABEL[arrival.check_in_status] || arrival.check_in_status}
-        {arrival.room_number && ` · Room ${arrival.room_number}`}
-        {arrival.group_members && ` · Party of ${arrival.group_members.length}`}
-      </p>
-
-      {!isCheckedIn && !open && (
-        <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onOpen}>
-          Check in
-        </button>
-      )}
-
-      {isCheckedIn && <ViewDocumentsButton bookingId={arrival.id} />}
-
-      {open && <CheckInForm arrival={arrival} viaQr={viaQr} onDone={onCheckedIn} onCancel={onClose} />}
-    </div>
-  );
-}
-
-// document_access_grants (Batch 19) — checkin.js grants this the moment a
-// guest is checked in, and revokes it if the booking is later cancelled;
-// this is the only place that reads it back. Photo URLs are the same
-// local-dev-storage:// placeholders used everywhere else in this
-// environment (no real object storage wired up) — the onError fallback
-// mirrors frontend-tourist's ListingDetail.jsx PhotoGallery pattern.
-function ViewDocumentsButton({ bookingId }) {
-  const [open, setOpen] = useState(false);
-  const [documents, setDocuments] = useState(null);
-  const [error, setError] = useState('');
-
-  function handleOpen() {
-    setOpen(true);
-    if (documents) return;
-    getBookingDocuments(bookingId)
-      .then((data) => setDocuments(data.documents))
-      .catch((err) => setError(err.message));
-  }
-
-  return (
-    <>
-      <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleOpen}>
-        View ID
-      </button>
-      {open && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-          {error && <p className="error-text">{error}</p>}
-          {!documents && !error && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
-          {documents && documents.length === 0 && (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No document on file for this guest.</p>
-          )}
-          {documents && documents.map((doc) => (
-            <div key={doc.user_id} style={{ marginBottom: 8 }}>
-              <p style={{ fontSize: 12, color: 'var(--navy)', margin: '0 0 4px' }}>
-                {doc.name} — {doc.uploaded_document_type === 'passport' ? 'Passport' : 'ID card'}
-              </p>
-              <div
-                style={{
-                  width: 160, height: 100, borderRadius: 6, background: 'var(--surface-alt, #eee)',
-                  border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', overflow: 'hidden',
-                }}
-              >
-                <img
-                  src={doc.document_image_url}
-                  alt="Document on file"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'block';
-                  }}
-                />
-                <span style={{ display: 'none', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: 8 }}>
-                  Document image unavailable
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-function CheckInForm({ arrival, viaQr, onDone, onCancel }) {
-  const [mode, setMode] = useState(viaQr ? 'qr' : 'manual'); // 'manual' | 'qr'
-  const [roomNumber, setRoomNumber] = useState(arrival.room_number || '');
-  const hasGroup = Array.isArray(arrival.group_members) && arrival.group_members.length > 0;
-  const [wholeGroup, setWholeGroup] = useState(true);
-  const [selectedMembers, setSelectedMembers] = useState(
-    () => new Set((arrival.group_members || []).map((m) => m.member_id))
-  );
-  // Reaching this form via the outer "Scan to check in" flow already
-  // matched a scanned code against this exact booking (see CheckInSection's
-  // handleScan) — no need to make the guest scan a second time.
-  const [scanned, setScanned] = useState(viaQr);
-  const [scanError, setScanError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  function toggleMember(memberId, checked) {
-    setSelectedMembers((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(memberId); else next.delete(memberId);
-      return next;
-    });
-  }
-
-  function handleScan(code, resumeScanning) {
-    if (code !== arrival.id) {
-      setScanError("That code doesn't match this guest's booking.");
-      resumeScanning();
-      return;
-    }
-    setScanError('');
-    setScanned(true);
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!roomNumber.trim()) {
-      setError('Room number is required.');
-      return;
-    }
-    if (mode === 'qr' && !scanned) {
-      setError("Scan the guest's QR code first, or switch to manual.");
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      await checkInBooking(arrival.id, {
-        method: mode,
-        room_number: roomNumber.trim(),
-        whole_group: hasGroup ? wholeGroup : false,
-        member_ids: hasGroup && !wholeGroup ? Array.from(selectedMembers) : undefined,
-      });
-      onDone();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        <ModePill label="Manual" active={mode === 'manual'} onClick={() => setMode('manual')} />
-        <ModePill label="Scan QR" active={mode === 'qr'} onClick={() => { setMode('qr'); setScanError(''); }} />
-      </div>
-
-      {mode === 'qr' && !scanned && (
-        <>
-          <CheckInScanner onScan={handleScan} />
-          {scanError && <p className="error-text">{scanError}</p>}
-        </>
-      )}
-      {mode === 'qr' && scanned && (
-        <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>QR code matched — ready to check in.</p>
-      )}
-
-      <label htmlFor="checkin-room-number" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-        Room number
-      </label>
-      <input
-        id="checkin-room-number"
-        className="input-field"
-        value={roomNumber}
-        onChange={(e) => setRoomNumber(e.target.value)}
-        style={{ marginBottom: 10 }}
-      />
-
-      {hasGroup && (
-        <>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
-            <input type="checkbox" checked={wholeGroup} onChange={(e) => setWholeGroup(e.target.checked)} />
-            Check in whole group ({arrival.group_members.length} people)
-          </label>
-          {!wholeGroup && (
-            <div style={{ marginBottom: 10 }}>
-              {arrival.group_members.map((m) => (
-                <label key={m.member_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedMembers.has(m.member_id)}
-                    onChange={(e) => toggleMember(m.member_id, e.target.checked)}
-                  />
-                  {m.name}
-                </label>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {error && <p className="error-text">{error}</p>}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onCancel} disabled={submitting}>
-          Cancel
-        </button>
-        <button type="submit" className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={submitting}>
-          {submitting ? 'Checking in…' : 'Confirm check-in'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// GET /api/notifications?business_id= — polled once on mount just for its
-// unread_count, same call the Notifications page itself uses for the list.
-function NotificationBellButton({ businessId, onClick }) {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    getNotifications(businessId)
-      .then((data) => setUnreadCount(data.unread_count || 0))
-      .catch(() => {});
-  }, [businessId]);
-
-  return (
-    <button
-      className="btn-secondary"
-      onClick={onClick}
-      style={{ position: 'relative', padding: '4px 12px', fontSize: 12 }}
-    >
-      Notifications
-      {unreadCount > 0 && (
-        <span
-          style={{
-            position: 'absolute',
-            top: -6,
-            right: -6,
-            minWidth: 16,
-            height: 16,
-            padding: '0 3px',
-            borderRadius: 8,
-            background: 'var(--coral)',
-            color: '#fff',
-            fontSize: 10,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
-      )}
-    </button>
-  );
-}
-
-// Returns/exchanges queue (routes/returns.js) — shop businesses only.
-function ReturnsSection({ businessId }) {
-  const [returns, setReturns] = useState([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  function load() {
-    setLoading(true);
-    getBusinessReturns(businessId)
-      .then((data) => setReturns(data.returns || []))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => { load(); }, [businessId]);
-
-  const open = returns.filter((r) => r.status === 'requested' || r.status === 'approved');
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-        Returns &amp; exchanges
-      </p>
-      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
-      {error && <p className="error-text">{error}</p>}
-      {!loading && open.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing pending.</p>
-      )}
-      {open.map((r) => (
-        <ReturnRow key={r.id} ret={r} onChanged={load} />
-      ))}
-    </div>
-  );
-}
-
-function ReturnRow({ ret, onChanged }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleApprove() {
-    setBusy(true);
-    setError('');
-    try {
-      await approveReturn(ret.id);
-      onChanged();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleReject() {
-    const reason = window.prompt('Reason for declining (required):');
-    if (!reason) return;
-    setBusy(true);
-    setError('');
-    try {
-      await rejectReturn(ret.id, reason);
-      onChanged();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleProcess() {
-    setBusy(true);
-    setError('');
-    try {
-      await processReturn(ret.id);
-      onChanged();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="card" style={{ padding: 12, marginBottom: 8 }}>
-      <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
-        {ret.type === 'exchange' ? 'Exchange' : 'Return'} — {ret.customer_name}
-      </p>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-        {ret.reason}
-      </p>
-      {error && <p className="error-text">{error}</p>}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {ret.status === 'requested' && (
-          <>
-            <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleReject} disabled={busy}>
-              Decline
-            </button>
-            <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleApprove} disabled={busy}>
-              Approve
-            </button>
-          </>
-        )}
-        {ret.status === 'approved' && (
-          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={handleProcess} disabled={busy}>
-            {ret.type === 'exchange' ? 'Mark exchange complete' : 'Process refund'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// GET /api/reviews/business/:businessId — public endpoint, reused here so
-// the owner can see their own average rating and recent reviews.
-function ReviewsSection({ businessId }) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    getBusinessReviews(businessId)
-      .then(setData)
-      .catch((err) => setError(err.message));
-  }, [businessId]);
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
-        Reviews
-        {data && data.total > 0 && (
-          <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>
-            {' '}· {data.average_rating.toFixed(1)} ★ ({data.total})
-          </span>
-        )}
-      </p>
-      {error && <p className="error-text">{error}</p>}
-      {data && data.total === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No reviews yet.</p>
-      )}
-      {data && data.reviews.map((r) => (
-        <div key={r.id} className="card" style={{ padding: 12, marginBottom: 8 }}>
-          <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>
-            {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} — {r.reviewer_name}
-          </p>
-          {r.text && (
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{r.text}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ModePill({ label, active, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '4px 12px',
-        borderRadius: 20,
-        fontSize: 12,
-        border: active ? 'none' : '1px solid var(--border)',
-        background: active ? 'var(--lagoon)' : 'var(--surface)',
-        color: active ? '#fff' : 'var(--text-secondary)',
-        cursor: 'pointer',
-      }}
-    >
-      {label}
-    </button>
   );
 }

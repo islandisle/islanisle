@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api/client';
 
 export default function Login() {
@@ -65,6 +65,10 @@ export default function Login() {
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+
+      <Link to="/staff-login" style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--lagoon)' }}>
+        Front-desk staff? Log in here
+      </Link>
     </div>
   );
 }

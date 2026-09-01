@@ -39,6 +39,7 @@ import { Router } from 'express';
 import { query, pool } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireDocumentOnFile } from '../middleware/documentGate.js';
+import { requireFlightTicketForCrossIsland } from '../middleware/flightTicketGate.js';
 import { stripe } from '../config/stripe.js';
 import { ONLINE_PAYMENTS_ENABLED, ONLINE_PAYMENTS_DISABLED_MESSAGE } from '../config/payments.js';
 import { notify } from '../services/notifications.js';
@@ -67,7 +68,7 @@ function round2(n) {
  * A listing with stock_count = NULL is treated as not stock-tracked
  * (unlimited) — the shop signup/listing form doesn't require a count.
  */
-router.post('/', authenticate, requireDocumentOnFile, async (req, res) => {
+router.post('/', authenticate, requireDocumentOnFile, requireFlightTicketForCrossIsland, async (req, res) => {
   const client = await pool.connect();
   try {
     const { items, fulfillment_method, payment_method, promo_code, delivery_island, handover_method, member_ids } = req.body;

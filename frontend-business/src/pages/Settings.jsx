@@ -7,6 +7,7 @@ import {
 } from '../api/client';
 import { useTheme } from '../theme';
 import IslandPicker from '../components/IslandPicker';
+import Tabs from '../components/Tabs';
 
 // Section 11's per-category notification mute controls — same 4 categories
 // as frontend-tourist's Profile.jsx, checked by the shared
@@ -32,6 +33,7 @@ export default function Settings() {
 
   const [name, setName] = useState('');
   const [locationIsland, setLocationIsland] = useState('');
+  const [locationAtoll, setLocationAtoll] = useState(''); // paired with the island — see IslandPicker
   const [refundFeeBusinessPercent, setRefundFeeBusinessPercent] = useState('');
   const [notificationPreferences, setNotificationPreferences] = useState({});
 
@@ -46,6 +48,7 @@ export default function Settings() {
         const b = data.business;
         setName(b.name || '');
         setLocationIsland(b.location_island || '');
+        setLocationAtoll(b.location_atoll || '');
         setRefundFeeBusinessPercent(b.refund_fee_business_percent ?? '');
         setNotificationPreferences(b.notification_preferences || {});
       })
@@ -62,6 +65,7 @@ export default function Settings() {
       await updateSettings(business.id, {
         name,
         location_island: locationIsland,
+        location_atoll: locationAtoll || null,
         refund_fee_business_percent: Number(refundFeeBusinessPercent),
         notification_preferences: notificationPreferences,
       });
@@ -89,89 +93,122 @@ export default function Settings() {
         Business settings
       </h1>
 
-      <SubscriptionStatusSection businessId={business.id} />
-
-      <PayAtVisitIncidentsSection businessId={business.id} />
-
-      <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
-        <label htmlFor="settings-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-          Business name
-        </label>
-        <input
-          id="settings-name"
-          className="input-field"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ marginBottom: 14 }}
-        />
-
-        <label htmlFor="settings-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-          Island
-        </label>
-        <div style={{ marginBottom: 14 }}>
-          <IslandPicker value={locationIsland} onChange={setLocationIsland} id="settings-island" />
-        </div>
-
-        <label htmlFor="settings-refund-fee" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-          Refund fee — your share (%)
-        </label>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-          When a tourist cancels a booking, this is the percentage of the refund amount that comes out of
-          your side rather than the platform's — on top of the platform's own fixed 5% fee.
-        </p>
-        <input
-          id="settings-refund-fee"
-          className="input-field"
-          type="number"
-          min="0"
-          max="100"
-          step="0.1"
-          value={refundFeeBusinessPercent}
-          onChange={(e) => setRefundFeeBusinessPercent(e.target.value)}
-          style={{ marginBottom: 14 }}
-        />
-
-        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 14px' }} />
-
-        <p id="settings-notify-label" style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
-          Notifications
-        </p>
-        <div role="group" aria-labelledby="settings-notify-label" style={{ marginBottom: 14 }}>
-          {NOTIFICATION_CATEGORIES.map((cat) => (
-            <label key={cat.key} htmlFor={`settings-notify-${cat.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
-              <input
-                id={`settings-notify-${cat.key}`}
-                type="checkbox"
-                checked={notificationPreferences[cat.key] !== false}
-                onChange={(e) =>
-                  setNotificationPreferences((prev) => ({ ...prev, [cat.key]: e.target.checked }))
-                }
-              />
-              {cat.label}
-            </label>
-          ))}
-        </div>
-
-        {error && <p className="error-text">{error}</p>}
-        {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}
-
-        <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={saving}>
-          {saving ? 'Saving…' : 'Save settings'}
-        </button>
-      </form>
-
-      <PromoCodesSection businessId={business.id} />
-
-      <StaffSection businessId={business.id} />
-
-      <ClosuresSection businessId={business.id} />
-
       <AppearanceSection />
+
+      <Tabs
+        storageKey="atollisle_business_settings_tab"
+        tabs={[
+          {
+            id: 'profile',
+            label: 'Profile',
+            content: (
+              <form onSubmit={handleSubmit} className="card" style={{ padding: 16 }}>
+                <label htmlFor="settings-name" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Business name
+                </label>
+                <input
+                  id="settings-name"
+                  className="input-field"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ marginBottom: 14 }}
+                />
+
+                <label htmlFor="settings-island" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Island
+                </label>
+                <div style={{ marginBottom: 14 }}>
+                  <IslandPicker
+                    value={locationIsland}
+                    onChange={(isl, atl) => { setLocationIsland(isl); setLocationAtoll(atl || ''); }}
+                    id="settings-island"
+                  />
+                  {locationAtoll && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>Atoll: {locationAtoll}</p>
+                  )}
+                </div>
+
+                <label htmlFor="settings-refund-fee" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Refund fee — your share (%)
+                </label>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                  When a tourist cancels a booking, this is the percentage of the refund amount that comes out of
+                  your side rather than the platform's — on top of the platform's own fixed 5% fee.
+                </p>
+                <input
+                  id="settings-refund-fee"
+                  className="input-field"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={refundFeeBusinessPercent}
+                  onChange={(e) => setRefundFeeBusinessPercent(e.target.value)}
+                  style={{ marginBottom: 14 }}
+                />
+
+                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 14px' }} />
+
+                <p id="settings-notify-label" style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', marginBottom: 8 }}>
+                  Notifications
+                </p>
+                <div role="group" aria-labelledby="settings-notify-label" style={{ marginBottom: 14 }}>
+                  {NOTIFICATION_CATEGORIES.map((cat) => (
+                    <label key={cat.key} htmlFor={`settings-notify-${cat.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8 }}>
+                      <input
+                        id={`settings-notify-${cat.key}`}
+                        type="checkbox"
+                        checked={notificationPreferences[cat.key] !== false}
+                        onChange={(e) =>
+                          setNotificationPreferences((prev) => ({ ...prev, [cat.key]: e.target.checked }))
+                        }
+                      />
+                      {cat.label}
+                    </label>
+                  ))}
+                </div>
+
+                {error && <p className="error-text">{error}</p>}
+                {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}
+
+                <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save settings'}
+                </button>
+              </form>
+            ),
+          },
+          {
+            id: 'billing',
+            label: 'Subscription & billing',
+            content: (
+              <>
+                <SubscriptionStatusSection businessId={business.id} />
+                <PayAtVisitIncidentsSection businessId={business.id} />
+              </>
+            ),
+          },
+          {
+            id: 'promos',
+            label: 'Promo codes',
+            content: <PromoCodesSection businessId={business.id} />,
+          },
+          {
+            id: 'staff',
+            label: 'Staff',
+            content: <StaffSection businessId={business.id} />,
+          },
+          {
+            id: 'closures',
+            label: 'Closures',
+            content: <ClosuresSection businessId={business.id} />,
+          },
+        ]}
+      />
 
       <Link
         to="/support"
         className="btn-secondary"
-        style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}
+        style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none', marginTop: 20 }}
       >
         Contact support
       </Link>

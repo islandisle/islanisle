@@ -16,6 +16,7 @@ import EmergencyContacts from './pages/EmergencyContacts';
 import LocalGuide from './pages/LocalGuide';
 import Favorites from './pages/Favorites';
 import Messages from './pages/Messages';
+import FindAgent from './pages/FindAgent';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/local-guide" element={<LocalGuide />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/find-agent" element={<FindAgent />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

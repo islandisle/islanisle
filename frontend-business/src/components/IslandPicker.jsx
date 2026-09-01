@@ -77,8 +77,13 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
     })
     .filter((a) => a.islands.length > 0);
 
-  function handlePick(island) {
-    onChange(island);
+  // Emit the atoll alongside the island name — 14 island names exist in
+  // more than one atoll (e.g. Maalhos in both Alifu Alifu and Baa), so the
+  // bare name isn't enough to disambiguate a business's real location.
+  // `value` stays the plain island-name string (all the closed button
+  // shows); this only changes what onChange emits.
+  function handlePick(island, atoll) {
+    onChange(island, atoll);
     setOpen(false);
     setSearch('');
   }
@@ -133,7 +138,7 @@ export default function IslandPicker({ value, onChange, id, placeholder = 'Selec
                     <button
                       key={isl}
                       type="button"
-                      onClick={() => handlePick(isl)}
+                      onClick={() => handlePick(isl, a.atoll)}
                       style={{
                         display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px',
                         background: isl === value ? 'var(--lagoon-tint)' : 'transparent',

@@ -66,11 +66,11 @@ async function requireBusinessOwnerOrAdmin(req, res, next) {
 /**
  * POST /api/business/signup
  * Section 2.3: "What kind of business are you?" -> routes into that type's setup.
- * body: { type, name, location_island, contact_info }
+ * body: { type, name, location_island, location_atoll, contact_info }
  */
 router.post('/signup', authenticate, async (req, res) => {
   try {
-    const { type, name, location_island, contact_info } = req.body;
+    const { type, name, location_island, location_atoll, contact_info } = req.body;
 
     if (!VALID_BUSINESS_TYPES.includes(type)) {
       return res.status(400).json({
@@ -82,10 +82,10 @@ router.post('/signup', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `INSERT INTO businesses (owner_user_id, name, type, location_island, contact_info)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO businesses (owner_user_id, name, type, location_island, location_atoll, contact_info)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, name, type, approval_status, subscription_tier`,
-      [req.user.id, name, type, location_island || null, contact_info ? JSON.stringify(contact_info) : null]
+      [req.user.id, name, type, location_island || null, location_atoll || null, contact_info ? JSON.stringify(contact_info) : null]
     );
 
     res.status(201).json({

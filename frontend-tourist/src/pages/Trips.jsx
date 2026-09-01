@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getMyTrips } from '../api/client';
 import EmptyState from '../components/EmptyState';
+import { formatPrice } from '../utils/currency';
+
+// Section 3.4 pricing visibility — a Local account sees MVR wherever a
+// price shows (utils/currency.js). These are already-charged amounts, but
+// shown in the account's currency for consistency with the rest of the
+// app; the underlying charge is unchanged (payment is deferred).
+function currentUserIsLocal() {
+  try {
+    return JSON.parse(localStorage.getItem('atollisle_user') || 'null')?.type === 'local';
+  } catch {
+    return false;
+  }
+}
 
 // Trip/itinerary view — script Section 12's Trip/TripIslandStay, populated
 // entirely from checkin.js's guesthouse check-in flow (there's no manual
@@ -149,7 +162,7 @@ function TripSummary({ trip }) {
         {islands.length} island{islands.length > 1 ? 's' : ''} · {islands.join(', ')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 2px' }}>
-        {allItems.length} booking{allItems.length === 1 ? '' : 's'}/order{allItems.length === 1 ? '' : 's'} · ${totalSpent.toFixed(2)} total
+        {allItems.length} booking{allItems.length === 1 ? '' : 's'}/order{allItems.length === 1 ? '' : 's'} · {formatPrice(totalSpent, currentUserIsLocal())} total
       </p>
       {tripEnd && (
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
@@ -215,7 +228,7 @@ function StayItemRow({ item }) {
         textDecoration: 'none',
       }}
     >
-      • <span style={{ color: 'var(--lagoon)' }}>{label}</span> — {item.business_name}, {formatDate(date)} · ${item.price_charged}
+      • <span style={{ color: 'var(--lagoon)' }}>{label}</span> — {item.business_name}, {formatDate(date)} · {formatPrice(item.price_charged, currentUserIsLocal())}
     </Link>
   );
 }

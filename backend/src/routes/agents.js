@@ -24,10 +24,19 @@ import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
+import { DEFAULT_COMMISSION_RATE, recordAgentCommission } from '../services/agentPricing.js';
 
 const router = Router();
 
 const BUSINESS_COMMISSION_RATE = 0.01;
+
+// DEFAULT_COMMISSION_RATE — the rate that applies until a business sets its
+// own for a given agent — now lives in services/agentPricing.js so this
+// route and that service share one definition. It's still never taken from
+// the client; see POST /bookings.
+
+const AGENT_SPECIALTIES = ['guesthouse', 'tour_guide', 'excursion', 'shopping'];
+
 const CAPACITY_FIELD_BY_TYPE = {
   restaurant: 'table_capacity',
   excursion: 'capacity_per_slot',
@@ -142,19 +151,102 @@ router.post('/connect', authenticate, requireRole('agent'), requireActiveAgent, 
 });
 
 /**
+ * GET /api/agents/search?q=&specialty=&island=
+ * Tourist-facing agent discovery — mirrors business.js's GET /search
+ * exactly in structure (name/filter, approved+active only, LIMIT 20).
+ * `authenticate` only (any logged-in account): a tourist finds an agent
+ * here, then chats with / assigns them, both of which need a session
+ * anyway. specialty must be one of the four enum values if given; island
+ * matches against service_islands.
+ */
+router.get('/search', authenticate, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  const { specialty, island } = req.query;
+
+  const params = [`%${q}%`];
+  const conditions = [
+    `approval_status = 'approved'`,
+    `account_status = 'active'`,
+    `name ILIKE $1`,
+  ];
+  if (specialty && AGENT_SPECIALTIES.includes(specialty)) {
+    params.push(specialty);
+    conditions.push(`specialty = $${params.length}`);
+  }
+  if (island) {
+    params.push(island);
+    // Case/whitespace-insensitive, matching the LOWER(TRIM(...)) island-name
+    // convention used elsewhere (e.g. listings.js, weatherCascade.js) — the
+    // agent types their service islands as free text in Settings.
+    conditions.push(`EXISTS (SELECT 1 FROM unnest(service_islands) si WHERE LOWER(TRIM(si)) = LOWER(TRIM($${params.length})))`);
+  }
+
+  const result = await query(
+    `SELECT id, name, specialty, service_islands
+     FROM agents
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY name ASC
+     LIMIT 20`,
+    params
+  );
+  res.json({ agents: result.rows });
+});
+
+/**
+ * PATCH /api/agents/profile
+ * body: { specialty?, service_islands? }
+ * The agent's own discovery profile — what tourists filter on in
+ * GET /search. Both fields optional; each is only touched when provided.
+ */
+router.patch('/profile', authenticate, requireRole('agent'), async (req, res) => {
+  const { specialty, service_islands } = req.body;
+
+  // A provided non-empty specialty must be one of the four; an empty/null
+  // one clears it.
+  if (specialty !== undefined && specialty && !AGENT_SPECIALTIES.includes(specialty)) {
+    return res.status(400).json({ error: `specialty must be one of: ${AGENT_SPECIALTIES.join(', ')}` });
+  }
+  if (service_islands !== undefined && service_islands !== null
+      && !(Array.isArray(service_islands) && service_islands.every((s) => typeof s === 'string'))) {
+    return res.status(400).json({ error: 'service_islands must be an array of strings.' });
+  }
+
+  const result = await query(
+    `UPDATE agents SET
+       specialty = CASE WHEN $2::boolean THEN $3::agent_specialty ELSE specialty END,
+       service_islands = CASE WHEN $4::boolean THEN $5::text[] ELSE service_islands END
+     WHERE id = $1
+     RETURNING id, name, specialty, service_islands`,
+    [
+      req.user.id,
+      specialty !== undefined, specialty || null,
+      service_islands !== undefined, service_islands || null,
+    ]
+  );
+  res.json({ agent: result.rows[0] });
+});
+
+/**
  * GET /api/agents/businesses
  * The agent's connected businesses, each with its bookable listings.
  */
 router.get('/businesses', authenticate, requireRole('agent'), async (req, res) => {
   const businessesResult = await query(
-    `SELECT b.id, b.name, b.type, b.location_island
+    `SELECT b.id, b.name, b.type, b.location_island, acb.commission_rate
      FROM agent_connected_businesses acb
      JOIN businesses b ON b.id = acb.business_id
      WHERE acb.agent_id = $1
      ORDER BY b.name`,
     [req.user.id]
   );
-  const businesses = businessesResult.rows;
+  const businesses = businessesResult.rows.map((b) => ({
+    ...b,
+    // The rate the agent will actually earn on a booking with this
+    // business — the business's own configured rate, or the platform
+    // default until it sets one. Matches POST /bookings' server-side
+    // resolution exactly, so the form can show it read-only before booking.
+    commission_rate: b.commission_rate != null ? Number(b.commission_rate) : DEFAULT_COMMISSION_RATE,
+  }));
   if (businesses.length) {
     const listingsResult = await query(
       `SELECT id, business_id, title, tourist_price, local_price, type_specific_fields
@@ -206,10 +298,14 @@ router.get('/availability', authenticate, requireRole('agent'), async (req, res)
  * Books on behalf of a tourist/local — an existing account (guest_user_id)
  * or a plain name with no account yet (guest_name), per
  * agent_booking_guests. body: { business_id, listing_id, slot_start,
- * slot_end?, guest_user_id?, guest_name?, commission_rate }
+ * slot_end?, guest_user_id?, guest_name? }
+ *
+ * The commission rate is NOT accepted from the client — it's the
+ * business's to set (agent_connected_businesses.commission_rate), looked
+ * up server-side below, with DEFAULT_COMMISSION_RATE as the fallback.
  */
 router.post('/bookings', authenticate, requireRole('agent'), requireActiveAgent, async (req, res) => {
-  const { business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name, commission_rate } = req.body;
+  const { business_id, listing_id, slot_start, slot_end, guest_user_id, guest_name } = req.body;
   if (!business_id || !listing_id || !slot_start || (!guest_user_id && !guest_name)) {
     return res.status(400).json({ error: 'business_id, listing_id, slot_start, and a guest (guest_user_id or guest_name) are required.' });
   }
@@ -264,16 +360,17 @@ router.post('/bookings', authenticate, requireRole('agent'), requireActiveAgent,
   // booking views COALESCE that in so front desk still has a name to work
   // from.
 
-  const commissionRateNum = commission_rate != null ? Number(commission_rate) : 0;
-  const commissionAmount = round2(basePrice * (commissionRateNum / 100));
-
-  const agentBookingResult = await query(
-    `INSERT INTO agent_bookings (agent_id, business_id, listing_id, commission_rate, commission_amount, resulting_booking_id, status)
-     VALUES ($1,$2,$3,$4,$5,$6,'confirmed')
-     RETURNING id, commission_rate, commission_amount, status`,
-    [req.user.id, business_id, listing_id, commissionRateNum, commissionAmount, booking.id]
-  );
-  const agentBooking = agentBookingResult.rows[0];
+  // Rate comes from what the business configured for this agent, never the
+  // request body. The agent_bookings insert + rate resolution is the same
+  // as bookings.js's new tourist-direct path, so it lives in one place —
+  // see services/agentPricing.js's recordAgentCommission.
+  const agentBooking = await recordAgentCommission(query, {
+    agentId: req.user.id,
+    businessId: business_id,
+    listingId: listing_id,
+    basePrice,
+    resultingBookingId: booking.id,
+  });
 
   await query(
     `INSERT INTO agent_booking_guests (agent_booking_id, user_id, plain_name) VALUES ($1, $2, $3)`,
@@ -333,7 +430,7 @@ router.get('/commissions/mine', authenticate, requireRole('agent'), async (req, 
  */
 router.get('/me/settings', authenticate, requireRole('agent'), async (req, res) => {
   const result = await query(
-    'SELECT id, name, contact_email, payout_bank_details, two_factor_enabled FROM agents WHERE id = $1',
+    'SELECT id, name, contact_email, payout_bank_details, two_factor_enabled, specialty, service_islands FROM agents WHERE id = $1',
     [req.user.id]
   );
   res.json({ agent: result.rows[0] });

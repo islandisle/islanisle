@@ -100,3 +100,67 @@ export async function fetchWeather(atoll, dateStr) {
     return seededStub(atoll, dateStr);
   }
 }
+
+// Multi-day forecast — surfaced on the tourist Home screen so someone can
+// see whether tomorrow's excursion or speedboat transfer is likely to run
+// before they book it, not just today's snapshot. Deliberately stateless
+// (no weather_conditions row, no caching table): Open-Meteo's daily
+// forecast is cheap to call directly and changes model-run to model-run,
+// so there's little value in a stale cached copy the way there is for
+// "current conditions" (which real bookings key off of for the
+// weather-cascade above).
+async function fetchForecastFromOpenMeteo(atoll) {
+  const { lat, lon } = coordinatesFor(atoll);
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&forecast_days=5&timezone=Asia%2FColombo`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Open-Meteo responded ${res.status}`);
+    const data = await res.json();
+    const daily = data.daily;
+    if (!daily || !Array.isArray(daily.time)) throw new Error('Open-Meteo response missing daily forecast');
+
+    return daily.time.map((date, i) => ({
+      date,
+      condition_type: mapWeatherCode(daily.weather_code[i]),
+      temperature_max: daily.temperature_2m_max[i],
+      temperature_min: daily.temperature_2m_min[i],
+      wind_speed_max: daily.wind_speed_10m_max[i],
+    }));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Same deterministic-seed approach as seededStub above, extended across 5
+// days so the fallback forecast is internally consistent (today's stub
+// day here also matches what seededStub would return for the same date).
+function seededForecast(atoll) {
+  const days = [];
+  const base = new Date();
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const stub = seededStub(atoll, dateStr);
+    days.push({
+      date: dateStr,
+      condition_type: stub.condition_type,
+      temperature_max: stub.temperature + 2,
+      temperature_min: stub.temperature - 3,
+      wind_speed_max: stub.wind_speed,
+    });
+  }
+  return days;
+}
+
+export async function fetchForecast(atoll) {
+  try {
+    return await fetchForecastFromOpenMeteo(atoll);
+  } catch (err) {
+    console.error(`Forecast fetch failed for ${atoll}, using seeded stub:`, err.message);
+    return seededForecast(atoll);
+  }
+}

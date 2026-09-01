@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { query } from '../config/db.js';
-import { fetchWeather } from '../services/weather.js';
+import { fetchWeather, fetchForecast } from '../services/weather.js';
 import { triggerWeatherCascade } from '../services/weatherCascade.js';
 
 const router = Router();
@@ -15,6 +15,18 @@ function todayStr() {
 }
 
 const STALE_AFTER_MINUTES = 15; // matches Home.jsx's own polling interval
+
+/**
+ * GET /api/weather/:atoll/forecast
+ * 5-day outlook for the tourist Home screen — see fetchForecast's comment
+ * for why this is stateless (no DB caching) unlike the current-conditions
+ * route below.
+ */
+router.get('/:atoll/forecast', async (req, res) => {
+  const { atoll } = req.params;
+  const forecast = await fetchForecast(atoll);
+  res.json({ atoll, forecast });
+});
 
 /**
  * GET /api/weather/:atoll

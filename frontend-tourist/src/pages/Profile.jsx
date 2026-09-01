@@ -6,12 +6,15 @@ import {
   getWebauthnRegisterOptions, submitWebauthnRegistration, getMyWebauthnCredentials, removeWebauthnCredential,
   getNotificationPreferences, updateNotificationPreferences,
   exportMyData, deleteAccount, getMyProfile, setup2FA, confirm2FA, disable2FA,
+  uploadFlightTicket, getAssignedAgent, unassignAgent,
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
 import { useTextSize, TEXT_SIZE_OPTIONS } from '../textSize';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 import { useModalA11y } from '../useModalA11y';
+import Tabs from '../components/Tabs';
+import { formatPrice } from '../utils/currency';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -89,6 +92,8 @@ export default function Profile() {
           )}
         </div>
       )}
+
+      <AssignedAgentCard />
 
       <Link
         to="/bookings"
@@ -194,23 +199,54 @@ export default function Profile() {
         )}
       </div>
 
-      <WalletReferralSection />
+      <Tabs
+        storageKey="atollisle_profile_tab"
+        tabs={[
+          {
+            id: 'wallet',
+            label: 'Wallet & referral',
+            content: <WalletReferralSection />,
+          },
+          {
+            id: 'notifications',
+            label: 'Notifications',
+            content: <NotificationPreferencesSection />,
+          },
+          {
+            id: 'preferences',
+            label: 'Preferences',
+            content: (
+              <>
+                {user?.type === 'tourist' && <LanguageSection />}
+                <AppearanceSection />
+                <TextSizeSection />
+              </>
+            ),
+          },
+          {
+            id: 'security',
+            label: 'Security',
+            content: (
+              <>
+                <BiometricSection />
+                <TwoFactorSection />
+              </>
+            ),
+          },
+          {
+            id: 'data',
+            label: 'Account data',
+            content: (
+              <>
+                {user?.type === 'tourist' && <FlightTicketSection />}
+                <AccountDataSection onDeleted={handleLogout} />
+              </>
+            ),
+          },
+        ]}
+      />
 
-      <NotificationPreferencesSection />
-
-      {user?.type === 'tourist' && <LanguageSection />}
-
-      <AppearanceSection />
-
-      <TextSizeSection />
-
-      <BiometricSection />
-
-      <TwoFactorSection />
-
-      <AccountDataSection onDeleted={handleLogout} />
-
-      <button className="btn-secondary" style={{ width: '100%' }} onClick={handleLogout}>
+      <button className="btn-secondary" style={{ width: '100%', marginTop: 20 }} onClick={handleLogout}>
         Log out
       </button>
 
@@ -231,6 +267,57 @@ export default function Profile() {
           onJoinSuccess={loadGroup}
         />
       )}
+    </div>
+  );
+}
+
+// The travel agent this tourist has assigned (routes/users.js). Self-fetches
+// so it renders nothing until it knows. While an agent is assigned, prices
+// shown for businesses that agent is approved-connected to are already
+// marked up server-side — there's deliberately nothing here that says so.
+function AssignedAgentCard() {
+  const [agent, setAgent] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getAssignedAgent().then((d) => setAgent(d.agent)).catch(() => {});
+  }, []);
+
+  async function handleUnassign() {
+    setBusy(true);
+    try {
+      await unassignAgent();
+      setAgent(null);
+    } catch {
+      // leave it shown; the tourist can retry
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!agent) return null;
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>Your travel agent</p>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>{agent.name}</p>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <Link
+          to="/find-agent"
+          className="btn-secondary"
+          style={{ padding: '6px 12px', fontSize: 13, textDecoration: 'none' }}
+        >
+          Manage
+        </Link>
+        <button
+          className="btn-secondary"
+          style={{ padding: '6px 12px', fontSize: 13, color: 'var(--coral)' }}
+          onClick={handleUnassign}
+          disabled={busy}
+        >
+          Unassign
+        </button>
+      </div>
     </div>
   );
 }
@@ -545,6 +632,69 @@ function DeleteAccountPopup({ onClose, onDeleted }) {
   );
 }
 
+// The cross-island booking gate (backend middleware/flightTicketGate.js)
+// asks for a flight ticket at checkout time when a tourist books on an
+// island other than the one they're checked in on. ListingDetail.jsx's
+// FlightTicketPrompt covers that mid-checkout; this lets a tourist add it
+// ahead of time instead of only being interrupted then. Status is read
+// from GET /api/auth/me (getMyProfile), same as WalletReferralSection.
+function FlightTicketSection() {
+  const [profile, setProfile] = useState(null);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  function load() {
+    getMyProfile().then((d) => setProfile(d.user)).catch((err) => setError(err.message));
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleUpload() {
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      await uploadFlightTicket(file);
+      setFile(null);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (!profile) return null;
+  const onFile = Boolean(profile.flight_ticket_image_url);
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Flight ticket
+      </p>
+      <p style={{ fontSize: 13, color: onFile ? 'var(--lagoon)' : 'var(--text-muted)', marginBottom: 8 }}>
+        {onFile ? 'Ticket on file' : 'No ticket on file'}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Needed to book on an island other than the one you're checked in on — proof you've flown into the Maldives.
+      </p>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        style={{ fontSize: 13, marginBottom: 10, display: 'block' }}
+      />
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn-secondary" style={{ width: '100%' }} onClick={handleUpload} disabled={!file || uploading}>
+        {uploading ? 'Uploading…' : onFile ? 'Replace ticket' : 'Upload ticket'}
+      </button>
+    </div>
+  );
+}
+
 const THEME_OPTIONS = [
   { value: null, label: 'System' },
   { value: 'light', label: 'Light' },
@@ -596,7 +746,7 @@ function WalletReferralSection() {
       </p>
       {error && <p className="error-text">{error}</p>}
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
-        Credit balance: <strong style={{ color: 'var(--lagoon)' }}>${Number(profile.wallet_balance).toFixed(2)}</strong>
+        Credit balance: <strong style={{ color: 'var(--lagoon)' }}>{formatPrice(profile.wallet_balance, profile.type === 'local')}</strong>
       </p>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
         Share your code — you and your friend each get a $5 credit when they sign up.

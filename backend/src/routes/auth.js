@@ -284,7 +284,8 @@ router.post('/login/verify-2fa', loginLimiter, async (req, res) => {
  */
 router.get('/me', authenticate, async (req, res) => {
   const result = await query(
-    `SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance, two_factor_enabled
+    `SELECT id, name, type, local_verification_status, language, referral_code, wallet_balance, two_factor_enabled,
+            flight_ticket_image_url
      FROM users WHERE id = $1`,
     [req.user.id]
   );

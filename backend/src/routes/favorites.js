@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { applyAgentMarkupToRows } from '../services/agentPricing.js';
 
 const router = Router();
 
@@ -37,7 +38,9 @@ router.get('/mine', authenticate, async (req, res) => {
      ORDER BY f.created_at DESC`,
     [req.user.id]
   );
-  res.json({ listings: result.rows });
+  // Same silent agent-markup as the browse endpoints (services/agentPricing.js).
+  const listings = await applyAgentMarkupToRows(result.rows, req.user.id);
+  res.json({ listings });
 });
 
 /**

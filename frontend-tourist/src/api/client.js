@@ -16,6 +16,10 @@ async function handleResponse(res) {
   if (!res.ok) {
     const error = new Error(data.error || `Request failed (${res.status})`);
     error.status = res.status;
+    // Some routes tag an error with a machine-readable `code` the UI keys
+    // off (e.g. 'flight_ticket_required' → inline upload prompt at checkout
+    // rather than a generic failure banner).
+    if (data.code) error.code = data.code;
     throw error;
   }
   return data;
@@ -146,9 +150,12 @@ export async function getIslands() {
   return handleResponse(res);
 }
 
-export async function getIslandListings(island, type, accessibilityFeatures, dietaryTags) {
+export async function getIslandListings(island, type, accessibilityFeatures, dietaryTags, atoll) {
   const params = new URLSearchParams();
   if (type) params.set('type', type);
+  // atoll disambiguates same-named islands in different atolls (e.g.
+  // Maalhos in both Alifu Alifu and Baa) — see listings.js's route comment.
+  if (atoll) params.set('atoll', atoll);
   if (accessibilityFeatures && accessibilityFeatures.length > 0) {
     params.set('accessibility', accessibilityFeatures.join(','));
   }
@@ -166,8 +173,11 @@ export async function getIslandListings(island, type, accessibilityFeatures, die
 // response tells the frontend whether to show phone/email or a locked
 // placeholder — the backend has already stripped them server-side when
 // locked, not just hidden them here.
-export async function getExternalPlaces(island) {
-  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}`, { headers: authHeaders() });
+export async function getExternalPlaces(island, atoll) {
+  // ?atoll disambiguates same-named islands in different atolls — see
+  // externalPlaces.js's route comment.
+  const qs = atoll ? `?atoll=${encodeURIComponent(atoll)}` : '';
+  const res = await fetch(`${API_BASE}/api/external-places/${encodeURIComponent(island)}${qs}`, { headers: authHeaders() });
   return handleResponse(res);
 }
 
@@ -228,6 +238,13 @@ export async function getArrivalTransfers(destination) {
   return handleResponse(res);
 }
 
+export async function getIslandTransfers(origin, destination) {
+  const res = await fetch(
+    `${API_BASE}/api/islands/transfers?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+  );
+  return handleResponse(res);
+}
+
 // --- Bookings (routes/bookings.js) ---
 
 // The actual network call — also used directly as the retry handler for
@@ -277,6 +294,23 @@ export async function cancelBooking(id) {
   const res = await fetch(`${API_BASE}/api/bookings/${id}/cancel`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  });
+  return handleResponse(res);
+}
+
+// --- Flight ticket (routes/users.js) ---
+
+// Multipart upload of arrival proof — needed before booking on an island
+// other than the one the tourist is currently checked in on (backend's
+// middleware/flightTicketGate.js). Same multipart shape as signup() /
+// submitReview() above: no Content-Type header, fetch sets the boundary.
+export async function uploadFlightTicket(file) {
+  const formData = new FormData();
+  formData.append('ticket', file);
+  const res = await fetch(`${API_BASE}/api/users/flight-ticket`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
   });
   return handleResponse(res);
 }
@@ -427,6 +461,11 @@ export async function getMyWaitlist() {
 
 export async function getWeather(atoll) {
   const res = await fetch(`${API_BASE}/api/weather/${encodeURIComponent(atoll)}`);
+  return handleResponse(res);
+}
+
+export async function getWeatherForecast(atoll) {
+  const res = await fetch(`${API_BASE}/api/weather/${encodeURIComponent(atoll)}/forecast`);
   return handleResponse(res);
 }
 
@@ -583,6 +622,44 @@ export async function deleteAccount(password) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ password, confirmation: 'DELETE' }),
+  });
+  return handleResponse(res);
+}
+
+// --- Travel agents (routes/agents.js search + routes/users.js assignment) ---
+// "Find an agent" — search, then chat (reuse ChatPanel with otherRole
+// 'agent') or assign one. Once assigned, prices for businesses that agent
+// is approved-connected to come back already marked up from the backend —
+// there's nothing to render differently here, it's just "the price."
+
+export async function searchAgents({ q, specialty, island } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (specialty) params.set('specialty', specialty);
+  if (island) params.set('island', island);
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE}/api/agents/search${qs ? `?${qs}` : ''}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getAssignedAgent() {
+  const res = await fetch(`${API_BASE}/api/users/assigned-agent`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function assignAgent(agentId) {
+  const res = await fetch(`${API_BASE}/api/users/assign-agent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ agent_id: agentId }),
+  });
+  return handleResponse(res);
+}
+
+export async function unassignAgent() {
+  const res = await fetch(`${API_BASE}/api/users/unassign-agent`, {
+    method: 'POST',
+    headers: authHeaders(),
   });
   return handleResponse(res);
 }

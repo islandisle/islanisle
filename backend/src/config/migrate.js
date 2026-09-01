@@ -475,6 +475,63 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for users.flight_ticket_image_url (cross-island flight-ticket gate)...');
+  if (!(await columnExists('users', 'flight_ticket_image_url'))) {
+    console.log('Adding users.flight_ticket_image_url...');
+    await pool.query(`ALTER TABLE users ADD COLUMN flight_ticket_image_url TEXT`);
+    changed = true;
+  }
+
+  console.log('Checking for businesses.location_atoll (same-named-island disambiguation)...');
+  if (!(await columnExists('businesses', 'location_atoll'))) {
+    console.log('Adding businesses.location_atoll...');
+    await pool.query(`ALTER TABLE businesses ADD COLUMN location_atoll TEXT`);
+    changed = true;
+  }
+
+  console.log('Checking for agent_connected_businesses.commission_rate (business-set agent commission)...');
+  if (!(await columnExists('agent_connected_businesses', 'commission_rate'))) {
+    console.log('Adding agent_connected_businesses.commission_rate...');
+    await pool.query(`ALTER TABLE agent_connected_businesses ADD COLUMN commission_rate NUMERIC(4,2)`);
+    changed = true;
+  }
+
+  console.log('Checking for agent_connected_businesses.status (connection approval — agent discovery pricing)...');
+  if (!(await columnExists('agent_connected_businesses', 'status'))) {
+    console.log('Adding agent_connected_businesses.status...');
+    await pool.query(`ALTER TABLE agent_connected_businesses ADD COLUMN status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected'))`);
+    changed = true;
+  }
+
+  console.log('Checking for the agent_specialty enum + agents.specialty/service_islands (agent discovery)...');
+  if (!(await typeExists('agent_specialty'))) {
+    console.log('Creating agent_specialty enum...');
+    await pool.query(`CREATE TYPE agent_specialty AS ENUM ('guesthouse', 'tour_guide', 'excursion', 'shopping')`);
+    changed = true;
+  }
+  if (!(await columnExists('agents', 'specialty'))) {
+    console.log('Adding agents.specialty...');
+    await pool.query(`ALTER TABLE agents ADD COLUMN specialty agent_specialty`);
+    changed = true;
+  }
+  if (!(await columnExists('agents', 'service_islands'))) {
+    console.log('Adding agents.service_islands...');
+    await pool.query(`ALTER TABLE agents ADD COLUMN service_islands TEXT[]`);
+    changed = true;
+  }
+
+  console.log('Checking for users.assigned_agent_id (tourist-assigned travel agent)...');
+  if (!(await columnExists('users', 'assigned_agent_id'))) {
+    console.log('Adding users.assigned_agent_id...');
+    await pool.query(`ALTER TABLE users ADD COLUMN assigned_agent_id UUID`);
+    changed = true;
+  }
+  if (!(await constraintExists('fk_users_assigned_agent'))) {
+    console.log('Adding users -> agents (assigned_agent_id) foreign key...');
+    await pool.query(`ALTER TABLE users ADD CONSTRAINT fk_users_assigned_agent FOREIGN KEY (assigned_agent_id) REFERENCES agents(id)`);
+    changed = true;
+  }
+
   console.log('Checking for external_places table (Batch 25)...');
   if (!(await tableExists('external_places'))) {
     console.log('Creating external_places...');

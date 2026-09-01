@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMySettings, updateMySettings, setup2FA, confirm2FA, disable2FA } from '../api/client';
+import { getMySettings, updateMySettings, updateMyProfile, setup2FA, confirm2FA, disable2FA } from '../api/client';
 import { useTheme } from '../theme';
 
 // Batch 19 — frontend-agent had no Settings page at all: payout bank
@@ -35,12 +35,99 @@ export default function Settings() {
 
       {agent && (
         <>
+          <DiscoveryProfileSection agent={agent} onSaved={setAgent} />
           <PayoutDetailsSection agent={agent} onSaved={setAgent} />
           <TwoFactorSection agent={agent} onChanged={setAgent} />
           <AppearanceSection />
         </>
       )}
     </div>
+  );
+}
+
+const SPECIALTY_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'guesthouse', label: 'Guesthouse' },
+  { value: 'tour_guide', label: 'Tour guide' },
+  { value: 'excursion', label: 'Excursion' },
+  { value: 'shopping', label: 'Shopping' },
+];
+
+// The discovery profile tourists filter on in the "Find an agent" screen
+// (backend GET /api/agents/search). Service islands are entered as a plain
+// comma-separated list rather than forcing the tourist app's single-value
+// IslandPicker into a multi-select — the backend matches them
+// case/whitespace-insensitively.
+function DiscoveryProfileSection({ agent, onSaved }) {
+  const [specialty, setSpecialty] = useState(agent.specialty || '');
+  const [islandsText, setIslandsText] = useState((agent.service_islands || []).join(', '));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setSaved(false);
+    try {
+      const service_islands = islandsText
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const data = await updateMyProfile({ specialty: specialty || null, service_islands });
+      onSaved((prev) => ({ ...prev, specialty: data.agent.specialty, service_islands: data.agent.service_islands }));
+      setIslandsText((data.agent.service_islands || []).join(', '));
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 4 }}>
+        Discovery profile
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        How tourists find you when searching for an agent.
+      </p>
+
+      <label htmlFor="agent-specialty" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Specialty
+      </label>
+      <select
+        id="agent-specialty"
+        className="input-field"
+        value={specialty}
+        onChange={(e) => setSpecialty(e.target.value)}
+        style={{ marginBottom: 10 }}
+      >
+        {SPECIALTY_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      <label htmlFor="agent-islands" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+        Islands you serve (comma-separated)
+      </label>
+      <input
+        id="agent-islands"
+        className="input-field"
+        placeholder="e.g. Maafushi, Malé, Dhigurah"
+        value={islandsText}
+        onChange={(e) => setIslandsText(e.target.value)}
+        style={{ marginBottom: 10 }}
+      />
+
+      {error && <p className="error-text">{error}</p>}
+      {saved && <p style={{ fontSize: 12, color: 'var(--lagoon)', margin: '0 0 8px' }}>Saved.</p>}
+      <button className="btn-primary" type="submit" disabled={saving}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    </form>
   );
 }
 

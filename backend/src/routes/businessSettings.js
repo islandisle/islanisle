@@ -1,8 +1,11 @@
 // Business Settings — script Section 4.8.
 
 import { Router } from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { loginLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -30,7 +33,7 @@ async function requireBusinessOwnerOrAdmin(req, res, next) {
  */
 router.get('/:businessId/settings', authenticate, requireBusinessOwnerOrAdmin, async (req, res) => {
   const result = await query(
-    `SELECT id, name, type, location_island, contact_info, subscription_tier, subscription_expiry,
+    `SELECT id, name, type, location_island, location_atoll, contact_info, subscription_tier, subscription_expiry,
             payout_bank_details, refund_fee_business_percent, notification_preferences, account_status,
             pay_at_visit_commission_owed
      FROM businesses WHERE id = $1`,
@@ -74,25 +77,26 @@ router.get('/:businessId/pay-at-visit-incidents', authenticate, requireBusinessO
 
 /**
  * PATCH /api/business/:businessId/settings
- * body: any subset of { name, location_island, contact_info, payout_bank_details,
+ * body: any subset of { name, location_island, location_atoll, contact_info, payout_bank_details,
  *                        refund_fee_business_percent, notification_preferences }
  */
 router.patch('/:businessId/settings', authenticate, requireBusinessOwner, async (req, res) => {
-  const { name, location_island, contact_info, payout_bank_details, refund_fee_business_percent, notification_preferences } = req.body;
+  const { name, location_island, location_atoll, contact_info, payout_bank_details, refund_fee_business_percent, notification_preferences } = req.body;
 
   const result = await query(
     `UPDATE businesses SET
        name = COALESCE($1, name),
        location_island = COALESCE($2, location_island),
-       contact_info = COALESCE($3, contact_info),
-       payout_bank_details = COALESCE($4, payout_bank_details),
-       refund_fee_business_percent = COALESCE($5, refund_fee_business_percent),
-       notification_preferences = COALESCE($6, notification_preferences),
+       location_atoll = COALESCE($3, location_atoll),
+       contact_info = COALESCE($4, contact_info),
+       payout_bank_details = COALESCE($5, payout_bank_details),
+       refund_fee_business_percent = COALESCE($6, refund_fee_business_percent),
+       notification_preferences = COALESCE($7, notification_preferences),
        updated_at = now()
-     WHERE id = $7
+     WHERE id = $8
      RETURNING id, name, refund_fee_business_percent, notification_preferences`,
     [
-      name, location_island,
+      name, location_island, location_atoll,
       contact_info ? JSON.stringify(contact_info) : null,
       payout_bank_details ? JSON.stringify(payout_bank_details) : null,
       refund_fee_business_percent,
@@ -109,7 +113,6 @@ router.patch('/:businessId/settings', authenticate, requireBusinessOwner, async 
  */
 router.post('/:businessId/staff', authenticate, requireBusinessOwner, async (req, res) => {
   const { name, login_email, temp_password, permission_level } = req.body;
-  const bcrypt = (await import('bcrypt')).default;
   const passwordHash = await bcrypt.hash(temp_password, 12);
 
   const result = await query(
@@ -118,6 +121,61 @@ router.post('/:businessId/staff', authenticate, requireBusinessOwner, async (req
     [req.params.businessId, name, login_email, passwordHash, permission_level || 'front_desk']
   );
   res.status(201).json({ staff: result.rows[0] });
+});
+
+/**
+ * POST /api/business/staff-login
+ * body: { login_email, password }
+ * A staff_accounts row was previously only ever created by the owner
+ * (POST above) with no way to actually use it — this is that missing
+ * login. No businessId in the URL since a staff member logs in with just
+ * their email/password like anyone else; which business they belong to
+ * comes back in the response and is embedded in the token itself
+ * (role: 'staff', businessId), which checkin.js's ownership checks accept
+ * alongside the owner's own 'user' role. Deliberately narrower than the
+ * owner's session: a staff token only ever grants check-in access, never
+ * settings, payouts, or listing management, regardless of permission_level
+ * (only 'front_desk' exists today, but this stays role-gated at the route
+ * level rather than trusting permission_level to expand safely later).
+ */
+router.post('/staff-login', loginLimiter, async (req, res) => {
+  const { login_email, password } = req.body;
+  if (!login_email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const result = await query(
+    `SELECT s.id, s.name, s.password_hash, s.permission_level, s.status,
+            s.business_id, b.name AS business_name
+     FROM staff_accounts s
+     JOIN businesses b ON b.id = s.business_id
+     WHERE s.login_email = $1`,
+    [login_email]
+  );
+  if (!result.rows.length) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  const staff = result.rows[0];
+  const valid = await bcrypt.compare(password, staff.password_hash);
+  if (!valid) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
+  if (staff.status !== 'active') {
+    return res.status(403).json({ error: 'This staff account has been revoked. Ask your manager for a new invite.' });
+  }
+
+  const token = jwt.sign(
+    { id: staff.id, role: 'staff', businessId: staff.business_id, permissionLevel: staff.permission_level },
+    process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+  res.json({
+    token,
+    staff: {
+      id: staff.id, name: staff.name, permission_level: staff.permission_level,
+      business_id: staff.business_id, business_name: staff.business_name,
+    },
+  });
 });
 
 router.post('/:businessId/staff/:staffId/revoke', authenticate, requireBusinessOwner, async (req, res) => {
@@ -137,6 +195,50 @@ router.get('/:businessId/staff', authenticate, requireBusinessOwnerOrAdmin, asyn
     [req.params.businessId]
   );
   res.json({ staff: result.rows });
+});
+
+/**
+ * GET /api/business/:businessId/agents
+ * The agents connected to this business (agents.js's POST /connect creates
+ * the row), each with the commission_rate this business has set for them —
+ * NULL until it's set, in which case agents.js's DEFAULT_COMMISSION_RATE
+ * applies to that agent's bookings. This is the business's authority over
+ * what it pays out; the agent can't set it (see agents.js's file header re:
+ * the deliberately-deferred business-side controls on this table).
+ */
+router.get('/:businessId/agents', authenticate, requireBusinessOwner, async (req, res) => {
+  const result = await query(
+    `SELECT a.id, a.name, a.contact_email, acb.commission_rate
+     FROM agent_connected_businesses acb
+     JOIN agents a ON a.id = acb.agent_id
+     WHERE acb.business_id = $1
+     ORDER BY a.name`,
+    [req.params.businessId]
+  );
+  res.json({ agents: result.rows });
+});
+
+/**
+ * PATCH /api/business/:businessId/agents/:agentId/commission-rate
+ * body: { commission_rate: number } — 0-100, the percentage this business
+ * pays this agent per booking. Rejected outside that range.
+ */
+router.patch('/:businessId/agents/:agentId/commission-rate', authenticate, requireBusinessOwner, async (req, res) => {
+  const rate = Number(req.body?.commission_rate);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+    return res.status(400).json({ error: 'commission_rate must be a number between 0 and 100.' });
+  }
+
+  const result = await query(
+    `UPDATE agent_connected_businesses SET commission_rate = $1
+     WHERE business_id = $2 AND agent_id = $3
+     RETURNING agent_id, commission_rate`,
+    [rate, req.params.businessId, req.params.agentId]
+  );
+  if (!result.rows.length) {
+    return res.status(404).json({ error: 'That agent is not connected to this business.' });
+  }
+  res.json({ agent: result.rows[0] });
 });
 
 const VALID_DISCOUNT_TYPES = ['percentage', 'fixed'];

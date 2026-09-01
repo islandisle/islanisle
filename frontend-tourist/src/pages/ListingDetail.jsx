@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup, getBusinessClosures } from '../api/client';
+import { getListingDetail, createBooking, createOrder, getBusinessReviews, joinWaitlist, checkDelivery, getMyGroup, getBusinessClosures, uploadFlightTicket } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import ChatPanel from '../components/ChatPanel';
 import Hint from '../components/Hint';
@@ -8,6 +8,7 @@ import { SectionArt } from '../components/SectionArt';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { friendlyError } from '../friendlyError';
 import { useLanguage } from '../i18n';
+import { formatPrice } from '../utils/currency';
 
 function getCurrentUser() {
   const raw = localStorage.getItem('atollisle_user');
@@ -75,7 +76,7 @@ export default function ListingDetail() {
   if (!listing) return <p style={{ padding: 20 }} className="error-text">{t('checkout.listing_not_found')}</p>;
 
   if (result) {
-    return <PendingPayment result={result} onDone={() => navigate('/')} />;
+    return <PendingPayment result={result} isLocal={isLocal} onDone={() => navigate('/')} />;
   }
 
   const price = isLocal ? listing.local_price : listing.tourist_price;
@@ -154,14 +155,14 @@ export default function ListingDetail() {
           {isLocal ? t('checkout.local_price') : t('checkout.tourist_price')}
         </p>
         <p style={{ fontSize: 22, fontWeight: 600, color: 'var(--lagoon)', margin: 0 }}>
-          ${price}
+          {formatPrice(price, isLocal)}
         </p>
       </div>
 
       <RefundFeeDisclosure listing={listing} />
 
       {listing.business_type === 'shop' ? (
-        <ShopCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
+        <ShopCheckout listing={listing} isLocal={isLocal} onSuccess={setResult} error={error} setError={setError} />
       ) : (
         <SlotCheckout listing={listing} onSuccess={setResult} error={error} setError={setError} />
       )}
@@ -383,6 +384,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
   const [booking, setBooking] = useState(false);
   const [slotFull, setSlotFull] = useState(false);
   const [showFailurePopup, setShowFailurePopup] = useState(false);
+  const [flightTicketNeeded, setFlightTicketNeeded] = useState(false);
 
   function toggleMember(userId, checked) {
     setMemberIds((prev) => (checked ? [...prev, userId] : prev.filter((id) => id !== userId)));
@@ -396,6 +398,7 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
     setBooking(true);
     setError('');
     setSlotFull(false);
+    setFlightTicketNeeded(false);
     try {
       const res = await createBooking({
         listing_id: listing.id, slot_start: slotStart, payment_method: 'pay_at_visit', promo_code: promoCode,
@@ -411,15 +414,22 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         onSuccess(res);
       }
     } catch (err) {
-      // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
-      // A 409 (slot just got taken) gets its own inline waitlist offer
-      // instead of the modal, since "join the waitlist" is a more useful
-      // next step than retrying the exact same slot.
-      setError(friendlyError(err, { t }));
-      if (err.status === 409) {
-        setSlotFull(true);
+      // Cross-island flight-ticket gate (backend middleware/flightTicketGate.js):
+      // handled inline below with an upload prompt that re-submits this same
+      // booking on success — not the generic failure modal.
+      if (err.code === 'flight_ticket_required') {
+        setFlightTicketNeeded(true);
       } else {
-        setShowFailurePopup(true);
+        // Section 9's "Payment failure" popup pattern — offer retry, not a dead end.
+        // A 409 (slot just got taken) gets its own inline waitlist offer
+        // instead of the modal, since "join the waitlist" is a more useful
+        // next step than retrying the exact same slot.
+        setError(friendlyError(err, { t }));
+        if (err.status === 409) {
+          setSlotFull(true);
+        } else {
+          setShowFailurePopup(true);
+        }
       }
     } finally {
       setBooking(false);
@@ -463,6 +473,10 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
 
       {slotFull && <WaitlistButton listingId={listing.id} slotStart={slotStart} />}
 
+      {flightTicketNeeded && (
+        <FlightTicketPrompt onUploaded={() => { setFlightTicketNeeded(false); handleBook(); }} />
+      )}
+
       {showFailurePopup && (
         <CheckoutFailurePopup
           message={error}
@@ -471,6 +485,52 @@ function SlotCheckout({ listing, onSuccess, error, setError }) {
         />
       )}
     </>
+  );
+}
+
+// Cross-island flight-ticket gate (backend middleware/flightTicketGate.js)
+// rejected the submission with code 'flight_ticket_required'. Rather than a
+// dead-end error, take the upload inline and re-run the exact same
+// booking/order on success — the same retry-on-success shape as
+// CheckoutFailurePopup's "Try again", just with an upload step first.
+function FlightTicketPrompt({ onUploaded }) {
+  const { t } = useLanguage();
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleUpload() {
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      await uploadFlightTicket(file);
+      onUploaded();
+    } catch (err) {
+      setError(friendlyError(err, { t }));
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 16, marginTop: 12, background: 'var(--coral-light)', border: 'none' }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 6px' }}>
+        Flight ticket needed
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+        You're checked in on another island. Upload your flight ticket to confirm you've flown into the Maldives, and we'll finish this for you.
+      </p>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        style={{ fontSize: 13, marginBottom: 10, display: 'block' }}
+      />
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn-primary" style={{ width: '100%' }} onClick={handleUpload} disabled={!file || uploading}>
+        {uploading ? 'Uploading…' : 'Upload and continue'}
+      </button>
+    </div>
   );
 }
 
@@ -603,7 +663,7 @@ function WaitlistButton({ listingId, slotStart }) {
 // A shop listing page is a single product; multi-item carts across several
 // listings from the same shop aren't built on the frontend yet even though
 // POST /api/orders' items array supports it — that's a real, separate gap.
-function ShopCheckout({ listing, onSuccess, error, setError }) {
+function ShopCheckout({ listing, isLocal, onSuccess, error, setError }) {
   const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [fulfillment, setFulfillment] = useState(
@@ -619,6 +679,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
   const [checkingDelivery, setCheckingDelivery] = useState(false);
   const [ordering, setOrdering] = useState(false);
   const [showFailurePopup, setShowFailurePopup] = useState(false);
+  const [flightTicketNeeded, setFlightTicketNeeded] = useState(false);
 
   function toggleMember(userId, checked) {
     setMemberIds((prev) => (checked ? [...prev, userId] : prev.filter((id) => id !== userId)));
@@ -653,6 +714,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
     }
     setOrdering(true);
     setError('');
+    setFlightTicketNeeded(false);
     try {
       const res = await createOrder({
         items: [{ listing_id: listing.id, quantity }],
@@ -669,8 +731,13 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         onSuccess(res);
       }
     } catch (err) {
-      setError(friendlyError(err, { t }));
-      setShowFailurePopup(true);
+      // Cross-island flight-ticket gate — handled inline, same as SlotCheckout.
+      if (err.code === 'flight_ticket_required') {
+        setFlightTicketNeeded(true);
+      } else {
+        setError(friendlyError(err, { t }));
+        setShowFailurePopup(true);
+      }
     } finally {
       setOrdering(false);
     }
@@ -763,7 +830,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
             <>
               <p style={{ fontSize: 12, color: 'var(--lagoon)', marginBottom: 8 }}>
                 Deliverable via {deliveryCheck.boat_name} — departs {new Date(deliveryCheck.departure).toLocaleString()}.
-                {' '}{deliveryCheck.delivery_fee > 0 ? `Delivery fee: $${deliveryCheck.delivery_fee}.` : 'Free delivery.'}
+                {' '}{deliveryCheck.delivery_fee > 0 ? `Delivery fee: ${formatPrice(deliveryCheck.delivery_fee, isLocal)}.` : 'Free delivery.'}
               </p>
               <label htmlFor="shop-handover" style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 How should it be handed over?
@@ -803,6 +870,10 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
         {ordering ? t('checkout.placing_order') : t('common.buy_now')}
       </button>
 
+      {flightTicketNeeded && (
+        <FlightTicketPrompt onUploaded={() => { setFlightTicketNeeded(false); handleOrder(); }} />
+      )}
+
       {showFailurePopup && (
         <CheckoutFailurePopup
           message={error}
@@ -821,7 +892,7 @@ function ShopCheckout({ listing, onSuccess, error, setError }) {
 // person. This is deliberately the only path wired up in this pass; the
 // 'online' Stripe path still exists on the backend for later, but isn't
 // exposed here.
-function PendingPayment({ result, onDone }) {
+function PendingPayment({ result, isLocal, onDone }) {
   const { t } = useLanguage();
   const isOrder = Boolean(result.order);
   // Section 4.2: a restaurant reservation lands in 'pending_approval'
@@ -837,11 +908,11 @@ function PendingPayment({ result, onDone }) {
           {result.message}
         </p>
         <div style={{ background: 'var(--sand)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
-          <PriceLine label={t('pay.base_price')} value={result.price_breakdown.base_price} />
+          <PriceLine label={t('pay.base_price')} value={result.price_breakdown.base_price} isLocal={isLocal} />
           {result.price_breakdown.promo_discount > 0 && (
-            <PriceLine label={t('pay.promo_discount')} value={-result.price_breakdown.promo_discount} />
+            <PriceLine label={t('pay.promo_discount')} value={-result.price_breakdown.promo_discount} isLocal={isLocal} />
           )}
-          <PriceLine label={t('pay.total_in_person')} value={result.price_breakdown.total_charged} bold />
+          <PriceLine label={t('pay.total_in_person')} value={result.price_breakdown.total_charged} isLocal={isLocal} bold />
         </div>
         {result.delivery && (
           <p style={{ fontSize: 13, color: 'var(--navy)', marginBottom: 16 }}>
@@ -914,11 +985,11 @@ function PaymentMethodOptions() {
   );
 }
 
-function PriceLine({ label, value, bold }) {
+function PriceLine({ label, value, bold, isLocal }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: bold ? 600 : 400, marginBottom: 4 }}>
       <span>{label}</span>
-      <span>{value < 0 ? `-$${Math.abs(value)}` : `$${value}`}</span>
+      <span>{value < 0 ? `-${formatPrice(Math.abs(value), isLocal)}` : formatPrice(value, isLocal)}</span>
     </div>
   );
 }

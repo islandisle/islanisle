@@ -8,6 +8,8 @@
 
 import { Router } from 'express';
 import { query } from '../config/db.js';
+import { optionalAuthenticate } from '../middleware/auth.js';
+import { applyAgentMarkup, applyAgentMarkupToRows } from '../services/agentPricing.js';
 
 const router = Router();
 
@@ -91,7 +93,7 @@ router.get('/', async (_req, res) => {
 });
 
 /**
- * GET /api/islands/:island/listings?type=guesthouse&accessibility=wheelchair_accessible,step_free_access
+ * GET /api/islands/:island/listings?type=guesthouse&atoll=Baa&accessibility=wheelchair_accessible,step_free_access
  * Section 3.2: everything available on the selected island, optionally
  * filtered by business type. No auth required (browse-as-guest, Section 7.4).
  *
@@ -105,16 +107,32 @@ router.get('/', async (_req, res) => {
  * case/whitespace-insensitively is a pragmatic fix for that; a real island
  * picker backed by a fixed list would remove the root cause entirely.
  *
+ * ?atoll disambiguates the 14 island names that exist in more than one
+ * atoll (e.g. Maalhos is in both Alifu Alifu and Baa). It's an optional
+ * best-effort filter, not a hard one: a business is only excluded when the
+ * tourist's atoll is known AND the business has its own location_atoll on
+ * file AND the two differ. A legacy business with location_atoll = NULL
+ * (the column is nullable and older rows predate it) still shows up under
+ * its island regardless — the ambiguity existed before this param and
+ * shouldn't turn into a false negative now.
+ *
  * accessibility is a comma-separated list of listings.accessibility_features
  * tags; a listing must have ALL requested tags to match (Postgres array
  * containment, `@>`) — a tourist picking "wheelchair accessible" AND
  * "step-free access" wants both, not either.
+ *
+ * optionalAuthenticate: no token required (browse-as-guest), but when one
+ * is present, tourist_price for any business the caller's assigned agent
+ * is approved-connected to is silently marked up by that connection's
+ * commission rate — see services/agentPricing.js. Guests never see markup.
  */
-router.get('/:island/listings', async (req, res) => {
+router.get('/:island/listings', optionalAuthenticate, async (req, res) => {
   const { island } = req.params;
-  const { type, accessibility, dietary } = req.query;
+  const { type, accessibility, dietary, atoll } = req.query;
 
-  const params = [island];
+  // $1 island, $2 atoll (nullable — see the WHERE clause below); every
+  // other filter appends after these and reads its own $n off params.length.
+  const params = [island, atoll || null];
   let typeFilter = '';
   if (type) {
     params.push(type);
@@ -157,6 +175,11 @@ router.get('/:island/listings', async (req, res) => {
        FROM reviews r WHERE r.business_id = b.id
      ) rv ON true
      WHERE LOWER(TRIM(b.location_island)) = LOWER(TRIM($1))
+       AND (
+         $2::text IS NULL
+         OR b.location_atoll IS NULL
+         OR LOWER(TRIM(b.location_atoll)) = LOWER(TRIM($2))
+       )
        AND l.approval_status = 'approved'
        AND b.approval_status = 'approved'
        AND b.account_status = 'active'
@@ -167,7 +190,8 @@ router.get('/:island/listings', async (req, res) => {
     params
   );
 
-  res.json({ island, listings: result.rows });
+  const listings = await applyAgentMarkupToRows(result.rows, req.user?.id);
+  res.json({ island, listings });
 });
 
 /**
@@ -179,7 +203,7 @@ router.get('/:island/listings', async (req, res) => {
  * business_type/location_island alongside so the frontend can jump the
  * tourist's island picker to wherever the match actually lives.
  */
-router.get('/search', async (req, res) => {
+router.get('/search', optionalAuthenticate, async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) {
     return res.json({ query: q, results: [] });
@@ -200,14 +224,17 @@ router.get('/search', async (req, res) => {
     [`%${q}%`]
   );
 
-  res.json({ query: q, results: result.rows });
+  const results = await applyAgentMarkupToRows(result.rows, req.user?.id);
+  res.json({ query: q, results });
 });
 
 /**
  * GET /api/listings/:id
- * Full detail for one listing.
+ * Full detail for one listing — ListingDetail.jsx's data source.
+ * optionalAuthenticate + agent-markup on tourist_price, same as the browse
+ * endpoints, so what's shown here matches what bookings.js's POST / charges.
  */
-router.get('/detail/:id', async (req, res) => {
+router.get('/detail/:id', optionalAuthenticate, async (req, res) => {
   const result = await query(
     `SELECT l.*, b.name AS business_name, b.type AS business_type, b.verified_badge,
             b.refund_fee_business_percent
@@ -218,7 +245,9 @@ router.get('/detail/:id', async (req, res) => {
   if (!result.rows.length) {
     return res.status(404).json({ error: 'Listing not found.' });
   }
-  res.json({ listing: result.rows[0] });
+  const listing = result.rows[0];
+  listing.tourist_price = await applyAgentMarkup(listing.tourist_price, req.user?.id, listing.business_id);
+  res.json({ listing });
 });
 
 /**
@@ -226,32 +255,49 @@ router.get('/detail/:id', async (req, res) => {
  * Section 3.1: Arrival Transfers screen — speedboat/airplane options from
  * the airport to the tourist's chosen destination island.
  */
-router.get('/arrivals', async (req, res) => {
+router.get('/arrivals', optionalAuthenticate, async (req, res) => {
   const { destination } = req.query;
   if (!destination) {
     return res.status(400).json({ error: 'destination query param is required.' });
   }
 
+  // Reliability-first ordering: a tourist landing at the airport should see
+  // the verified, well-reviewed operators before the cheapest one — price
+  // alone doesn't tell you whether the boat reliably shows up. Verified
+  // badge first, then rating, then review volume (a 5.0 from 2 reviews is
+  // less proven than a 4.7 from 80), then price as the final tie-break.
   const result = await query(
     `SELECT l.id, l.title, l.description, l.tourist_price, l.local_price, l.type_specific_fields,
-            b.id AS business_id, b.name AS business_name
+            b.id AS business_id, b.name AS business_name, b.verified_badge,
+            COALESCE(rv.review_count, 0) AS review_count,
+            rv.average_rating
      FROM listings l
      JOIN businesses b ON b.id = l.business_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS review_count, AVG(rating)::float AS average_rating
+       FROM reviews r WHERE r.business_id = b.id
+     ) rv ON true
      WHERE b.type = 'speedboat'
        AND l.approval_status = 'approved' AND b.approval_status = 'approved'
        AND (l.type_specific_fields->>'destination' = $1)
-     ORDER BY l.tourist_price ASC`,
+     ORDER BY b.verified_badge DESC, rv.average_rating DESC NULLS LAST,
+              COALESCE(rv.review_count, 0) DESC, l.tourist_price ASC`,
     [destination]
   );
-  res.json({ destination, transfers: result.rows });
+  // Markup is applied after ordering — the sort is reliability-first with
+  // price only a final tie-break, so a per-connection markup on top of raw
+  // price doesn't meaningfully reorder it.
+  const transfers = await applyAgentMarkupToRows(result.rows, req.user?.id);
+  res.json({ destination, transfers });
 });
 
 /**
  * GET /api/islands/transfers?origin=<island>&destination=<island>
  * Section 3.2: Island Transfers screen — same idea, island-to-island rather
- * than airport-to-island.
+ * than airport-to-island. Same reliability-first ordering as the arrival
+ * transfers route above.
  */
-router.get('/transfers', async (req, res) => {
+router.get('/transfers', optionalAuthenticate, async (req, res) => {
   const { origin, destination } = req.query;
   if (!origin || !destination) {
     return res.status(400).json({ error: 'origin and destination query params are required.' });
@@ -259,17 +305,25 @@ router.get('/transfers', async (req, res) => {
 
   const result = await query(
     `SELECT l.id, l.title, l.tourist_price, l.local_price, l.type_specific_fields,
-            b.id AS business_id, b.name AS business_name
+            b.id AS business_id, b.name AS business_name, b.verified_badge,
+            COALESCE(rv.review_count, 0) AS review_count,
+            rv.average_rating
      FROM listings l
      JOIN businesses b ON b.id = l.business_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS review_count, AVG(rating)::float AS average_rating
+       FROM reviews r WHERE r.business_id = b.id
+     ) rv ON true
      WHERE b.type = 'speedboat'
        AND l.approval_status = 'approved' AND b.approval_status = 'approved'
        AND (l.type_specific_fields->>'origin' = $1)
        AND (l.type_specific_fields->>'destination' = $2)
-     ORDER BY l.tourist_price ASC`,
+     ORDER BY b.verified_badge DESC, rv.average_rating DESC NULLS LAST,
+              COALESCE(rv.review_count, 0) DESC, l.tourist_price ASC`,
     [origin, destination]
   );
-  res.json({ origin, destination, transfers: result.rows });
+  const transfers = await applyAgentMarkupToRows(result.rows, req.user?.id);
+  res.json({ origin, destination, transfers });
 });
 
 export default router;

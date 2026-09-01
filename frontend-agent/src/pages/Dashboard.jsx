@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getConnectedBusinesses, connectToBusiness, checkAvailability, createAgentBooking,
-  getMyAgentBookings, getMyCommissions, getThread, sendMessage,
+  getMyAgentBookings, getMyCommissions, getThread, sendMessage, getMyThreads,
   searchBusinesses, lookupGuests,
 } from '../api/client';
 import { useModalA11y } from '../useModalA11y';
 import { friendlyError } from '../friendlyError';
 import EntityPicker from '../components/EntityPicker';
 import NavMenu from '../components/NavMenu';
+import Tabs from '../components/Tabs';
 
 // MVP agent portal — script Section 12's Agent account type. Scoped down
 // per explicit direction: connect to businesses, check availability, book
@@ -81,13 +82,42 @@ export default function Dashboard() {
           Your account is pending Super Admin approval — connecting to businesses and making bookings will be available once approved.
         </p>
       ) : (
-        <>
-          <ConnectSection onConnected={loadAll} />
-          <BusinessesSection businesses={businesses} onChat={(b) => setChatWith({ role: 'business', id: b.id, label: b.name })} />
-          <BookingForm businesses={businesses} onBooked={loadAll} />
-          <BookingsSection agentBookings={agentBookings} onChat={setChatWith} />
-          <CommissionsSection commissions={commissions} />
-        </>
+        <Tabs
+          storageKey="atollisle_agent_tab"
+          tabs={[
+            {
+              id: 'businesses',
+              label: 'Businesses',
+              content: (
+                <>
+                  <ConnectSection onConnected={loadAll} />
+                  <BusinessesSection businesses={businesses} onChat={(b) => setChatWith({ role: 'business', id: b.id, label: b.name })} />
+                </>
+              ),
+            },
+            {
+              id: 'book',
+              label: 'Make a booking',
+              content: <BookingForm businesses={businesses} onBooked={loadAll} />,
+            },
+            {
+              id: 'bookings',
+              label: 'Bookings',
+              badge: agentBookings.length || undefined,
+              content: <BookingsSection agentBookings={agentBookings} onChat={setChatWith} />,
+            },
+            {
+              id: 'messages',
+              label: 'Messages',
+              content: <MessagesSection onOpen={setChatWith} />,
+            },
+            {
+              id: 'commissions',
+              label: 'Commissions',
+              content: <CommissionsSection commissions={commissions} />,
+            },
+          ]}
+        />
       )}
 
       {chatWith && <ChatPanel with={chatWith} onClose={() => setChatWith(null)} />}
@@ -172,7 +202,11 @@ function BookingForm({ businesses, onBooked }) {
   const [slotStart, setSlotStart] = useState('');
   const [guestName, setGuestName] = useState('');
   const [guestUser, setGuestUser] = useState(null);
-  const [commissionRate, setCommissionRate] = useState('10');
+
+  // Read-only: the commission rate is set by the business, not the agent —
+  // GET /api/agents/businesses returns the resolved rate (the business's
+  // configured value, or the platform default until it sets one).
+  const selectedBusiness = businesses.find((b) => b.id === businessId);
 
   const findGuests = useCallback(async (q) => {
     const d = await lookupGuests(q);
@@ -184,7 +218,7 @@ function BookingForm({ businesses, onBooked }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const listings = businesses.find((b) => b.id === businessId)?.listings || [];
+  const listings = selectedBusiness?.listings || [];
 
   async function handleCheck() {
     if (!listingId || !slotStart) return;
@@ -213,7 +247,6 @@ function BookingForm({ businesses, onBooked }) {
       const res = await createAgentBooking({
         business_id: businessId, listing_id: listingId, slot_start: slotStart,
         guest_user_id: guestUser?.id || undefined, guest_name: guestUser ? undefined : (guestName.trim() || undefined),
-        commission_rate: Number(commissionRate) || 0,
       });
       setSuccess(res.message);
       setListingId(''); setSlotStart(''); setGuestName(''); setGuestUser(null); setAvailability(null);
@@ -301,10 +334,12 @@ function BookingForm({ businesses, onBooked }) {
         style={{ marginBottom: 10 }}
       />
 
-      <label htmlFor="booking-commission-rate" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-        Your commission (%)
-      </label>
-      <input id="booking-commission-rate" className="input-field" type="number" min="0" max="100" step="0.5" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} style={{ marginBottom: 10 }} />
+      {selectedBusiness && (
+        <p style={{ fontSize: 13, color: 'var(--navy)', margin: '2px 0 10px' }}>
+          Your commission: <strong>{selectedBusiness.commission_rate}%</strong>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> · set by the business</span>
+        </p>
+      )}
 
       {error && <p className="error-text">{error}</p>}
       {success && <p style={{ fontSize: 13, color: 'var(--lagoon)' }}>{success}</p>}
@@ -407,6 +442,53 @@ function CommissionsSection({ commissions }) {
           <p style={{ fontSize: 13, color: 'var(--navy)', margin: '0 0 2px' }}>${c.amount} — {c.business_name}</p>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{c.status}{c.schedule_date && ` · ${c.schedule_date}`}</p>
         </div>
+      ))}
+    </div>
+  );
+}
+
+// Every thread this agent is part of — including ones a tourist started
+// from the "Find an agent" screen (which the Businesses/Bookings chat
+// entry points wouldn't surface, since there's no connection or booking
+// behind them). Backed by GET /api/messages/threads/mine, which already
+// resolves each thread's other party's name.
+function MessagesSection({ onOpen }) {
+  const [threads, setThreads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getMyThreads()
+      .then((d) => setThreads(d.threads || []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', marginBottom: 10 }}>
+        Your conversations ({threads.length})
+      </p>
+      {loading && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>}
+      {error && <p className="error-text">{error}</p>}
+      {!loading && !error && threads.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No conversations yet.</p>
+      )}
+      {threads.map((t) => (
+        <button
+          key={t.thread_key}
+          type="button"
+          className="card"
+          onClick={() => onOpen({ role: t.other_role, id: t.other_id, label: t.other_name })}
+          style={{ display: 'block', width: '100%', textAlign: 'left', padding: 12, marginBottom: 8, cursor: 'pointer', border: '1px solid var(--border)' }}
+        >
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>
+            {t.other_name} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>· {t.other_role}</span>
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {t.sender_role === 'agent' ? 'You: ' : ''}{t.text}
+          </p>
+        </button>
       ))}
     </div>
   );

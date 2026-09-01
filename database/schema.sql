@@ -13,6 +13,7 @@ CREATE TYPE user_type AS ENUM ('tourist', 'local');
 CREATE TYPE local_verification_status AS ENUM ('not_applicable', 'pending', 'verified', 'auto_reclassified', 'rejected');
 CREATE TYPE document_type AS ENUM ('id_card', 'passport');
 CREATE TYPE business_type AS ENUM ('guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop');
+CREATE TYPE agent_specialty AS ENUM ('guesthouse', 'tour_guide', 'excursion', 'shopping'); -- what a travel agent focuses on; tourists filter by it (see agents.js's GET /search)
 CREATE TYPE business_account_status AS ENUM ('active', 'suspended');
 CREATE TYPE business_approval_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE business_trust_tier AS ENUM ('new', 'graduated');
@@ -62,6 +63,14 @@ CREATE TABLE users (
     local_verification_status  local_verification_status NOT NULL DEFAULT 'not_applicable',
     uploaded_document_type      document_type,
     document_image_url          TEXT, -- required to exist before any booking/order (Section 9 document-upload gate)
+    flight_ticket_image_url     TEXT, -- proof of arrival, gated per-booking when
+                                       -- booking on a different island than the
+                                       -- tourist's current check-in (see
+                                       -- middleware/flightTicketGate.js). Existing
+                                       -- local dev DBs need this run manually:
+                                       -- ALTER TABLE users ADD COLUMN flight_ticket_image_url TEXT;
+                                       -- (also picked up by config/migrate.js, same
+                                       -- as every other single-column addition here)
     document_number             TEXT,
     date_of_birth                DATE,
     language                    TEXT DEFAULT 'en', -- Tourist accounts only (Section 2.1/11)
@@ -105,6 +114,12 @@ CREATE TABLE users (
     -- Defaults false so that flipping that flag off later reveals the
     -- real (currently all-unpaid) state rather than silently granting Pro.
     pro                           BOOLEAN NOT NULL DEFAULT false,
+    -- The travel agent this tourist has assigned themselves (nullable; set
+    -- via POST /api/users/assign-agent, cleared via /unassign-agent). While
+    -- set, prices shown for a business that agent is approved-connected to
+    -- are silently marked up by that connection's commission_rate — see
+    -- services/agentPricing.js. FK added after agents table exists (below).
+    assigned_agent_id             UUID,
     password_hash                TEXT NOT NULL,
     created_at                    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at                    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -152,6 +167,13 @@ CREATE TABLE businesses (
     refund_fee_business_percent        NUMERIC(4,2) NOT NULL DEFAULT 5.00, -- Section 7.1/4.8
     pay_at_visit_commission_owed        NUMERIC(12,2) NOT NULL DEFAULT 0, -- [PHASE 2]
     location_island                   TEXT,
+    location_atoll                    TEXT, -- paired with location_island; nullable so existing
+                                            -- businesses (free-text island, no atoll on file)
+                                            -- keep working — see listings.js's atoll-aware
+                                            -- query for how a NULL here is handled. Existing
+                                            -- local dev DBs: ALTER TABLE businesses ADD COLUMN location_atoll TEXT;
+                                            -- (also picked up by config/migrate.js, same as every
+                                            -- other single-column addition here)
     contact_info                     JSONB,
     -- Same 4-category shape as users.notification_preferences (Section 11's
     -- "Consistent settings pattern") — was {"new_booking","disputes",
@@ -727,6 +749,11 @@ CREATE TABLE agents (
     approval_status     business_approval_status NOT NULL DEFAULT 'pending',
     account_status      agent_account_status NOT NULL DEFAULT 'active',
     payout_bank_details   JSONB,
+    -- What this agent focuses on + the islands they operate in, both
+    -- nullable until the agent fills them in from Settings. Tourists filter
+    -- on these in the "Find an agent" screen (agents.js's GET /search).
+    specialty            agent_specialty,
+    service_islands       TEXT[],
     password_hash        TEXT NOT NULL,
     -- Batch 19: Agent Settings page's security section — mirrors
     -- users.two_factor_secret/two_factor_enabled (routes/twoFactor.js).
@@ -735,9 +762,27 @@ CREATE TABLE agents (
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE users ADD CONSTRAINT fk_users_assigned_agent
+    FOREIGN KEY (assigned_agent_id) REFERENCES agents(id);
+
 CREATE TABLE agent_connected_businesses (
     agent_id     UUID NOT NULL REFERENCES agents(id),
     business_id    UUID NOT NULL REFERENCES businesses(id),
+    commission_rate    NUMERIC(4,2), -- NULL until the business sets one; see
+                                      -- agents.js's DEFAULT_COMMISSION_RATE
+                                      -- fallback for what applies until then.
+                                      -- Existing local dev DBs:
+                                      -- ALTER TABLE agent_connected_businesses ADD COLUMN commission_rate NUMERIC(4,2);
+                                      -- (also picked up by config/migrate.js, same
+                                      -- as every other single-column addition here)
+    -- Business-side approval of the connection. The full accept/reject flow
+    -- (agent-connection-approval-brief.md) isn't built yet — POST /connect
+    -- still creates the row immediately — so this defaults to 'approved' to
+    -- preserve that behaviour. It exists now because the agent-discovery
+    -- pricing markup (services/agentPricing.js) only applies for an
+    -- 'approved' connection. Existing local dev DBs:
+    -- ALTER TABLE agent_connected_businesses ADD COLUMN status TEXT NOT NULL DEFAULT 'approved';
+    status             TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
     PRIMARY KEY (agent_id, business_id)
 );
 

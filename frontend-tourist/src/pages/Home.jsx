@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getIslandListings, sendSOS, getNotifications, getWeather, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
+import { getIslandListings, sendSOS, getNotifications, getWeather, getWeatherForecast, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
 import GlobalSearch from '../components/GlobalSearch';
@@ -13,6 +13,7 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonList } from '../components/Skeleton';
 import { useLanguage } from '../i18n';
 import { useToast } from '../components/Toast';
+import { formatPrice } from '../utils/currency';
 
 // Batch 31 — a few well-populated islands to suggest when the selected one
 // has nothing yet (the app rolls out island by island).
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/trips', label: 'My trips', icon: 'trips' },
   { to: '/favorites', label: 'Favorites', icon: 'favorites' },
   { to: '/messages', label: 'Messages', icon: 'messages' },
+  { to: '/find-agent', label: 'Find an agent', icon: 'guests' },
   { to: '/transfers', label: 'Arrival transfers', icon: 'transfers' },
   { to: '/local-guide', label: 'Local guide', icon: 'guide' },
   { to: '/emergency-contacts', label: 'Emergency contacts', icon: 'sos' },
@@ -34,6 +36,21 @@ const NAV_ITEMS = [
 ];
 
 const DEFAULT_ISLAND = 'Maafushi';
+const DEFAULT_ATOLL = 'Kaafu'; // Maafushi's real atoll — paired with DEFAULT_ISLAND so
+                               // downstream lookups can disambiguate same-named islands
+
+// Maldives runs on a fixed UTC+5 offset (Asia/Colombo — same zone the
+// backend's Open-Meteo calls already use for consistency). "Night" here
+// means the header/weather-icon switch to the moon, not a literal sunrise/
+// sunset calculation — a simple 6pm-6am window matches the tropics closely
+// enough (day length barely varies near the equator) without needing a
+// sun-position library for a decorative header.
+function isMaldivesNight() {
+  const maldivesHour = Number(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Colombo' }).format(new Date())
+  );
+  return maldivesHour >= 18 || maldivesHour < 6;
+}
 
 // Script Section 4.9 / spec's business_type enum — used here to build the
 // type filter pills. Kept in sync manually with backend/database/schema.sql
@@ -79,6 +96,7 @@ function getCurrentUser() {
 
 export default function Home() {
   const [island, setIsland] = useState(DEFAULT_ISLAND);
+  const [atoll, setAtoll] = useState(DEFAULT_ATOLL); // set together with `island` from IslandPicker
   const [typeFilter, setTypeFilter] = useState('');
   const [accessibilityFilter, setAccessibilityFilter] = useState([]);
   const [showAccessibilityFilters, setShowAccessibilityFilters] = useState(false);
@@ -113,10 +131,38 @@ export default function Home() {
   }, [typeFilter]);
   useEffect(() => () => { delete document.body.dataset.category; }, []);
 
+  // Accessibility features only mean anything for a place to stay
+  // (step-free access, wheelchair-accessible room, etc.) and dietary tags
+  // only mean anything for a place to eat — showing both filters under
+  // every category (including Excursion, Speedboat, Shop) let a tourist
+  // apply a filter that silently did nothing once they switched category,
+  // with no way to tell why their results looked off. Each panel now only
+  // appears where it's actually relevant; "All" keeps both, since it
+  // includes guesthouses and restaurants in its results. Switching to a
+  // category where a filter no longer applies also clears that filter's
+  // selections and collapses its panel, so a hidden filter can never keep
+  // silently narrowing results the tourist can't see or reach anymore.
+  const showsAccessibilityFilter = typeFilter === '' || typeFilter === 'guesthouse';
+  const showsDietaryFilter = typeFilter === '' || typeFilter === 'restaurant';
+
+  useEffect(() => {
+    if (!showsAccessibilityFilter) {
+      setAccessibilityFilter([]);
+      setShowAccessibilityFilters(false);
+    }
+  }, [showsAccessibilityFilter]);
+
+  useEffect(() => {
+    if (!showsDietaryFilter) {
+      setDietaryFilter([]);
+      setShowDietaryFilters(false);
+    }
+  }, [showsDietaryFilter]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getIslandListings(island, typeFilter || undefined, accessibilityFilter, dietaryFilter)
+    getIslandListings(island, typeFilter || undefined, accessibilityFilter, dietaryFilter, atoll || undefined)
       .then((data) => {
         if (!cancelled) setListings(data.listings);
       })
@@ -127,7 +173,7 @@ export default function Home() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [island, typeFilter, accessibilityFilter, dietaryFilter]);
+  }, [island, atoll, typeFilter, accessibilityFilter, dietaryFilter]);
 
   function toggleAccessibilityFeature(key, checked) {
     setAccessibilityFilter((prev) =>
@@ -237,8 +283,26 @@ export default function Home() {
         <GlobalSearch />
 
         <div style={{ marginBottom: 14 }}>
-          <IslandPicker value={island} onChange={setIsland} id="home-island-picker" />
+          <IslandPicker
+            value={island}
+            onChange={(isl, atl) => { setIsland(isl); setAtoll(atl || ''); }}
+            id="home-island-picker"
+          />
         </div>
+
+        <WeatherForecast island={island} />
+
+        <Link
+          to={`/transfers?from=${encodeURIComponent(island)}`}
+          className="card"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', marginBottom: 14, textDecoration: 'none',
+          }}
+        >
+          <span style={{ fontSize: 13, color: 'var(--navy)' }}>🏝️ Heading to another island?</span>
+          <span style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 600 }}>Find a transfer →</span>
+        </Link>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <FilterPill label={t('home.filter_all')} active={typeFilter === ''} onClick={() => setTypeFilter('')} />
@@ -252,90 +316,98 @@ export default function Home() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowAccessibilityFilters((v) => !v)}
-          aria-expanded={showAccessibilityFilters}
-          aria-controls="accessibility-filter-panel"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            marginBottom: showAccessibilityFilters ? 8 : 14,
-            fontSize: 13,
-            color: 'var(--lagoon)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          {t('home.accessibility_filters')}{accessibilityFilter.length > 0 ? ` (${accessibilityFilter.length})` : ''}
-          <span aria-hidden="true">{showAccessibilityFilters ? '▲' : '▼'}</span>
-        </button>
+        {showsAccessibilityFilter && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowAccessibilityFilters((v) => !v)}
+              aria-expanded={showAccessibilityFilters}
+              aria-controls="accessibility-filter-panel"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginBottom: showAccessibilityFilters ? 8 : 14,
+                fontSize: 13,
+                color: 'var(--lagoon)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {t('home.accessibility_filters')}{accessibilityFilter.length > 0 ? ` (${accessibilityFilter.length})` : ''}
+              <span aria-hidden="true">{showAccessibilityFilters ? '▲' : '▼'}</span>
+            </button>
 
-        {showAccessibilityFilters && (
-          <div
-            id="accessibility-filter-panel"
-            role="group"
-            aria-label="Filter listings by accessibility feature"
-            className="card"
-            style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
-          >
-            {ACCESSIBILITY_FEATURES.map((feature) => (
-              <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={accessibilityFilter.includes(feature.key)}
-                  onChange={(e) => toggleAccessibilityFeature(feature.key, e.target.checked)}
-                />
-                {feature.label}
-              </label>
-            ))}
-          </div>
+            {showAccessibilityFilters && (
+              <div
+                id="accessibility-filter-panel"
+                role="group"
+                aria-label="Filter listings by accessibility feature"
+                className="card"
+                style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+              >
+                {ACCESSIBILITY_FEATURES.map((feature) => (
+                  <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={accessibilityFilter.includes(feature.key)}
+                      onChange={(e) => toggleAccessibilityFeature(feature.key, e.target.checked)}
+                    />
+                    {feature.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        <button
-          type="button"
-          onClick={() => setShowDietaryFilters((v) => !v)}
-          aria-expanded={showDietaryFilters}
-          aria-controls="dietary-filter-panel"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            marginBottom: showDietaryFilters ? 8 : 14,
-            fontSize: 13,
-            color: 'var(--lagoon)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          {t('home.dietary_filters')}{dietaryFilter.length > 0 ? ` (${dietaryFilter.length})` : ''}
-          <span aria-hidden="true">{showDietaryFilters ? '▲' : '▼'}</span>
-        </button>
+        {showsDietaryFilter && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowDietaryFilters((v) => !v)}
+              aria-expanded={showDietaryFilters}
+              aria-controls="dietary-filter-panel"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginBottom: showDietaryFilters ? 8 : 14,
+                fontSize: 13,
+                color: 'var(--lagoon)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {t('home.dietary_filters')}{dietaryFilter.length > 0 ? ` (${dietaryFilter.length})` : ''}
+              <span aria-hidden="true">{showDietaryFilters ? '▲' : '▼'}</span>
+            </button>
 
-        {showDietaryFilters && (
-          <div
-            id="dietary-filter-panel"
-            role="group"
-            aria-label="Filter listings by dietary option"
-            className="card"
-            style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
-          >
-            {DIETARY_TAGS.map((tag) => (
-              <label key={tag.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={dietaryFilter.includes(tag.key)}
-                  onChange={(e) => toggleDietaryTag(tag.key, e.target.checked)}
-                />
-                {tag.label}
-              </label>
-            ))}
-          </div>
+            {showDietaryFilters && (
+              <div
+                id="dietary-filter-panel"
+                role="group"
+                aria-label="Filter listings by dietary option"
+                className="card"
+                style={{ padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+              >
+                {DIETARY_TAGS.map((tag) => (
+                  <label key={tag.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={dietaryFilter.includes(tag.key)}
+                      onChange={(e) => toggleDietaryTag(tag.key, e.target.checked)}
+                    />
+                    {tag.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         <Link
@@ -382,7 +454,10 @@ export default function Home() {
         {loading && <SkeletonList count={5} />}
         {error && <p className="error-text">{error}</p>}
         {!loading && !error && listings.length === 0 && (
-          <IslandEmptyState island={island} onPickIsland={setIsland} />
+          <IslandEmptyState
+            island={island}
+            onPickIsland={(isl) => { setIsland(isl); setAtoll(''); }}
+          />
         )}
 
         {listings.filter((l) => !openNowOnly || !l.is_closed).map((listing) => (
@@ -395,7 +470,7 @@ export default function Home() {
           />
         ))}
 
-        <ExternalPlacesSection island={island} />
+        <ExternalPlacesSection island={island} atoll={atoll} typeFilter={typeFilter} />
       </div>
 
       <SOSButton island={island} />
@@ -411,14 +486,119 @@ export default function Home() {
 // bucket). Deliberately separated from the real, bookable listings above
 // (own heading, no ListingCard, no booking action) so it's never mistaken
 // for something bookable through Atoll Isle.
-function ExternalPlacesSection({ island }) {
-  const [data, setData] = useState(null);
+// 5-day outlook — GET /api/weather/:atoll/forecast (stateless proxy onto
+// Open-Meteo's daily forecast; see backend/src/services/weather.js). Own
+// small icon set (not the big decorative WeatherIcon) since these render
+// tiny, side by side, in the body of the page rather than as one large
+// header glyph.
+const FORECAST_ICON = {
+  sunny: '☀️',
+  cloudy: '☁️',
+  rainy: '🌧️',
+  windy: '💨',
+  thundery: '⛈️',
+};
+
+function WeatherForecast({ island }) {
+  const [forecast, setForecast] = useState([]);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getExternalPlaces(island).then((d) => { if (!cancelled) setData(d); }).catch(() => { if (!cancelled) setData(null); });
+    getWeatherForecast(island)
+      .then((d) => { if (!cancelled) setForecast(d.forecast || []); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [island]);
+
+  if (forecast.length === 0) return null;
+
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 16 }}>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls="forecast-panel"
+        style={{
+          width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)' }}>
+          Maldives weather forecast — {island}
+        </span>
+        <span aria-hidden="true" style={{ color: 'var(--lagoon)', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div id="forecast-panel" style={{ display: 'flex', gap: 6, marginTop: 10, overflowX: 'auto' }}>
+          {forecast.map((day, i) => (
+            <div
+              key={day.date}
+              style={{
+                flex: '0 0 auto', minWidth: 64, textAlign: 'center', padding: '8px 4px',
+                borderRadius: 'var(--radius-sm)', background: i === 0 ? 'var(--lagoon-tint)' : 'transparent',
+              }}
+            >
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+                {i === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+              </p>
+              <p style={{ fontSize: 20, margin: '0 0 4px' }} aria-hidden="true">
+                {FORECAST_ICON[day.condition_type] || FORECAST_ICON.sunny}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--navy)', margin: 0 }}>
+                {Math.round(day.temperature_max)}° / {Math.round(day.temperature_min)}°
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// "More on this island" — real Ministry-of-Tourism registered places
+// (backend/data/maldives_accommodations_master.json, see externalPlaces.js)
+// that aren't bookable here, shown so a tourist sees the island's real
+// options even when few (or no) businesses have signed up yet. This data
+// only covers lodging (Guest House / Home Stay / Hotel) — there's no
+// equivalent import for restaurants, excursions, transfers, or shops.
+//
+// Only fetch it when the selected category is one it could actually
+// answer (All, or Guesthouse specifically) — asking the backend for
+// guesthouse data while the tourist has "Excursions" selected would just
+// come back irrelevant. For every other category, skip the network call
+// entirely and say plainly that no public listing source exists yet,
+// rather than silently showing nothing (which read as broken) or showing
+// guesthouses under an "Excursions" filter (which read as wrong).
+function ExternalPlacesSection({ island, atoll, typeFilter }) {
+  const [data, setData] = useState(null);
+  const coversThisFilter = typeFilter === '' || typeFilter === 'guesthouse';
+
+  useEffect(() => {
+    if (!coversThisFilter) {
+      setData(null);
+      return;
+    }
+    let cancelled = false;
+    getExternalPlaces(island, atoll || undefined).then((d) => { if (!cancelled) setData(d); }).catch(() => { if (!cancelled) setData(null); });
+    return () => { cancelled = true; };
+  }, [island, atoll, coversThisFilter]);
+
+  if (!coversThisFilter) {
+    return (
+      <div style={{ marginTop: 24 }}>
+        <div style={{ borderTop: '1px solid var(--border)', marginBottom: 16 }} />
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>
+          More on {island}
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+          No public listings available at the moment.
+        </p>
+      </div>
+    );
+  }
 
   if (!data) return null;
   const groups = [
@@ -426,7 +606,6 @@ function ExternalPlacesSection({ island }) {
     { label: 'Home stays', places: data.home_stays },
     { label: 'Hotels', places: data.hotels },
   ].filter((g) => g.places && g.places.length > 0);
-  if (groups.length === 0) return null;
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -434,39 +613,47 @@ function ExternalPlacesSection({ island }) {
       <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>
         More on {island}
       </p>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
-        Ministry of Tourism registered places — not bookable here.
-      </p>
-      {groups.map((group) => (
-        <div key={group.label} style={{ marginBottom: 14 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-            {group.label}
+      {groups.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+          No public listings available at the moment.
+        </p>
+      ) : (
+        <>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+            Ministry of Tourism registered places — not bookable here.
           </p>
-          {group.places.map((place) => (
-            <div key={place.id} className="card" style={{ padding: '12px 14px', marginBottom: 8, opacity: 0.9 }}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>{place.name}</p>
-              {data.contact_locked ? (
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, filter: 'blur(3px)', userSelect: 'none' }}>
-                  071 234 5678 · contact@example.com
-                </p>
-              ) : (
-                (place.phone || place.email) && (
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                    {[place.phone, place.email].filter(Boolean).join(' · ')}
-                  </p>
-                )
-              )}
+          {groups.map((group) => (
+            <div key={group.label} style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {group.label}
+              </p>
+              {group.places.map((place) => (
+                <div key={place.id} className="card" style={{ padding: '12px 14px', marginBottom: 8, opacity: 0.9 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 4px' }}>{place.name}</p>
+                  {data.contact_locked ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, filter: 'blur(3px)', userSelect: 'none' }}>
+                      071 234 5678 · contact@example.com
+                    </p>
+                  ) : (
+                    (place.phone || place.email) && (
+                      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                        {[place.phone, place.email].filter(Boolean).join(' · ')}
+                      </p>
+                    )
+                  )}
+                </div>
+              ))}
             </div>
           ))}
-        </div>
-      ))}
-      {/* No real Pro purchase flow exists yet (see config/proTier.js) — this
-          is just the locked-state prompt the spec asks for, ready for a
-          real upgrade action once one exists. */}
-      {data.contact_locked && (
-        <p style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 500, margin: 0 }}>
-          Upgrade to Pro to see contact info
-        </p>
+          {/* No real Pro purchase flow exists yet (see config/proTier.js) — this
+              is just the locked-state prompt the spec asks for, ready for a
+              real upgrade action once one exists. */}
+          {data.contact_locked && (
+            <p style={{ fontSize: 12, color: 'var(--lagoon)', fontWeight: 500, margin: 0 }}>
+              Upgrade to Pro to see contact info
+            </p>
+          )}
+        </>
       )}
     </div>
   );
@@ -616,12 +803,14 @@ function FilterPill({ label, active, onClick }) {
 
 function Header({ island, weather }) {
   const { t } = useLanguage();
+  const isNight = isMaldivesNight();
   return (
-    <div style={{ background: 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
-      {/* Line-art behind the logo, per Section 6.2 / 11 — now driven by
-          weather.condition_type from GET /api/weather/:atoll instead of
-          always showing the sunny state. Defaults to sunny while loading. */}
-      <WeatherIcon condition={weather?.condition_type} />
+    <div style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
+      {/* Line-art behind the logo, per Section 6.2 / 11 — driven by
+          weather.condition_type from GET /api/weather/:atoll, and now also
+          by actual Maldives local time so a clear sky shows the moon
+          rather than the sun after dark. Defaults to sunny while loading. */}
+      <WeatherIcon condition={weather?.condition_type} isNight={isNight} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
         <div>
@@ -675,15 +864,19 @@ const WEATHER_ANIMATION = {
 };
 
 // Decorative line-art matching the existing sunny icon's minimalist white-
-// stroke style — one variant per weather_condition_type. Defaults to sunny
-// (the original always-on state) until real weather has loaded.
-function WeatherIcon({ condition }) {
+// stroke style — one variant per weather_condition_type, plus a day/night
+// swap on the clear-sky glyph (sun by day, crescent moon by night — see
+// isMaldivesNight above). Defaults to sunny (the original always-on state)
+// until real weather has loaded.
+function WeatherIcon({ condition, isNight }) {
+  const isClear = !condition || condition === 'sunny';
+  const animation = isClear && isNight ? undefined : (WEATHER_ANIMATION[condition] || WEATHER_ANIMATION.sunny);
   return (
     <svg
       viewBox="0 0 100 100"
       style={{
         position: 'absolute', top: -18, left: -18, width: 100, height: 100,
-        opacity: 0.4, animation: WEATHER_ANIMATION[condition] || WEATHER_ANIMATION.sunny,
+        opacity: 0.4, animation,
         WebkitMaskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
         maskImage: 'linear-gradient(115deg, black 25%, transparent 65%)',
       }}
@@ -724,13 +917,21 @@ function WeatherIcon({ condition }) {
       )}
 
       {(!condition || condition === 'sunny') && (
-        <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round">
-          <circle cx="50" cy="50" r="14" fill="none" />
-          <line x1="50" y1="24" x2="50" y2="14" />
-          <line x1="24" y1="50" x2="14" y2="50" />
-          <line x1="32" y1="32" x2="24" y2="24" />
-          <line x1="68" y1="32" x2="76" y2="24" />
-        </g>
+        isNight ? (
+          <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none">
+            <path d="M58 24 a20 20 0 1 0 18 28 a15 15 0 0 1 -18 -28 z" />
+            <circle cx="70" cy="30" r="1.5" fill="#ffffff" stroke="none" />
+            <circle cx="76" cy="40" r="1" fill="#ffffff" stroke="none" />
+          </g>
+        ) : (
+          <g stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round">
+            <circle cx="50" cy="50" r="14" fill="none" />
+            <line x1="50" y1="24" x2="50" y2="14" />
+            <line x1="24" y1="50" x2="14" y2="50" />
+            <line x1="32" y1="32" x2="24" y2="24" />
+            <line x1="68" y1="32" x2="76" y2="24" />
+          </g>
+        )
       )}
     </svg>
   );
@@ -936,7 +1137,7 @@ export function ListingCard({ listing, isLocal, isFavorited, onToggleFavorite })
           )}
         </p>
         <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--lagoon)', margin: 0 }}>
-          ${price}
+          {formatPrice(price, isLocal)}
           {isLocal && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}> {t('home.local_price_suffix')}</span>}
         </p>
         {Array.isArray(listing.accessibility_features) && listing.accessibility_features.length > 0 && (

@@ -11,13 +11,18 @@ import {
 } from '../api/client';
 import { useTheme } from '../theme';
 import NavMenu from '../components/NavMenu';
+import Tabs from '../components/Tabs';
 
-// Batch 27 — the admin console is one long scrolling page, so its hamburger
-// menu jumps to sections rather than routing. `scroll-margin-top` keeps the
-// landing spot clear of the sticky-ish header area.
-function jumpTo(id) {
-  const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// The admin console used to be one long scrolling page with a hamburger
+// menu that jumped to an anchor. That made it hard to actually manage
+// anything — every section was always in the DOM, so the "Businesses" tab's
+// data loaded even while you were only looking at "Support". jumpTo now
+// switches the active tab (see Dashboard's `tab` state below); scrolling to
+// the top of the panel is enough since each tab's content is short again.
+let setActiveTabRef = null;
+function jumpTo(tabId) {
+  setActiveTabRef?.(tabId);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Section 10.1's role levels: "Moderator — approvals only, vs. Full Admin —
@@ -40,7 +45,14 @@ export default function Dashboard() {
   const [queue, setQueue] = useState({ businesses: [], listings: [], local_verifications: [] });
   const [disputes, setDisputes] = useState([]);
   const [error, setError] = useState('');
+  const [tab, setTab] = useState(() => sessionStorage.getItem('atollisle_admin_tab') || 'approvals');
   const isModerator = useIsModerator();
+
+  function setTabAndRemember(id) {
+    setTab(id);
+    sessionStorage.setItem('atollisle_admin_tab', id);
+  }
+  setActiveTabRef = setTabAndRemember;
 
   useEffect(() => {
     if (!localStorage.getItem('atollisle_admin_token')) {
@@ -103,17 +115,16 @@ export default function Dashboard() {
             label="Sections"
             buttonStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             items={[
-              { label: 'Approval queue', icon: 'queue', onClick: () => jumpTo('sec-approvals') },
+              { label: 'Approval queue', icon: 'queue', onClick: () => jumpTo('approvals') },
               ...(isModerator ? [] : [
-                { label: 'Refund failures', icon: 'payouts', onClick: () => jumpTo('sec-refund-failures') },
-                { label: 'Payout run', icon: 'payouts', onClick: () => jumpTo('sec-payouts') },
-                { label: 'Open disputes', icon: 'sos', onClick: () => jumpTo('sec-disputes') },
+                { label: 'Money (refunds, payouts, incidents)', icon: 'payouts', onClick: () => jumpTo('money') },
+                { label: 'Open disputes', icon: 'sos', onClick: () => jumpTo('disputes') },
               ]),
-              { label: 'Businesses', icon: 'b2b', onClick: () => jumpTo('sec-businesses') },
-              ...(isModerator ? [] : [{ label: 'Agents', icon: 'guests', onClick: () => jumpTo('sec-agents') }]),
-              { label: 'Support tickets', icon: 'support', onClick: () => jumpTo('sec-support') },
-              { label: 'Local events', icon: 'guide', onClick: () => jumpTo('sec-events') },
-              ...(isModerator ? [] : [{ label: 'Audit log', icon: 'bookings', onClick: () => jumpTo('sec-audit') }]),
+              { label: 'Businesses', icon: 'b2b', onClick: () => jumpTo('businesses') },
+              ...(isModerator ? [] : [{ label: 'Agents', icon: 'guests', onClick: () => jumpTo('agents') }]),
+              { label: 'Support tickets', icon: 'support', onClick: () => jumpTo('support') },
+              { label: 'Local events', icon: 'guide', onClick: () => jumpTo('events') },
+              ...(isModerator ? [] : [{ label: 'Audit log', icon: 'bookings', onClick: () => jumpTo('audit') }]),
               { onClick: handleLogout, label: 'Log out', icon: 'logout', danger: true },
             ]}
           />
@@ -132,22 +143,72 @@ export default function Dashboard() {
 
       <AppearanceSection />
 
-      {!isModerator && <PlatformAnalyticsSection />}
-
-      {!isModerator && <div id="sec-refund-failures" style={{ scrollMarginTop: 12 }}><RefundFailuresSection /></div>}
-
-      <div id="sec-approvals" style={{ scrollMarginTop: 12 }}>
-        <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
-      </div>
-      {!isModerator && <div id="sec-payouts" style={{ scrollMarginTop: 12 }}><PayoutsSection /></div>}
-      {!isModerator && <div id="sec-disputes" style={{ scrollMarginTop: 12 }}><DisputesSection disputes={disputes} onResolved={loadAll} /></div>}
-      <div id="sec-businesses" style={{ scrollMarginTop: 12 }}><BusinessDirectorySection isModerator={isModerator} /></div>
-      {!isModerator && <div id="sec-agents" style={{ scrollMarginTop: 12 }}><AgentDirectorySection /></div>}
-      <div id="sec-support" style={{ scrollMarginTop: 12 }}><SupportTicketsSection /></div>
-      <div id="sec-events" style={{ scrollMarginTop: 12 }}><LocalEventsSection /></div>
-      {!isModerator && <PayAtVisitIncidentsSection />}
-      {!isModerator && <ExternalPlacesProspectsSection />}
-      {!isModerator && <div id="sec-audit" style={{ scrollMarginTop: 12 }}><AuditLogSection /></div>}
+      <Tabs
+        value={tab}
+        onChange={setTabAndRemember}
+        tabs={[
+          {
+            id: 'approvals',
+            label: 'Approvals',
+            badge: (queue.businesses.length + queue.listings.length + queue.local_verifications.length) || undefined,
+            content: (
+              <ApprovalQueueSection queue={queue} onApprove={handleApprove} onReject={handleReject} onReclassify={handleReclassify} />
+            ),
+          },
+          ...(isModerator ? [] : [{
+            id: 'money',
+            label: 'Money',
+            content: (
+              <>
+                <RefundFailuresSection />
+                <PayoutsSection />
+                <PayAtVisitIncidentsSection />
+              </>
+            ),
+          }]),
+          ...(isModerator ? [] : [{
+            id: 'disputes',
+            label: 'Disputes',
+            badge: disputes.length || undefined,
+            content: <DisputesSection disputes={disputes} onResolved={loadAll} />,
+          }]),
+          {
+            id: 'businesses',
+            label: 'Businesses',
+            content: (
+              <>
+                <BusinessDirectorySection isModerator={isModerator} />
+                {!isModerator && <ExternalPlacesProspectsSection />}
+              </>
+            ),
+          },
+          ...(isModerator ? [] : [{
+            id: 'agents',
+            label: 'Agents',
+            content: <AgentDirectorySection />,
+          }]),
+          {
+            id: 'support',
+            label: 'Support',
+            content: <SupportTicketsSection />,
+          },
+          {
+            id: 'events',
+            label: 'Local events',
+            content: <LocalEventsSection />,
+          },
+          ...(isModerator ? [] : [{
+            id: 'analytics',
+            label: 'Analytics',
+            content: <PlatformAnalyticsSection />,
+          }]),
+          ...(isModerator ? [] : [{
+            id: 'audit',
+            label: 'Audit log',
+            content: <AuditLogSection />,
+          }]),
+        ]}
+      />
     </div>
   );
 }
@@ -167,10 +228,10 @@ function DailyDigestSection({ isModerator }) {
   if (!digest) return null;
 
   const rows = [
-    { label: 'pending approvals', count: digest.pending_approvals, target: 'sec-approvals', show: true },
-    { label: 'open disputes', count: digest.open_disputes, target: 'sec-disputes', show: !isModerator },
-    { label: 'unresolved refund failures', count: digest.open_refund_failures, target: 'sec-refund-failures', show: !isModerator },
-    { label: 'unpaid Pay at Visit incidents', count: digest.pay_at_visit_incidents, target: null, show: !isModerator },
+    { label: 'pending approvals', count: digest.pending_approvals, target: 'approvals', show: true },
+    { label: 'open disputes', count: digest.open_disputes, target: 'disputes', show: !isModerator },
+    { label: 'unresolved refund failures', count: digest.open_refund_failures, target: 'money', show: !isModerator },
+    { label: 'unpaid Pay at Visit incidents', count: digest.pay_at_visit_incidents, target: 'money', show: !isModerator },
   ].filter((r) => r.show);
 
   const allClear = rows.every((r) => r.count === 0);

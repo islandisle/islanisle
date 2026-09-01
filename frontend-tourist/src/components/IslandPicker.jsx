@@ -9,28 +9,31 @@ import { getIslands } from '../api/client';
 // Batch 40 — the list is now the real thing: GET /api/islands builds it
 // from Batch 25's external_places import (every inhabited island with
 // Ministry-of-Tourism data) plus any island with a real approved business.
-// ATOLLS below is only the offline/first-paint fallback — a representative
-// subset, raw atoll keys matching the API shape.
+// ATOLLS below is only the offline/first-paint fallback, used if that
+// request fails or hasn't resolved yet — it should stay a complete,
+// accurate list of every inhabited island in all 20 atolls (cross-checked
+// against public island data), not a partial placeholder, since a failed
+// API call shouldn't mean tourists can't find real islands in the picker.
 export const ATOLLS = [
-  { atoll: 'Kaafu', islands: ["Male'", 'Hulhumale', 'Maafushi', 'Gulhi', 'Guraidhoo', 'Thulusdhoo'] },
-  { atoll: 'Alifu Alifu', islands: ['Rasdhoo', 'Thoddoo', 'Mathiveri', 'Ukulhas'] },
-  { atoll: 'Alifu Dhaalu', islands: ['Dhigurah', 'Dhangethi', 'Mahibadhoo', 'Maamigili'] },
-  { atoll: 'Baa', islands: ['Eydhafushi', 'Dharavandhoo', 'Thulhaadhoo', 'Hithaadhoo'] },
-  { atoll: 'Vaavu', islands: ['Felidhoo', 'Keyodhoo', 'Fulidhoo'] },
-  { atoll: 'Meemu', islands: ['Muli', 'Mulah', 'Maduvvari'] },
-  { atoll: 'Faafu', islands: ['Nilandhoo', 'Magoodhoo', 'Feeali'] },
-  { atoll: 'Dhaalu', islands: ['Kudahuvadhoo', 'Bandidhoo'] },
-  { atoll: 'Laamu', islands: ['Gan', 'Kalaidhoo'] },
-  { atoll: 'Gaafu Alifu', islands: ['Villingili', 'Kolamaafushi'] },
-  { atoll: 'Gaafu Dhaalu', islands: ['Gadhdhoo', 'Vaadhoo'] },
-  { atoll: 'Seenu', islands: ['Hithadhoo', 'Maradhoo', 'Feydhoo', 'Meedhoo'] },
-  { atoll: 'Haa Alifu', islands: ['Dhidhdhoo', 'Hoarafushi', 'Kelaa'] },
-  { atoll: 'Haa Dhaalu', islands: ['Kulhudhuffushi', 'Hanimaadhoo'] },
-  { atoll: 'Shaviyani', islands: ['Funadhoo', 'Milandhoo'] },
-  { atoll: 'Noonu', islands: ['Manadhoo', 'Velidhoo'] },
-  { atoll: 'Raa', islands: ['Alifushi', 'Inguraidhoo'] },
-  { atoll: 'Lhaviyani', islands: ['Naifaru'] },
-  { atoll: 'Thaa', islands: ['Veymandoo', 'Buruni'] },
+  { atoll: 'Kaafu', islands: ["Male'", 'Hulhumale', 'Maafushi', 'Gulhi', 'Guraidhoo', 'Thulusdhoo', 'Dhiffushi', 'Gaafaru', 'Himmafushi', 'Huraa', 'Kaashidhoo'] },
+  { atoll: 'Alifu Alifu', islands: ['Rasdhoo', 'Thoddoo', 'Mathiveri', 'Ukulhas', 'Maalhos', 'Bodufolhudhoo', 'Feridhoo', 'Himandhoo'] },
+  { atoll: 'Alifu Dhaalu', islands: ['Dhigurah', 'Dhangethi', 'Mahibadhoo', 'Maamigili', 'Dhiddhoo', 'Fenfushi', 'Hangnaameedhoo', 'Kunburudhoo', 'Mandhoo', 'Omadhoo'] },
+  { atoll: 'Baa', islands: ['Eydhafushi', 'Dharavandhoo', 'Thulhaadhoo', 'Hithaadhoo', 'Dhonfanu', 'Fehendhoo', 'Fulhadhoo', 'Goidhoo', 'Kamadhoo', 'Kendhoo', 'Kihaadhoo', 'Kudarikilu', 'Maalhos'] },
+  { atoll: 'Vaavu', islands: ['Felidhoo', 'Keyodhoo', 'Fulidhoo', 'Rakeedhoo', 'Thinadhoo'] },
+  { atoll: 'Meemu', islands: ['Muli', 'Mulah', 'Maduvvari', 'Dhiggaru', 'Kolhufushi', 'Naalaafushi', 'Raimmandhoo', 'Veyvah'] },
+  { atoll: 'Faafu', islands: ['Nilandhoo', 'Magoodhoo', 'Feeali', 'Bileddhoo', 'Dharanboodhoo'] },
+  { atoll: 'Dhaalu', islands: ['Kudahuvadhoo', 'Bandidhoo', 'Hulhudheli', 'Maaenboodhoo', 'Meedhoo', 'Rinbudhoo'] },
+  { atoll: 'Laamu', islands: ['Gan', 'Kalaidhoo', 'Dhanbidhoo', 'Fonadhoo', 'Gaadhoo', 'Hithadhoo', 'Isdhoo', 'Kunahandhoo', 'Maabaidhoo', 'Maamendhoo', 'Maavah', 'Mundoo', 'Maandhoo', 'Kadhdhoo'] },
+  { atoll: 'Gaafu Alifu', islands: ['Villingili', 'Kolamaafushi', 'Dhaandhoo', 'Dhevvadhoo', 'Dhiyadhoo', 'Gemanafushi', 'Kanduhulhudhoo', 'Kondey', 'Maamendhoo', 'Nilandhoo'] },
+  { atoll: 'Gaafu Dhaalu', islands: ['Gadhdhoo', 'Vaadhoo', 'Fares-Maathodaa', 'Fiyoari', 'Hoandeddhoo', 'Madaveli', 'Nadellaa', 'Rathafandhoo', 'Thinadhoo'] },
+  { atoll: 'Seenu', islands: ['Hithadhoo', 'Maradhoo', 'Feydhoo', 'Meedhoo', 'Hulhudhoo'] },
+  { atoll: 'Haa Alifu', islands: ['Dhidhdhoo', 'Hoarafushi', 'Kelaa', 'Baarah', 'Filladhoo', 'Ihavandhoo', 'Maarandhoo', 'Mulhadhoo', 'Muraidhoo', 'Thakandhoo', 'Thuraakunu', 'Uligamu', 'Utheemu', 'Vashafaru'] },
+  { atoll: 'Haa Dhaalu', islands: ['Kulhudhuffushi', 'Hanimaadhoo', 'Finey', 'Hirimaradhoo', 'Kumundhoo', 'Kunburudhoo', 'Kurinbi', 'Makunudhoo', 'Naivaadhoo', 'Nellaidhoo', 'Neykurendhoo', 'Nolhivaram', 'Nolhivaranfaru', 'Vaikaradhoo'] },
+  { atoll: 'Shaviyani', islands: ['Funadhoo', 'Milandhoo', 'Bileffahi', 'Feevah', 'Feydhoo', 'Foakaidhoo', 'Goidhoo', 'Kanditheemu', 'Komandoo', 'Lhaimagu', 'Maaungoodhoo', 'Maroshi', 'Narudhoo', 'Noomaraa'] },
+  { atoll: 'Noonu', islands: ['Manadhoo', 'Velidhoo', 'Foddhoo', 'Henbandhoo', 'Holhudhoo', 'Kendhikolhudhoo', 'Kudafaree', 'Landhoo', 'Lhohi', 'Maafaru', 'Maalhendhoo', 'Magoodhoo', 'Miladhoo'] },
+  { atoll: 'Raa', islands: ['Alifushi', 'Inguraidhoo', 'Angolhitheemu', 'Dhuvaafaru', 'Fainu', 'Hulhudhuffaaru', 'Innamaadhoo', 'Kinolhas', 'Maakurathu', 'Maduvvaree', 'Maamigili', 'Meedhoo', 'Rasgetheemu', 'Rasmaadhoo', 'Ungoofaaru', 'Vaadhoo'] },
+  { atoll: 'Lhaviyani', islands: ['Naifaru', 'Hinnavaru', 'Kurendhoo', 'Olhuvelifushi'] },
+  { atoll: 'Thaa', islands: ['Veymandoo', 'Buruni', 'Dhiyamingili', 'Gaadhiffushi', 'Guraidhoo', 'Hirilandhoo', 'Kandoodhoo', 'Kinbidhoo', 'Madifushi', 'Omadhoo', 'Thimarafushi', 'Vandhoo', 'Vilufushi'] },
   { atoll: 'Gnaviyani', islands: ['Fuvahmulah'] },
 ];
 
@@ -86,8 +89,13 @@ export default function IslandPicker({ value, onChange, id, placeholder }) {
     })
     .filter((a) => a.islands.length > 0);
 
-  function handlePick(island) {
-    onChange(island);
+  // Emit the atoll alongside the island name — 14 island names exist in
+  // more than one atoll (e.g. Maalhos in both Alifu Alifu and Baa), so the
+  // bare name isn't enough for downstream lookups to disambiguate. `value`
+  // stays the plain island-name string (that's all the closed button shows);
+  // this only changes what onChange emits.
+  function handlePick(island, atoll) {
+    onChange(island, atoll);
     setOpen(false);
     setSearch('');
   }
@@ -142,7 +150,7 @@ export default function IslandPicker({ value, onChange, id, placeholder }) {
                     <button
                       key={isl}
                       type="button"
-                      onClick={() => handlePick(isl)}
+                      onClick={() => handlePick(isl, a.atoll)}
                       style={{
                         display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px',
                         background: isl === value ? 'var(--lagoon-tint)' : 'transparent',

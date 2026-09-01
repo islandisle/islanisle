@@ -83,12 +83,24 @@ async function linkTripForCheckIn(userId, island, startAt, endAt) {
   return tripId;
 }
 
+// Ownership check shared by every check-in route below — accepts either
+// the business owner's own 'user'-role token, or a staff member's 'staff'-
+// role token (issued by businessSettings.js's staff-login) whose embedded
+// businessId matches. A staff token is deliberately restricted to this one
+// file: it was never granted access to settings, payouts, or listings
+// (see businessSettings.js's staff-login comment), only the check-in board
+// front-desk staff actually need.
+function ownsBusiness(reqUser, business) {
+  if (reqUser.role === 'staff') return reqUser.businessId === business.id;
+  return reqUser.id === business.owner_user_id;
+}
+
 async function requireGuesthouseOwner(req, res, next) {
-  const result = await query('SELECT owner_user_id, type FROM businesses WHERE id = $1', [req.params.businessId]);
+  const result = await query('SELECT id, owner_user_id, type FROM businesses WHERE id = $1', [req.params.businessId]);
   if (!result.rows.length) {
     return res.status(404).json({ error: 'Business not found.' });
   }
-  if (result.rows[0].owner_user_id !== req.user.id) {
+  if (!ownsBusiness(req.user, result.rows[0])) {
     return res.status(403).json({ error: 'You do not manage this business.' });
   }
   if (result.rows[0].type !== 'guesthouse') {
@@ -202,9 +214,9 @@ router.post('/:bookingId', authenticate, async (req, res) => {
   }
   const booking = bookingResult.rows[0];
 
-  const businessResult = await query('SELECT owner_user_id, type, name, location_island FROM businesses WHERE id = $1', [booking.business_id]);
+  const businessResult = await query('SELECT id, owner_user_id, type, name, location_island FROM businesses WHERE id = $1', [booking.business_id]);
   const business = businessResult.rows[0];
-  if (!business || business.owner_user_id !== req.user.id) {
+  if (!business || !ownsBusiness(req.user, business)) {
     return res.status(403).json({ error: 'You do not manage this business.' });
   }
   if (business.type !== 'guesthouse') {
@@ -374,8 +386,9 @@ router.get('/booking/:bookingId/documents', authenticate, async (req, res) => {
      FROM document_access_grants g
      JOIN businesses biz ON biz.id = g.business_id
      JOIN users u ON u.id = g.member_id
-     WHERE g.booking_id = $1 AND g.revoked_at IS NULL AND biz.owner_user_id = $2`,
-    [bookingId, req.user.id]
+     WHERE g.booking_id = $1 AND g.revoked_at IS NULL
+       AND (biz.owner_user_id = $2 OR biz.id = $3)`,
+    [bookingId, req.user.role === 'staff' ? null : req.user.id, req.user.role === 'staff' ? req.user.businessId : null]
   );
   res.json({ documents: result.rows });
 });
