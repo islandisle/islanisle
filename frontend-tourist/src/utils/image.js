@@ -1,4 +1,4 @@
-// Client-side image downscale → data: URI, for Go Social post/story/avatar
+// Client-side image downscale → data: URI, for Go Social post/shot/avatar
 // uploads. There's no object storage in this environment, so media is stored
 // inline as base64 in Postgres (see backend/src/services/social.js). Raw
 // phone photos are 3–8 MB; downscaling here keeps rows and payloads sane.

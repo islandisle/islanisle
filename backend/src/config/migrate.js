@@ -689,29 +689,47 @@ async function main() {
     changed = true;
   }
 
-  console.log('Checking for social_stories tables (Go Social — stories)...');
-  if (!(await tableExists('social_stories'))) {
-    console.log('Creating social_stories / social_story_views...');
+  // Go Social "Stories" were renamed to "Shots" — rename in place so existing
+  // rows survive (must run BEFORE the create-if-missing block below).
+  if ((await tableExists('social_stories')) && !(await tableExists('social_shots'))) {
+    console.log('Renaming social_stories -> social_shots (+ views table, story_id column, index)...');
+    await pool.query(`ALTER TABLE social_stories RENAME TO social_shots`);
+    await pool.query(`ALTER TABLE social_story_views RENAME TO social_shot_views`);
+    await pool.query(`ALTER TABLE social_shot_views RENAME COLUMN story_id TO shot_id`);
+    await pool.query(`ALTER INDEX idx_social_stories_active RENAME TO idx_social_shots_active`);
+    changed = true;
+  }
+
+  console.log('Checking for social_shots tables (Go Social — shots)...');
+  if (!(await tableExists('social_shots'))) {
+    console.log('Creating social_shots / social_shot_views...');
     await pool.query(`
-      CREATE TABLE social_stories (
+      CREATE TABLE social_shots (
           id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           image_url     TEXT NOT NULL,
           caption       TEXT,
           created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-          expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '24 hours')
+          expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '12 hours')
       )
     `);
-    await pool.query(`CREATE INDEX idx_social_stories_active ON social_stories(user_id, expires_at)`);
+    await pool.query(`CREATE INDEX idx_social_shots_active ON social_shots(user_id, expires_at)`);
     await pool.query(`
-      CREATE TABLE social_story_views (
-          story_id       UUID NOT NULL REFERENCES social_stories(id) ON DELETE CASCADE,
+      CREATE TABLE social_shot_views (
+          shot_id        UUID NOT NULL REFERENCES social_shots(id) ON DELETE CASCADE,
           viewer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           viewed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-          PRIMARY KEY (story_id, viewer_user_id)
+          PRIMARY KEY (shot_id, viewer_user_id)
       )
     `);
     changed = true;
+  }
+
+  // Shots expire after 12 hours (was 24). New default only — existing rows
+  // keep whatever expiry they were created with. Cheap + idempotent to
+  // re-assert every run.
+  if (await tableExists('social_shots')) {
+    await pool.query(`ALTER TABLE social_shots ALTER COLUMN expires_at SET DEFAULT (now() + interval '12 hours')`);
   }
 
   console.log('Checking for social_dm_messages table (Go Social — DMs)...');

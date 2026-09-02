@@ -755,18 +755,18 @@ export async function getFriends() {
 
 export const unfriend = (userId) => socialJson(`/friends/${userId}`, 'DELETE');
 
-export const createStory = ({ image, caption }) => socialJson('/stories', 'POST', { image, caption });
+export const createShot = ({ image, caption }) => socialJson('/shots', 'POST', { image, caption });
 
-export async function getStoriesFeed() {
-  const res = await fetch(`${API_BASE}/api/social/stories/feed`, { headers: authHeaders() });
+export async function getShotsFeed() {
+  const res = await fetch(`${API_BASE}/api/social/shots/feed`, { headers: authHeaders() });
   return handleResponse(res);
 }
 
-export const viewStory = (id) => socialJson(`/stories/${id}/view`, 'POST');
-export const deleteStory = (id) => socialJson(`/stories/${id}`, 'DELETE');
+export const viewShot = (id) => socialJson(`/shots/${id}/view`, 'POST');
+export const deleteShot = (id) => socialJson(`/shots/${id}`, 'DELETE');
 
-export async function getStoryViewers(id) {
-  const res = await fetch(`${API_BASE}/api/social/stories/${id}/viewers`, { headers: authHeaders() });
+export async function getShotViewers(id) {
+  const res = await fetch(`${API_BASE}/api/social/shots/${id}/viewers`, { headers: authHeaders() });
   return handleResponse(res);
 }
 

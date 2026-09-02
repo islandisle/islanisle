@@ -42,7 +42,7 @@ export async function getSocialUser(userId) {
 
 // The user ids this user is friends with (symmetric — friendships store one
 // row per pair). Returns [] before the friendships table exists (stage 3),
-// so the posts/stories feed degrades to "just your own" rather than 500ing.
+// so the posts/shots feed degrades to "just your own" rather than 500ing.
 export async function friendIds(userId) {
   try {
     const result = await query(
@@ -81,12 +81,12 @@ export async function removeFriendship(a, b) {
   await query(`DELETE FROM social_friendships WHERE user_id_a = $1 AND user_id_b = $2`, [lo, hi]);
 }
 
-// Hourly tidy of stories past their 24h window (jobs/scheduler.js). The
-// feed query already filters on expires_at, so this is housekeeping, not
+// Hourly tidy of shots past their 12h window (jobs/scheduler.js). The feed
+// query already filters on expires_at, so this is housekeeping, not
 // correctness. Returns the row count removed.
-export async function purgeExpiredStories() {
+export async function purgeExpiredShots() {
   try {
-    const result = await query(`DELETE FROM social_stories WHERE expires_at < now()`);
+    const result = await query(`DELETE FROM social_shots WHERE expires_at < now()`);
     return result.rowCount || 0;
   } catch {
     return 0; // table not created yet

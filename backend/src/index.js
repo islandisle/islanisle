@@ -36,7 +36,7 @@ import userRoutes from './routes/users.js';
 import socialProfileRoutes from './routes/socialProfiles.js';
 import socialPostRoutes from './routes/socialPosts.js';
 import socialFriendRoutes from './routes/socialFriends.js';
-import socialStoryRoutes from './routes/socialStories.js';
+import socialShotRoutes from './routes/socialShots.js';
 import socialDmRoutes from './routes/socialDms.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
@@ -58,7 +58,7 @@ app.use(cors());
 // express.json() parser below — otherwise Stripe's signature check fails.
 app.use('/api/payments', express.raw({ type: 'application/json' }), paymentRoutes);
 
-// "Go Social" post/story/avatar media travels as base64 data: URIs in the
+// "Go Social" post/shot/avatar media travels as base64 data: URIs in the
 // JSON body (no object storage in this environment — see services/social.js),
 // which blows past express.json()'s 100 kB default. Mounted with its own
 // larger limit BEFORE the global parser, same pattern as the Stripe raw
@@ -66,7 +66,7 @@ app.use('/api/payments', express.raw({ type: 'application/json' }), paymentRoute
 app.use('/api/social', express.json({ limit: '8mb' }), socialProfileRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialPostRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialFriendRoutes);
-app.use('/api/social', express.json({ limit: '8mb' }), socialStoryRoutes);
+app.use('/api/social', express.json({ limit: '8mb' }), socialShotRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialDmRoutes);
 
 app.use(express.json());

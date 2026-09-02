@@ -3,10 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getSocialFeed, getFriendRequestCount, getSocialDmUnreadCount } from '../api/client';
 import PostCard from '../components/social/PostCard';
 import PostComposer from '../components/social/PostComposer';
-import StoryBar from '../components/social/StoryBar';
+import ShotBar from '../components/social/ShotBar';
 
-// Go Social — the feed (stage 2). Landing view for the Go Social tab.
-// Stories row lands at the top of this in stage 4.
+// Go Social — the feed. Landing view for the Go Social tab, with the shots
+// row on top.
 export default function Social() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState(null);
@@ -45,7 +45,7 @@ export default function Social() {
         </div>
       </div>
 
-      <StoryBar />
+      <ShotBar />
 
       {error && <p className="error-text">{error}</p>}
       {posts === null && !error && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}

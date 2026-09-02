@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { getStoriesFeed } from '../../api/client';
+import { getShotsFeed } from '../../api/client';
 import { fileToDownscaledDataUrl } from '../../utils/image';
 import Avatar from './Avatar';
-import StoryViewer from './StoryViewer';
-import StoryComposer from './StoryComposer';
+import ShotViewer from './ShotViewer';
+import ShotComposer from './ShotComposer';
 
-// The circular story row at the top of the feed. First bubble is always
-// "Your story" (+add / view own). The rest are friends, unseen first.
-export default function StoryBar() {
+// The circular shot row at the top of the feed. First bubble is always
+// "Your shot" (+add / view own). The rest are friends, unseen first.
+export default function ShotBar() {
   const [groups, setGroups] = useState([]);
   const [openAt, setOpenAt] = useState(null); // index into `groups`
   const [posting, setPosting] = useState(false);
@@ -16,14 +16,14 @@ export default function StoryBar() {
   const fileRef = useRef(null);
 
   function load() {
-    getStoriesFeed().then((d) => setGroups(d.groups)).catch(() => {});
+    getShotsFeed().then((d) => setGroups(d.groups)).catch(() => {});
   }
   useEffect(() => { load(); }, []);
 
   const mine = groups.find((g) => g.is_self) || null;
   const others = groups.filter((g) => !g.is_self);
 
-  async function pickStory(e) {
+  async function pickShot(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -38,8 +38,8 @@ export default function StoryBar() {
     }
   }
 
-  // The viewer only ever deals with groups that actually have stories.
-  const viewable = groups.filter((g) => g.stories.length > 0);
+  // The viewer only ever deals with groups that actually have shots.
+  const viewable = groups.filter((g) => g.shots.length > 0);
 
   function openGroup(userId) {
     const idx = viewable.findIndex((g) => g.user_id === userId);
@@ -49,19 +49,19 @@ export default function StoryBar() {
   return (
     <>
       <div style={{ display: 'flex', gap: 14, overflowX: 'auto', padding: '4px 0 14px' }}>
-        {/* Your story — open the viewer if you have one, else the composer. */}
+        {/* Your shot — open the viewer if you have one, else the composer. */}
         <button
           type="button"
-          onClick={() => ((mine?.stories?.length) ? openGroup(mine.user_id) : fileRef.current?.click())}
+          onClick={() => ((mine?.shots?.length) ? openGroup(mine.user_id) : fileRef.current?.click())}
           style={bubble}
         >
           <div style={{ position: 'relative' }}>
-            <Avatar name={mine?.name || 'You'} src={mine?.avatar_url} size={58} ring={mine?.stories?.length ? 'var(--border)' : undefined} />
+            <Avatar name={mine?.name || 'You'} src={mine?.avatar_url} size={58} ring={mine?.shots?.length ? 'var(--border)' : undefined} />
             <span style={plus} onClick={(ev) => { ev.stopPropagation(); fileRef.current?.click(); }}>+</span>
           </div>
-          <span style={label}>{posting ? '…' : 'Your story'}</span>
+          <span style={label}>{posting ? '…' : 'Your shot'}</span>
         </button>
-        <input ref={fileRef} type="file" accept="image/*" onChange={pickStory} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept="image/*" onChange={pickShot} style={{ display: 'none' }} />
 
         {others.map((g) => (
           <button key={g.user_id} type="button" onClick={() => openGroup(g.user_id)} style={bubble}>
@@ -74,7 +74,7 @@ export default function StoryBar() {
       {error && <p className="error-text" style={{ marginBottom: 8 }}>{error}</p>}
 
       {openAt !== null && viewable[openAt] && (
-        <StoryViewer
+        <ShotViewer
           groups={viewable}
           startIndex={openAt}
           onClose={() => { setOpenAt(null); load(); }}
@@ -83,7 +83,7 @@ export default function StoryBar() {
       )}
 
       {draftImage && (
-        <StoryComposer
+        <ShotComposer
           image={draftImage}
           onClose={() => setDraftImage(null)}
           onPosted={load}

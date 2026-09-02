@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { createStory } from '../../api/client';
+import { createShot } from '../../api/client';
 import { useModalA11y } from '../../useModalA11y';
 
-// Shown after picking a photo for a story: preview + optional text overlay
+// Shown after picking a photo for a shot: preview + optional text overlay
 // + share. (A modal rather than window.prompt.)
-export default function StoryComposer({ image, onClose, onPosted }) {
+export default function ShotComposer({ image, onClose, onPosted }) {
   const modalRef = useModalA11y(onClose);
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
@@ -14,7 +14,7 @@ export default function StoryComposer({ image, onClose, onPosted }) {
     setBusy(true);
     setError('');
     try {
-      await createStory({ image, caption: caption.trim() || undefined });
+      await createShot({ image, caption: caption.trim() || undefined });
       onPosted();
       onClose();
     } catch (err) {
@@ -29,17 +29,17 @@ export default function StoryComposer({ image, onClose, onPosted }) {
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label="New story"
+        aria-label="New shot"
         onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 420, background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: 16 }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>New story</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>New shot</p>
           <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={onClose}>Close</button>
         </div>
 
         <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', marginBottom: 12 }}>
-          <img src={image} alt="Story preview" style={{ width: '100%', maxHeight: 380, objectFit: 'contain', display: 'block' }} />
+          <img src={image} alt="Shot preview" style={{ width: '100%', maxHeight: 380, objectFit: 'contain', display: 'block' }} />
           {caption && (
             <p style={{ position: 'absolute', left: 0, right: 0, bottom: 24, textAlign: 'center', color: '#fff', fontSize: 18, fontWeight: 600, textShadow: '0 2px 8px rgba(0,0,0,0.6)', padding: '0 16px', margin: 0 }}>
               {caption}
@@ -59,7 +59,7 @@ export default function StoryComposer({ image, onClose, onPosted }) {
         {error && <p className="error-text" style={{ marginBottom: 8 }}>{error}</p>}
 
         <button className="btn-primary" style={{ width: '100%' }} disabled={busy} onClick={share}>
-          {busy ? 'Sharing…' : 'Share to story'}
+          {busy ? 'Sharing…' : 'Share as shot'}
         </button>
       </div>
     </div>

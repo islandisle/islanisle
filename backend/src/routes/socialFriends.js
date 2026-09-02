@@ -1,7 +1,7 @@
 // "Go Social" — friend search + requests + friendships (stage 3).
 //
 // Symmetric friendship (accept/decline, not follow). Friendship is what
-// gates whose posts/stories show in your feed (stage 2/4) and who can DM
+// gates whose posts/shots show in your feed (stage 2/4) and who can DM
 // you (stage 5).
 
 import { Router } from 'express';

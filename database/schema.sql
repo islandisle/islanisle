@@ -1024,7 +1024,7 @@ CREATE INDEX idx_external_place_claims_status ON external_place_claims(status);
 
 -- ---------------------------------------------------------------------------
 -- [PHASE 2] "Go Social" — an Instagram-style social layer for tourist/local
--- accounts (posts, stories, friends, friend-to-friend DMs). Deliberately
+-- accounts (posts, shots, friends, friend-to-friend DMs). Deliberately
 -- self-contained: nothing here references bookings/orders/payments, and the
 -- friend-to-friend DMs are a SEPARATE store from the `messages` table
 -- (business/agent/trip chat) — see go-social-feature-brief.md. Media is
@@ -1101,24 +1101,24 @@ CREATE TABLE social_friendships (
 );
 CREATE INDEX idx_social_friendships_b ON social_friendships(user_id_b);
 
--- Stories: a photo (+ optional text overlay) that shows for 24h. The feed
--- query filters on expires_at, so an expired story just stops appearing —
+-- Shots: a photo (+ optional text overlay) that shows for 12h. The feed
+-- query filters on expires_at, so an expired shot just stops appearing —
 -- rows are tidied by the hourly cleanup job (jobs/scheduler.js).
-CREATE TABLE social_stories (
+CREATE TABLE social_shots (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     image_url     TEXT NOT NULL, -- data: URI
     caption       TEXT,          -- simple text overlay
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '24 hours')
+    expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '12 hours')
 );
-CREATE INDEX idx_social_stories_active ON social_stories(user_id, expires_at);
+CREATE INDEX idx_social_shots_active ON social_shots(user_id, expires_at);
 
-CREATE TABLE social_story_views (
-    story_id       UUID NOT NULL REFERENCES social_stories(id) ON DELETE CASCADE,
+CREATE TABLE social_shot_views (
+    shot_id        UUID NOT NULL REFERENCES social_shots(id) ON DELETE CASCADE,
     viewer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     viewed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (story_id, viewer_user_id)
+    PRIMARY KEY (shot_id, viewer_user_id)
 );
 
 -- Friend-to-friend direct messages. DELIBERATELY separate from the
