@@ -1,30 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getSocialDmThreads } from '../api/client';
-import Avatar from '../components/social/Avatar';
-import SocialChatPanel from '../components/social/SocialChatPanel';
-import { timeAgo } from '../components/social/PostCard';
+import { useSearchParams } from 'react-router-dom';
+import { getSocialDmThreads } from '../../api/client';
+import Avatar from './Avatar';
+import SocialChatPanel from './SocialChatPanel';
+import { timeAgo } from './PostCard';
 
-// Go Social — DM conversation list (stage 5). Stage 6 lifts this list into
-// the shared message bar as the "Social" tab; the list itself is
-// <SocialThreadList> so it can be reused there.
-export default function SocialMessages() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!localStorage.getItem('atollisle_token')) navigate('/login');
-  }, []);
-
-  return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
-      <button className="btn-secondary" onClick={() => navigate('/social')} style={{ marginBottom: 16 }}>← Back</button>
-      <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 16 }}>Messages</h1>
-      <SocialThreadList />
-    </div>
-  );
-}
-
-export function SocialThreadList() {
+// The friend-DM conversation list. Its own component so it can live both on
+// its own screen and inside the shared message bar's "Friends" tab.
+//
+// Deep-link: any route rendering this can pass ?dm=<userId>&name=<name> to
+// open a thread straight away (the "Message" buttons on profiles / the
+// friends list do this).
+export default function SocialThreadList() {
   const [params, setParams] = useSearchParams();
   const [threads, setThreads] = useState(null);
   const [error, setError] = useState('');
@@ -35,8 +22,6 @@ export function SocialThreadList() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // Deep-link: /…?dm=<userId>&name=<name> opens a thread straight away
-  // (used by the "Message" buttons on profiles / the friends list).
   useEffect(() => {
     const dm = params.get('dm');
     if (dm) {

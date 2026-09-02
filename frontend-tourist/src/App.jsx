@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider } from './i18n';
 import { ToastProvider } from './components/Toast';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -22,7 +22,6 @@ import Social from './pages/Social';
 import SocialProfile from './pages/SocialProfile';
 import SocialPost from './pages/SocialPost';
 import SocialFriends from './pages/SocialFriends';
-import SocialMessages from './pages/SocialMessages';
 
 export default function App() {
   return (
@@ -56,7 +55,8 @@ export default function App() {
                   stage; the menu entry comes in the final stage. */}
               <Route path="/social" element={<Social />} />
               <Route path="/social/friends" element={<SocialFriends />} />
-              <Route path="/social/messages" element={<SocialMessages />} />
+              {/* DMs live in the shared message bar's "Friends" tab now. */}
+              <Route path="/social/messages" element={<Navigate to="/messages?tab=social" replace />} />
               <Route path="/social/me" element={<SocialProfile />} />
               <Route path="/social/u/:userId" element={<SocialProfile />} />
               <Route path="/social/post/:id" element={<SocialPost />} />

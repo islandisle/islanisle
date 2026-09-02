@@ -1,21 +1,58 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getMyThreads } from '../api/client';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getMyThreads, getSocialDmUnreadCount } from '../api/client';
 import ChatPanel from '../components/ChatPanel';
 import EmptyState from '../components/EmptyState';
+import Tabs from '../components/Tabs';
+import SocialThreadList from '../components/social/SocialThreadList';
 
-// Batch 22 — a tourist could message a business from a listing, but had no
-// way to see or reply to a thread someone else started (an agent, most
-// notably — Section 5.3's agent↔tourist chat had no frontend-tourist side
-// at all). Backed by the same generic messages.js already used
-// everywhere else; only new here is threads/mine resolving each thread's
-// other-party name so this list has something to show.
+// The one message-bar entry point, now two tabs (Go Social feature brief):
+//   - Friends  — friend-to-friend DMs (social_dm_messages, stage 5)
+//   - Business & trips — the existing business/agent/group chat
+//     (messages.js), unchanged in function
+// ?tab=social opens straight to the Friends tab (used by the Go Social
+// feed's Messages link and the profile "Message" buttons).
 export default function Messages() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const [dmUnread, setDmUnread] = useState(0);
+
+  const tab = params.get('tab') === 'social' ? 'social' : 'trips';
+
+  useEffect(() => {
+    if (!localStorage.getItem('atollisle_token')) navigate('/login');
+    getSocialDmUnreadCount().then((d) => setDmUnread(d.count)).catch(() => {});
+  }, []);
+
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
+      <button className="btn-secondary" onClick={() => navigate('/profile')} style={{ marginBottom: 16 }}>
+        ← Back
+      </button>
+      <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 16 }}>Messages</h1>
+
+      <Tabs
+        value={tab}
+        onChange={(id) => {
+          if (id === 'trips') params.delete('tab'); else params.set('tab', id);
+          setParams(params, { replace: true });
+        }}
+        tabs={[
+          { id: 'trips', label: 'Business & trips', content: <TripThreadList /> },
+          { id: 'social', label: 'Friends', badge: dmUnread || undefined, content: <SocialThreadList /> },
+        ]}
+      />
+    </div>
+  );
+}
+
+// The pre-existing business/agent/group conversation list (was the whole of
+// this page before the tab merge).
+function TripThreadList() {
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openThread, setOpenThread] = useState(null); // { other_role, other_id, other_name }
+  const [openThread, setOpenThread] = useState(null);
 
   function load() {
     setLoading(true);
@@ -24,27 +61,12 @@ export default function Messages() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
-
-  useEffect(() => {
-    if (!localStorage.getItem('atollisle_token')) {
-      navigate('/login');
-      return;
-    }
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const ROLE_LABEL = { business: 'Business', agent: 'Agent', user: 'Tourist' };
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
-      <button className="btn-secondary" onClick={() => navigate('/profile')} style={{ marginBottom: 16 }}>
-        ← Back
-      </button>
-
-      <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', marginBottom: 16 }}>
-        Messages
-      </h1>
-
+    <>
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}
       {!loading && !error && threads.length === 0 && (
@@ -83,6 +105,6 @@ export default function Messages() {
           onClose={() => { setOpenThread(null); load(); }}
         />
       )}
-    </div>
+    </>
   );
 }

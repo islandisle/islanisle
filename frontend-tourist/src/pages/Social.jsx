@@ -37,7 +37,7 @@ export default function Social() {
         <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>Go Social</h1>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <HeaderLink to="/social/friends" label="Friends" badge={requestCount} />
-          <HeaderLink to="/social/messages" label="Messages" badge={dmUnread} />
+          <HeaderLink to="/messages?tab=social" label="Messages" badge={dmUnread} />
           <HeaderLink to="/social/me" label="Profile" />
           <button className="btn-primary" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setComposing(true)}>
             + Post

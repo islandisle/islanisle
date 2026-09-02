@@ -232,8 +232,8 @@ function FriendButton({ profile, onChanged }) {
           className="btn-primary"
           style={{ flex: 1 }}
           onClick={() => navigate({
-            pathname: '/social/messages',
-            search: `?${createSearchParams({ dm: profile.user_id, name: profile.name })}`,
+            pathname: '/messages',
+            search: `?${createSearchParams({ tab: 'social', dm: profile.user_id, name: profile.name })}`,
           })}
         >
           Message

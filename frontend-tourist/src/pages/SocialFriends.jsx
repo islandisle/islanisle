@@ -117,8 +117,8 @@ export default function SocialFriends() {
               className="btn-primary"
               style={btnSm}
               onClick={() => navigate({
-                pathname: '/social/messages',
-                search: `?${createSearchParams({ dm: f.user_id, name: f.name })}`,
+                pathname: '/messages',
+                search: `?${createSearchParams({ tab: 'social', dm: f.user_id, name: f.name })}`,
               })}
             >
               Message
