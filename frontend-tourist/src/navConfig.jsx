@@ -21,14 +21,28 @@ export const NAV_LINKS = [
   { to: '/profile', label: 'Profile & settings', icon: 'profile' },
 ];
 
+// The Socisle (Go Social) version of the menu — shown when the app is in
+// the Go Social context (home-menu-pricing brief item 6). Every Go Social
+// screen that exists: the feed (with the Shots strip on top), friends +
+// friend requests, direct messages, and the user's own social profile.
+// `/social/u/:id` and `/social/post/:id` are reached from within those, not
+// listed here.
+export const SOCIAL_LINKS = [
+  { to: '/social', end: true, label: 'Feed & Shots', icon: 'social' },
+  { to: '/social/friends', label: 'Friends & requests', icon: 'guests' },
+  { to: '/messages?tab=social', label: 'Messages', icon: 'messages' },
+  { to: '/social/me', label: 'My profile', icon: 'profile' },
+];
+
 // The opened menu leads with the SOS/panic action (Section 8.3) as a direct,
-// visible item — coral-tinted (`danger`), one tap, no sub-page — then the
-// "Emergency contacts" reference link, then the normal destinations.
-// `onSOS` runs the shared SOS flow (see sos.js); it's supplied by whichever
-// shell/header is rendering the menu so the toast feedback lands in-context.
-export function buildNavMenuItems({ onSOS }) {
+// visible item — coral-tinted (`danger`), one tap, no sub-page — kept in
+// both menu modes since it's a safety feature — then the destinations for
+// whichever mode is active (`social`). `onSOS` runs the shared SOS flow
+// (see sos.js); it's supplied by whichever shell/header is rendering the
+// menu so the toast feedback lands in-context.
+export function buildNavMenuItems({ onSOS, social = false }) {
   return [
     { label: 'Send SOS alert', icon: 'sos', danger: true, onClick: onSOS },
-    ...NAV_LINKS,
+    ...(social ? SOCIAL_LINKS : NAV_LINKS),
   ];
 }

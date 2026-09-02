@@ -14,6 +14,13 @@ import { useModalA11y } from '../useModalA11y';
 //   - `onClick` renders a plain button (e.g. log out)
 //   - `icon`    is a key into the Icon component below
 //   - `danger`  tints the item with the coral accent (log out / destructive)
+//
+// contextModes (tourist only, home-menu-pricing brief item 6): when given,
+// a two-option "Atoll Isle / Socisle" segmented switch is shown at the very
+// top of the opened menu. Picking one calls contextModes.onSelect(key) —
+// the shell navigates into that context, which also swaps `items` to that
+// context's destinations. Shape: { current: 'atoll'|'social', onSelect }.
+const CONTEXT_MODE_LABELS = { atoll: 'Atoll Isle', social: 'Socisle' };
 
 const ICON_PATHS = {
   home: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /></>,
@@ -51,7 +58,7 @@ function Icon({ name }) {
   );
 }
 
-export default function NavMenu({ items, label = 'Menu', buttonStyle }) {
+export default function NavMenu({ items, label = 'Menu', buttonStyle, contextModes }) {
   const [open, setOpen] = useState(false);
   const sheetRef = useModalA11y(() => setOpen(false));
 
@@ -109,6 +116,31 @@ export default function NavMenu({ items, label = 'Menu', buttonStyle }) {
                 ×
               </button>
             </div>
+
+            {contextModes && (
+              <div role="group" aria-label="Switch app section" style={{ display: 'flex', gap: 4, padding: '0 6px 10px' }}>
+                {['atoll', 'social'].map((key) => {
+                  const active = contextModes.current === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => { setOpen(false); contextModes.onSelect(key); }}
+                      style={{
+                        flex: 1, padding: '7px 8px', borderRadius: 'var(--radius-sm, 8px)', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 600,
+                        border: active ? 'none' : '1px solid var(--border)',
+                        background: active ? 'var(--lagoon)' : 'var(--surface)',
+                        color: active ? '#fff' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {CONTEXT_MODE_LABELS[key]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {items.map((item) => {
               const tint = item.danger ? 'var(--coral)' : 'var(--navy)';

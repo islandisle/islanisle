@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import NavMenu from './NavMenu';
 import { buildNavMenuItems } from '../navConfig';
 import { runSOS, reportSOSToast } from '../sos';
@@ -19,16 +19,28 @@ export default function AppShell() {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const isNight = isMaldivesNight();
+  const navigate = useNavigate();
 
-  // Inside the Go Social section the same shared header rebrands to
-  // "Socisle"; everywhere else it stays "Atoll Isle". Label swap only —
-  // same shell, same layout.
-  const inSocial = useLocation().pathname.startsWith('/social');
+  // The Go Social ("Socisle") context: any /social* route, plus the social
+  // tab of the shared message bar (a Go Social screen that lives at
+  // /messages?tab=social). In that context the wordmark reads "Socisle" and
+  // the hamburger menu shows the Go Social destinations instead of the
+  // normal trip/business ones (home-menu-pricing brief item 6) — one menu
+  // component, two content modes.
+  const { pathname, search } = useLocation();
+  const inSocial =
+    pathname.startsWith('/social') ||
+    (pathname === '/messages' && new URLSearchParams(search).get('tab') === 'social');
   const wordmark = inSocial ? 'Socisle' : 'Atoll Isle';
 
   const menuItems = buildNavMenuItems({
     onSOS: () => runSOS({ report: reportSOSToast(showToast) }),
+    social: inSocial,
   });
+  const contextModes = {
+    current: inSocial ? 'social' : 'atoll',
+    onSelect: (mode) => navigate(mode === 'social' ? '/social' : '/'),
+  };
 
   return (
     <>
@@ -57,7 +69,7 @@ export default function AppShell() {
           >
             {wordmark}
           </Link>
-          <NavMenu items={menuItems} label={t('nav.menu')} />
+          <NavMenu items={menuItems} label={t('nav.menu')} contextModes={contextModes} />
         </div>
       </header>
 

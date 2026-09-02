@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getIslandListings, getNotifications, getWeather, getWeatherForecast, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
@@ -682,10 +682,17 @@ function FilterPill({ label, active, onClick }) {
 function Header({ island, weather, nationwide }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const isNight = isMaldivesNight();
   const menuItems = buildNavMenuItems({
     onSOS: () => runSOS({ island: nationwide ? null : island, report: reportSOSToast(showToast) }),
   });
+  // Home is always the Atoll Isle context; picking "Socisle" jumps to the
+  // Go Social feed (home-menu-pricing brief item 6).
+  const contextModes = {
+    current: 'atoll',
+    onSelect: (mode) => navigate(mode === 'social' ? '/social' : '/'),
+  };
   return (
     <div style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
       {/* Line-art behind the logo, per Section 6.2 / 11 — driven by
@@ -704,7 +711,7 @@ function Header({ island, weather, nationwide }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
           <HeaderSearch />
           <NotificationBell />
-          <NavMenu items={menuItems} label={t('nav.menu')} />
+          <NavMenu items={menuItems} label={t('nav.menu')} contextModes={contextModes} />
         </div>
       </div>
     </div>
