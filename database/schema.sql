@@ -1022,6 +1022,27 @@ CREATE TABLE external_place_claims (
 );
 CREATE INDEX idx_external_place_claims_status ON external_place_claims(status);
 
+-- ---------------------------------------------------------------------------
+-- [PHASE 2] "Go Social" — an Instagram-style social layer for tourist/local
+-- accounts (posts, stories, friends, friend-to-friend DMs). Deliberately
+-- self-contained: nothing here references bookings/orders/payments, and the
+-- friend-to-friend DMs are a SEPARATE store from the `messages` table
+-- (business/agent/trip chat) — see go-social-feature-brief.md. Media is
+-- stored inline as `data:` URIs (image_url/avatar_url columns) since there's
+-- no object storage wired up in this environment; the frontend downscales
+-- before upload to keep rows sane.
+-- ---------------------------------------------------------------------------
+
+-- One social profile per user, created lazily on first access. The display
+-- name comes from users.name; only the social-only bits live here.
+CREATE TABLE social_profiles (
+    user_id       UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    bio           TEXT,
+    avatar_url    TEXT, -- data: URI, or NULL for an initials avatar
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================

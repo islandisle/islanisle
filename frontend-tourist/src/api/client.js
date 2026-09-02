@@ -663,3 +663,23 @@ export async function unassignAgent() {
   });
   return handleResponse(res);
 }
+
+// --- Go Social (routes/social*.js) ---
+
+export async function getSocialProfile(userId) {
+  const path = userId ? `/api/social/profiles/${userId}` : '/api/social/profiles/me';
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function updateSocialProfile({ bio, avatar_url }) {
+  const body = {};
+  if (bio !== undefined) body.bio = bio;
+  if (avatar_url !== undefined) body.avatar_url = avatar_url;
+  const res = await fetch(`${API_BASE}/api/social/profiles/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(res);
+}

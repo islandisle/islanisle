@@ -18,6 +18,7 @@ import LocalGuide from './pages/LocalGuide';
 import Favorites from './pages/Favorites';
 import Messages from './pages/Messages';
 import FindAgent from './pages/FindAgent';
+import SocialProfile from './pages/SocialProfile';
 
 export default function App() {
   return (
@@ -46,6 +47,11 @@ export default function App() {
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/find-agent" element={<FindAgent />} />
+
+              {/* Go Social (go-social-feature-brief.md) — built stage by
+                  stage; the menu entry comes in the final stage. */}
+              <Route path="/social/me" element={<SocialProfile />} />
+              <Route path="/social/u/:userId" element={<SocialProfile />} />
             </Route>
           </Routes>
         </BrowserRouter>

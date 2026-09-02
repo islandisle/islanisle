@@ -602,6 +602,23 @@ async function main() {
     changed = true;
   }
 
+  // "Go Social" (go-social-feature-brief.md) — Instagram-style social layer.
+  // Built stage by stage; each stage adds its own tables here, all guarded.
+  console.log('Checking for social_profiles table (Go Social — profiles)...');
+  if (!(await tableExists('social_profiles'))) {
+    console.log('Creating social_profiles...');
+    await pool.query(`
+      CREATE TABLE social_profiles (
+          user_id       UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          bio           TEXT,
+          avatar_url    TEXT,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

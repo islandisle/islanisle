@@ -33,6 +33,7 @@ import b2bRoutes from './routes/b2b.js';
 import groupTransferRoutes from './routes/groupTransfers.js';
 import externalPlaceRoutes from './routes/externalPlaces.js';
 import userRoutes from './routes/users.js';
+import socialProfileRoutes from './routes/socialProfiles.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -52,6 +53,13 @@ app.use(cors());
 // signature, so it must be mounted with express.raw() BEFORE the global
 // express.json() parser below — otherwise Stripe's signature check fails.
 app.use('/api/payments', express.raw({ type: 'application/json' }), paymentRoutes);
+
+// "Go Social" post/story/avatar media travels as base64 data: URIs in the
+// JSON body (no object storage in this environment — see services/social.js),
+// which blows past express.json()'s 100 kB default. Mounted with its own
+// larger limit BEFORE the global parser, same pattern as the Stripe raw
+// mount above. The frontend downscales images before upload.
+app.use('/api/social', express.json({ limit: '8mb' }), socialProfileRoutes);
 
 app.use(express.json());
 

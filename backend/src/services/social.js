@@ -1,0 +1,41 @@
+// Shared helpers for the "Go Social" layer (go-social-feature-brief.md).
+// Kept deliberately separate from everything booking/payment-related.
+
+import { query } from '../config/db.js';
+
+// Uploaded media is stored inline as a `data:` URI — there's no object
+// storage in this environment (see reviews.js / auth.js placeholder TODOs).
+// The frontend downscales before upload; this is the backend backstop.
+const MAX_DATA_URI_BYTES = 3 * 1024 * 1024; // ~3 MB of base64 text
+const DATA_URI_RE = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+
+export function isValidImageDataUri(value) {
+  return (
+    typeof value === 'string' &&
+    value.length <= MAX_DATA_URI_BYTES &&
+    DATA_URI_RE.test(value)
+  );
+}
+
+// Every tourist/local automatically "has" a social profile; the row is
+// created on first touch rather than at signup so this needs no change to
+// the auth flow. Returns the profile row.
+export async function ensureSocialProfile(userId) {
+  const existing = await query('SELECT * FROM social_profiles WHERE user_id = $1', [userId]);
+  if (existing.rows.length) return existing.rows[0];
+  const created = await query(
+    `INSERT INTO social_profiles (user_id) VALUES ($1)
+     ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+     RETURNING *`,
+    [userId]
+  );
+  return created.rows[0];
+}
+
+// The account must be a tourist/local — a business-owner account signing in
+// to the tourist app still has type tourist/local, so this is really just a
+// guard against calling social endpoints for a non-existent user.
+export async function getSocialUser(userId) {
+  const result = await query('SELECT id, name, type FROM users WHERE id = $1', [userId]);
+  return result.rows[0] || null;
+}
