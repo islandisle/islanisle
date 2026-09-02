@@ -27,12 +27,33 @@ pool.on('error', (err) => {
   console.error('[db] idle pool client error (connection dropped, will reconnect):', err.message);
 });
 
-export async function query(text, params) {
+// Neon closes idle connections aggressively; the first query issued after
+// one is dropped can come back as a connection / "authentication timed out"
+// / terminated-unexpectedly error even though the database itself is
+// healthy. Retry such a query once (with a fresh pool client) before
+// surfacing it — a genuine outage still fails on the second attempt and
+// propagates normally.
+function isTransientConnectionError(err) {
+  if (!err) return false;
+  if (['08006', '08003', '08P01', '57P01', 'ECONNRESET', 'ETIMEDOUT'].includes(err.code)) return true;
+  return /connection terminated|authentication timed out|timeout expired|server closed the connection/i.test(err.message || '');
+}
+
+export async function query(text, params, { retry = true } = {}) {
   const start = Date.now();
-  const res = await pool.query(text, params);
-  const duration = Date.now() - start;
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('query', { text, duration, rows: res.rowCount });
+  try {
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('query', { text, duration, rows: res.rowCount });
+    }
+    return res;
+  } catch (err) {
+    if (retry && isTransientConnectionError(err)) {
+      console.error('[db] transient connection error, retrying once:', err.message);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return query(text, params, { retry: false });
+    }
+    throw err;
   }
-  return res;
 }

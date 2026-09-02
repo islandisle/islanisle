@@ -42,6 +42,16 @@ import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
 
+// Last-resort safety net: a transient Neon connection error that surfaces
+// from an un-try/caught async path (e.g. an auth middleware) would
+// otherwise take the whole process down. db.js already retries transient
+// query failures once; this keeps the server up if one still slips
+// through, rather than 502-ing every in-flight request. Genuinely fatal
+// bugs still show up in the log.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
