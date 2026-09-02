@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, createSearchParams } from 'react-router-dom';
 import {
   searchFriends, sendFriendRequest, getIncomingFriendRequests,
   acceptFriendRequest, declineFriendRequest, getFriends, unfriend,
@@ -113,6 +113,16 @@ export default function SocialFriends() {
         {friends.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No friends yet — search above to connect.</p>}
         {friends.map((f) => (
           <PersonRow key={f.user_id} person={f}>
+            <button
+              className="btn-primary"
+              style={btnSm}
+              onClick={() => navigate({
+                pathname: '/social/messages',
+                search: `?${createSearchParams({ dm: f.user_id, name: f.name })}`,
+              })}
+            >
+              Message
+            </button>
             <button className="btn-secondary" style={btnSm} onClick={() => remove(f.user_id)}>Remove</button>
           </PersonRow>
         ))}

@@ -769,3 +769,20 @@ export async function getStoryViewers(id) {
   const res = await fetch(`${API_BASE}/api/social/stories/${id}/viewers`, { headers: authHeaders() });
   return handleResponse(res);
 }
+
+export async function getSocialDmThreads() {
+  const res = await fetch(`${API_BASE}/api/social/dms`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getSocialDmUnreadCount() {
+  const res = await fetch(`${API_BASE}/api/social/dms/unread/count`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getSocialDmThread(userId) {
+  const res = await fetch(`${API_BASE}/api/social/dms/${userId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const sendSocialDm = (userId, text) => socialJson(`/dms/${userId}`, 'POST', { text });

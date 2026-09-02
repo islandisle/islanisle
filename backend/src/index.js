@@ -37,6 +37,7 @@ import socialProfileRoutes from './routes/socialProfiles.js';
 import socialPostRoutes from './routes/socialPosts.js';
 import socialFriendRoutes from './routes/socialFriends.js';
 import socialStoryRoutes from './routes/socialStories.js';
+import socialDmRoutes from './routes/socialDms.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -66,6 +67,7 @@ app.use('/api/social', express.json({ limit: '8mb' }), socialProfileRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialPostRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialFriendRoutes);
 app.use('/api/social', express.json({ limit: '8mb' }), socialStoryRoutes);
+app.use('/api/social', express.json({ limit: '8mb' }), socialDmRoutes);
 
 app.use(express.json());
 

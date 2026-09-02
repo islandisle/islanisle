@@ -714,6 +714,25 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for social_dm_messages table (Go Social — DMs)...');
+  if (!(await tableExists('social_dm_messages'))) {
+    console.log('Creating social_dm_messages...');
+    await pool.query(`
+      CREATE TABLE social_dm_messages (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          thread_key    TEXT NOT NULL,
+          sender_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          recipient_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          text          TEXT NOT NULL,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+          read_at       TIMESTAMPTZ
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_social_dm_messages_thread ON social_dm_messages(thread_key, created_at)`);
+    await pool.query(`CREATE INDEX idx_social_dm_messages_unread ON social_dm_messages(recipient_id) WHERE read_at IS NULL`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

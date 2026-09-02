@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, createSearchParams } from 'react-router-dom';
 import { getSocialProfile, updateSocialProfile, getUserPosts, sendFriendRequest, unfriend } from '../api/client';
 import { fileToDownscaledDataUrl } from '../utils/image';
 import Avatar from '../components/social/Avatar';
@@ -211,6 +211,7 @@ function ProfileHeader({ profile, onChanged }) {
 }
 
 function FriendButton({ profile, onChanged }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const rel = profile.relationship;
 
@@ -226,18 +227,30 @@ function FriendButton({ profile, onChanged }) {
 
   if (rel === 'friends') {
     return (
-      <button
-        className="btn-secondary"
-        style={{ marginTop: 14, width: '100%' }}
-        disabled={busy}
-        onClick={() => {
-          if (window.confirm(`Remove ${profile.name} as a friend?`)) {
-            act(() => unfriend(profile.user_id), 'none');
-          }
-        }}
-      >
-        ✓ Friends
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <button
+          className="btn-primary"
+          style={{ flex: 1 }}
+          onClick={() => navigate({
+            pathname: '/social/messages',
+            search: `?${createSearchParams({ dm: profile.user_id, name: profile.name })}`,
+          })}
+        >
+          Message
+        </button>
+        <button
+          className="btn-secondary"
+          style={{ flex: 1 }}
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm(`Remove ${profile.name} as a friend?`)) {
+              act(() => unfriend(profile.user_id), 'none');
+            }
+          }}
+        >
+          ✓ Friends
+        </button>
+      </div>
     );
   }
   if (rel === 'request_sent') {

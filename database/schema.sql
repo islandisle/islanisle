@@ -1121,6 +1121,22 @@ CREATE TABLE social_story_views (
     PRIMARY KEY (story_id, viewer_user_id)
 );
 
+-- Friend-to-friend direct messages. DELIBERATELY separate from the
+-- `messages` table (business/agent/trip chat) — see the brief. thread_key
+-- is the two user ids sorted and joined with '|', so both participants
+-- compute the same key. read_at is a lightweight per-message read receipt.
+CREATE TABLE social_dm_messages (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    thread_key    TEXT NOT NULL, -- '<lowUserId>|<highUserId>'
+    sender_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text          TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    read_at       TIMESTAMPTZ
+);
+CREATE INDEX idx_social_dm_messages_thread ON social_dm_messages(thread_key, created_at);
+CREATE INDEX idx_social_dm_messages_unread ON social_dm_messages(recipient_id) WHERE read_at IS NULL;
+
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================
