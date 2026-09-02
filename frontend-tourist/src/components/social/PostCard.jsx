@@ -165,7 +165,7 @@ export default function PostCard({ post, onDeleted }) {
               </div>
             ))}
             <form onSubmit={submitComment} style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              <input className="input-field" placeholder="Add a comment…" value={commentText} onChange={(e) => setCommentText(e.target.value)} style={{ flex: 1, fontSize: 12 }} />
+              <input className="input-field" placeholder="Add a comment…" value={commentText} onChange={(e) => setCommentText(e.target.value)} style={{ flex: 1 }} />
               <button className="btn-primary" type="submit" disabled={busy || !commentText.trim()} style={{ padding: '6px 12px', fontSize: 12 }}>Post</button>
             </form>
           </div>
