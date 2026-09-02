@@ -11,6 +11,7 @@ import cron from 'node-cron';
 import { runPayoutBatch } from '../services/payoutRun.js';
 import { expireStalePendingPayments } from '../services/staleCleanup.js';
 import { sendBoardingReminders } from '../services/boardingReminders.js';
+import { purgeExpiredStories } from '../services/social.js';
 
 // Monthly billing cycle: 00:00 on the 1st of each month. Bundles both the
 // normal online-payment payout run and Pay at Visit commission collection
@@ -44,6 +45,12 @@ export function startScheduledJobs() {
       console.log(`[cron] Stale pending-payment cleanup: ${result.bookings_expired} booking(s), ${result.orders_expired} order(s) expired.`);
     } catch (err) {
       console.error('[cron] Stale pending-payment cleanup failed:', err);
+    }
+    try {
+      const purged = await purgeExpiredStories();
+      if (purged > 0) console.log(`[cron] Go Social: purged ${purged} expired stor(ies).`);
+    } catch (err) {
+      console.error('[cron] Go Social story purge failed:', err);
     }
   });
 

@@ -1101,6 +1101,26 @@ CREATE TABLE social_friendships (
 );
 CREATE INDEX idx_social_friendships_b ON social_friendships(user_id_b);
 
+-- Stories: a photo (+ optional text overlay) that shows for 24h. The feed
+-- query filters on expires_at, so an expired story just stops appearing —
+-- rows are tidied by the hourly cleanup job (jobs/scheduler.js).
+CREATE TABLE social_stories (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    image_url     TEXT NOT NULL, -- data: URI
+    caption       TEXT,          -- simple text overlay
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '24 hours')
+);
+CREATE INDEX idx_social_stories_active ON social_stories(user_id, expires_at);
+
+CREATE TABLE social_story_views (
+    story_id       UUID NOT NULL REFERENCES social_stories(id) ON DELETE CASCADE,
+    viewer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (story_id, viewer_user_id)
+);
+
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================

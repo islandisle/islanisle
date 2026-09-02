@@ -689,6 +689,31 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for social_stories tables (Go Social — stories)...');
+  if (!(await tableExists('social_stories'))) {
+    console.log('Creating social_stories / social_story_views...');
+    await pool.query(`
+      CREATE TABLE social_stories (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          image_url     TEXT NOT NULL,
+          caption       TEXT,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+          expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '24 hours')
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_social_stories_active ON social_stories(user_id, expires_at)`);
+    await pool.query(`
+      CREATE TABLE social_story_views (
+          story_id       UUID NOT NULL REFERENCES social_stories(id) ON DELETE CASCADE,
+          viewer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          viewed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (story_id, viewer_user_id)
+      )
+    `);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }

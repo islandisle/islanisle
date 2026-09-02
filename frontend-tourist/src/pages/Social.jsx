@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getSocialFeed, getFriendRequestCount } from '../api/client';
 import PostCard from '../components/social/PostCard';
 import PostComposer from '../components/social/PostComposer';
+import StoryBar from '../components/social/StoryBar';
 
 // Go Social — the feed (stage 2). Landing view for the Go Social tab.
 // Stories row lands at the top of this in stage 4.
@@ -49,6 +50,8 @@ export default function Social() {
           </button>
         </div>
       </div>
+
+      <StoryBar />
 
       {error && <p className="error-text">{error}</p>}
       {posts === null && !error && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}

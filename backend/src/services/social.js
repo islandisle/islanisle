@@ -81,6 +81,18 @@ export async function removeFriendship(a, b) {
   await query(`DELETE FROM social_friendships WHERE user_id_a = $1 AND user_id_b = $2`, [lo, hi]);
 }
 
+// Hourly tidy of stories past their 24h window (jobs/scheduler.js). The
+// feed query already filters on expires_at, so this is housekeeping, not
+// correctness. Returns the row count removed.
+export async function purgeExpiredStories() {
+  try {
+    const result = await query(`DELETE FROM social_stories WHERE expires_at < now()`);
+    return result.rowCount || 0;
+  } catch {
+    return 0; // table not created yet
+  }
+}
+
 // name + avatar for a set of user ids, as { [userId]: { name, avatar_url } }.
 export async function authorMap(userIds) {
   const ids = [...new Set(userIds)].filter(Boolean);
