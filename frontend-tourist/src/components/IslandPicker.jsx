@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useModalA11y } from '../useModalA11y';
 import { useLanguage } from '../i18n';
 import { getIslands } from '../api/client';
+import AnchoredPopover from './AnchoredPopover';
 
 // Section 3.2/11: "a searchable popup organized by atoll — never a native
 // dropdown."
@@ -61,13 +62,20 @@ function loadAtolls() {
   return islandsPromise;
 }
 
-export default function IslandPicker({ value, onChange, id, placeholder, autoOpen = false, onNotInMaldives }) {
+// `renderTrigger` — when given, IslandPicker renders this instead of its
+// default full-width bar button, and opens the island list as a dropdown
+// anchored under the trigger rather than the full-screen bottom sheet. Home
+// uses it to hang the picker off the plain island-name text in the header;
+// every other caller keeps the default bar + bottom sheet untouched.
+//   renderTrigger({ onClick, open }) => ReactNode
+export default function IslandPicker({ value, onChange, id, placeholder, autoOpen = false, onNotInMaldives, renderTrigger }) {
   const { t } = useLanguage();
   const resolvedPlaceholder = placeholder ?? t('home.island_picker_placeholder');
   const [open, setOpen] = useState(Boolean(autoOpen));
   const [search, setSearch] = useState('');
   const [atolls, setAtolls] = useState(ATOLLS);
   const modalRef = useModalA11y(() => setOpen(false));
+  const triggerRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -107,6 +115,87 @@ export default function IslandPicker({ value, onChange, id, placeholder, autoOpe
     setSearch('');
   }
 
+  // The search field + atoll/island list, shared by both presentations
+  // (full-screen bottom sheet and anchored dropdown).
+  const listBody = (
+    <>
+      <input
+        autoFocus
+        className="input-field"
+        placeholder={t('home.island_search_placeholder')}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ marginBottom: 10 }}
+      />
+
+      {/* Fix #1 — the explicit "not here yet" escape hatch. Given only
+          when the caller wants it (Home), it switches to the
+          nationwide, all-islands view. */}
+      {onNotInMaldives && (
+        <button
+          type="button"
+          onClick={() => { onNotInMaldives(); setOpen(false); setSearch(''); }}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left',
+            padding: '10px 12px', marginBottom: 10,
+            background: 'var(--lagoon-tint)', border: '1px solid var(--border)',
+            borderRadius: 8, fontSize: 13, color: 'var(--navy)', cursor: 'pointer',
+          }}
+        >
+          ✈️ I'm not in the Maldives yet — show me everything
+        </button>
+      )}
+
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {filtered.length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No islands match "{search}".</p>
+        )}
+        {filtered.map((a) => (
+          <div key={a.atoll} style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.03, color: 'var(--text-muted)', margin: '0 0 6px' }}>
+              {atollLabel(a.atoll)}
+            </p>
+            {a.islands.map((isl) => (
+              <button
+                key={isl}
+                type="button"
+                onClick={() => handlePick(isl, a.atoll)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px',
+                  background: isl === value ? 'var(--lagoon-tint)' : 'transparent',
+                  border: 'none', borderRadius: 6, fontSize: 14, color: 'var(--navy)', cursor: 'pointer',
+                }}
+              >
+                {isl}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  // Home's header: plain-text trigger + anchored dropdown.
+  if (renderTrigger) {
+    return (
+      <span ref={triggerRef} style={{ display: 'inline-flex', maxWidth: '100%' }}>
+        {renderTrigger({ onClick: () => setOpen((o) => !o), open })}
+        {open && (
+          <AnchoredPopover
+            anchorRef={triggerRef}
+            onClose={() => { setOpen(false); setSearch(''); }}
+            ariaLabel="Choose an island"
+            width={300}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'min(56vh, 420px)' }}>
+              {listBody}
+            </div>
+          </AnchoredPopover>
+        )}
+      </span>
+    );
+  }
+
   return (
     <>
       <button
@@ -136,59 +225,7 @@ export default function IslandPicker({ value, onChange, id, placeholder, autoOpe
             style={{ width: '100%', maxWidth: 420, maxHeight: '75vh', borderRadius: '20px 20px 0 0', padding: 16, display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <input
-              autoFocus
-              className="input-field"
-              placeholder={t('home.island_search_placeholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ marginBottom: 10 }}
-            />
-
-            {/* Fix #1 — the explicit "not here yet" escape hatch. Given only
-                when the caller wants it (Home), it switches to the
-                nationwide, all-islands view. */}
-            {onNotInMaldives && (
-              <button
-                type="button"
-                onClick={() => { onNotInMaldives(); setOpen(false); setSearch(''); }}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '10px 12px', marginBottom: 10,
-                  background: 'var(--lagoon-tint)', border: '1px solid var(--border)',
-                  borderRadius: 8, fontSize: 13, color: 'var(--navy)', cursor: 'pointer',
-                }}
-              >
-                ✈️ I'm not in the Maldives yet — show me everything
-              </button>
-            )}
-
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              {filtered.length === 0 && (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No islands match "{search}".</p>
-              )}
-              {filtered.map((a) => (
-                <div key={a.atoll} style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.03, color: 'var(--text-muted)', margin: '0 0 6px' }}>
-                    {atollLabel(a.atoll)}
-                  </p>
-                  {a.islands.map((isl) => (
-                    <button
-                      key={isl}
-                      type="button"
-                      onClick={() => handlePick(isl, a.atoll)}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px',
-                        background: isl === value ? 'var(--lagoon-tint)' : 'transparent',
-                        border: 'none', borderRadius: 6, fontSize: 14, color: 'var(--navy)', cursor: 'pointer',
-                      }}
-                    >
-                      {isl}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
+            {listBody}
             <button className="btn-secondary" style={{ marginTop: 10 }} onClick={() => setOpen(false)}>
               {t('common.close')}
             </button>

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getIslandListings, getNotifications, getWeather, getWeatherForecast, getMyFavoriteIds, addFavorite, removeFavorite, getTripContext, getLocalEvents, getExternalPlaces } from '../api/client';
 import IslandPicker from '../components/IslandPicker';
 import FirstRunTour from '../components/FirstRunTour';
-import GlobalSearch from '../components/GlobalSearch';
-import Hint from '../components/Hint';
+import HeaderSearch from '../components/HeaderSearch';
+import AnchoredPopover from '../components/AnchoredPopover';
 import NavMenu from '../components/NavMenu';
 import { buildNavMenuItems } from '../navConfig';
 import { runSOS, reportSOSToast } from '../sos';
@@ -289,33 +289,22 @@ export default function Home() {
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <AmbientBackground type={typeFilter || 'all'} />
       <LeafBackdrop />
-      <Header island={island} weather={weather} nationwide={nationwide} />
+      <Header
+        island={island}
+        weather={weather}
+        nationwide={nationwide}
+        pickerAutoOpen={pickerAutoOpen}
+        onSelectIsland={selectIsland}
+        onSelectNationwide={selectNationwide}
+      />
 
       <div style={{ padding: 16 }}>
         <WelcomeBack context={tripContext} />
         <TripStagePriority context={tripContext} isLocal={isLocal} />
 
-        {/* Section 3.2/11 "Choosing a Stay Island": searchable, grouped by
-            atoll — not a curated island directory with photos/descriptions
-            (that's a larger, separate piece), but a real picker rather than
-            a plain text field. Reuses the same getIslandListings(island,
-            type) call the backend already supports. */}
-        <Hint id="home-search" text={t('hint.search')} />
-        <GlobalSearch />
-
-        <div style={{ marginBottom: 14 }}>
-          <IslandPicker
-            value={nationwide ? '' : island}
-            onChange={(isl, atl) => selectIsland(isl, atl)}
-            id="home-island-picker"
-            autoOpen={pickerAutoOpen}
-            onNotInMaldives={selectNationwide}
-            placeholder={nationwide ? 'Browsing all islands — pick one to narrow down' : undefined}
-          />
-        </div>
-
-        {!nationwide && <WeatherForecast island={island} />}
-
+        {/* Section 3.2/11 "Choosing a Stay Island" — the picker now lives in
+            the header (tap the island name); cross-island listing search is
+            the header search icon. Both were dedicated body sections before. */}
         {!nationwide && (
           <Link
             to={`/transfers?from=${encodeURIComponent(island)}`}
@@ -517,18 +506,11 @@ export default function Home() {
   );
 }
 
-// Batch 25 (not in the original spec) — "More on this island": real
-// Ministry of Tourism registered places that aren't on the platform yet,
-// split into the source data's own three categories (Guest House / Home
-// Stay / Hotel — kept distinct, never merged into one "accommodation"
-// bucket). Deliberately separated from the real, bookable listings above
-// (own heading, no ListingCard, no booking action) so it's never mistaken
-// for something bookable through Atoll Isle.
-// 5-day outlook — GET /api/weather/:atoll/forecast (stateless proxy onto
-// Open-Meteo's daily forecast; see backend/src/services/weather.js). Own
-// small icon set (not the big decorative WeatherIcon) since these render
-// tiny, side by side, in the body of the page rather than as one large
-// header glyph.
+// 5-day outlook icon set — GET /api/weather/:atoll/forecast (stateless
+// proxy onto Open-Meteo's daily forecast; see backend/src/services/
+// weather.js). Small emoji set (not the big decorative WeatherIcon) since
+// these render tiny, side by side, inside the header weather popover
+// (WeatherPopover, opened from the temperature badge).
 const FORECAST_ICON = {
   sunny: '☀️',
   cloudy: '☁️',
@@ -536,65 +518,6 @@ const FORECAST_ICON = {
   windy: '💨',
   thundery: '⛈️',
 };
-
-function WeatherForecast({ island }) {
-  const [forecast, setForecast] = useState([]);
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getWeatherForecast(island)
-      .then((d) => { if (!cancelled) setForecast(d.forecast || []); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [island]);
-
-  if (forecast.length === 0) return null;
-
-  return (
-    <div className="card" style={{ padding: 12, marginBottom: 16 }}>
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        aria-controls="forecast-panel"
-        style={{
-          width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)' }}>
-          Maldives weather forecast — {island}
-        </span>
-        <span aria-hidden="true" style={{ color: 'var(--lagoon)', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
-      </button>
-
-      {expanded && (
-        <div id="forecast-panel" style={{ display: 'flex', gap: 6, marginTop: 10, overflowX: 'auto' }}>
-          {forecast.map((day, i) => (
-            <div
-              key={day.date}
-              style={{
-                flex: '0 0 auto', minWidth: 64, textAlign: 'center', padding: '8px 4px',
-                borderRadius: 'var(--radius-sm)', background: i === 0 ? 'var(--lagoon-tint)' : 'transparent',
-              }}
-            >
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
-                {i === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
-              </p>
-              <p style={{ fontSize: 20, margin: '0 0 4px' }} aria-hidden="true">
-                {FORECAST_ICON[day.condition_type] || FORECAST_ICON.sunny}
-              </p>
-              <p style={{ fontSize: 11, color: 'var(--navy)', margin: 0 }}>
-                {Math.round(day.temperature_max)}° / {Math.round(day.temperature_min)}°
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // "More on this island" — real Ministry-of-Tourism registered places
 // (backend/data/maldives_accommodations_master.json, see externalPlaces.js)
@@ -750,7 +673,7 @@ function FilterPill({ label, active, onClick }) {
   );
 }
 
-function Header({ island, weather, nationwide }) {
+function Header({ island, weather, nationwide, pickerAutoOpen, onSelectIsland, onSelectNationwide }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const isNight = isMaldivesNight();
@@ -769,13 +692,36 @@ function Header({ island, weather, nationwide }) {
         <div>
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <p style={{ color: 'var(--lagoon-light)', fontSize: 13, margin: 0 }}>
-              {nationwide ? 'Browsing every island' : t('home.staying_on', { island })}
-            </p>
-            {!nationwide && weather && <WeatherBadge weather={weather} />}
+            {/* The selected island as plain tappable text — opens the shared
+                island-search popup as a dropdown from here (was a full-width
+                bar in the page body). FirstRunTour points at this. */}
+            <IslandPicker
+              value={nationwide ? '' : island}
+              onChange={(isl, atl) => onSelectIsland(isl, atl)}
+              autoOpen={pickerAutoOpen}
+              onNotInMaldives={onSelectNationwide}
+              renderTrigger={({ onClick, open }) => (
+                <button
+                  type="button"
+                  onClick={onClick}
+                  aria-haspopup="dialog"
+                  aria-expanded={open}
+                  aria-label={`${nationwide ? 'Browsing every island' : t('home.staying_on', { island })} — change island`}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, margin: 0,
+                    color: 'var(--lagoon-light)', fontSize: 13, fontFamily: 'inherit',
+                    cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {nationwide ? 'Browsing every island' : island}
+                </button>
+              )}
+            />
+            {!nationwide && weather && <WeatherBadge weather={weather} island={island} />}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
+          <HeaderSearch />
           <NotificationBell />
           <NavMenu items={menuItems} label={t('nav.menu')} />
         </div>
@@ -784,29 +730,96 @@ function Header({ island, weather, nationwide }) {
   );
 }
 
-// The tap-to-toggle badge from the original Visualizer mockups (see
-// theme.css's header comment) — shows temperature by default, taps to
-// show wind speed instead.
-function WeatherBadge({ weather }) {
-  const [showWind, setShowWind] = useState(false);
+// The temperature badge from the original Visualizer mockups (see
+// theme.css's header comment). Background stays transparent-white; tapping
+// it now opens a small weather popover anchored below it (5-day outlook +
+// current conditions) — this replaced the dedicated forecast card that
+// used to sit in the page body.
+function WeatherBadge({ weather, island }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
 
   return (
-    <button
-      onClick={() => setShowWind((v) => !v)}
-      style={{
-        border: 'none',
-        background: 'rgba(255,255,255,0.15)',
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 'var(--radius-pill)',
-        cursor: 'pointer',
-      }}
-      aria-label="Toggle between temperature and wind speed"
-    >
-      {showWind ? `${weather.wind_speed} km/h wind` : `${weather.temperature}°C`}
-    </button>
+    <>
+      <button
+        ref={btnRef}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        style={{
+          border: 'none',
+          background: 'rgba(255,255,255,0.15)',
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 500,
+          padding: '2px 8px',
+          borderRadius: 'var(--radius-pill)',
+          cursor: 'pointer',
+        }}
+        aria-label={`Weather on ${island} — ${weather.temperature}°C`}
+      >
+        {`${weather.temperature}°C`}
+      </button>
+      {open && (
+        <WeatherPopover
+          anchorRef={btnRef}
+          island={island}
+          weather={weather}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// The 5-day forecast that used to live in a body card, now anchored under
+// the temperature badge. GET /api/weather/:atoll/forecast, fetched fresh
+// each time the popover opens (cheap stateless proxy).
+function WeatherPopover({ anchorRef, island, weather, onClose }) {
+  const [forecast, setForecast] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWeatherForecast(island)
+      .then((d) => { if (!cancelled) setForecast(d.forecast || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [island]);
+
+  return (
+    <AnchoredPopover anchorRef={anchorRef} onClose={onClose} ariaLabel={`Weather on ${island}`} width={288}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 2px' }}>
+        {island}
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+        {weather.temperature}°C · {weather.wind_speed} km/h wind
+      </p>
+      {forecast.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Forecast unavailable right now.</p>
+      ) : (
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+          {forecast.map((day, i) => (
+            <div
+              key={day.date}
+              style={{
+                flex: '0 0 auto', minWidth: 54, textAlign: 'center', padding: '6px 4px',
+                borderRadius: 'var(--radius-sm)', background: i === 0 ? 'var(--lagoon-tint)' : 'transparent',
+              }}
+            >
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 3px' }}>
+                {i === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+              </p>
+              <p style={{ fontSize: 18, margin: '0 0 3px' }} aria-hidden="true">
+                {FORECAST_ICON[day.condition_type] || FORECAST_ICON.sunny}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--navy)', margin: 0 }}>
+                {Math.round(day.temperature_max)}° / {Math.round(day.temperature_min)}°
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </AnchoredPopover>
   );
 }
 
