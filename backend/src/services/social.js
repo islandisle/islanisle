@@ -39,3 +39,42 @@ export async function getSocialUser(userId) {
   const result = await query('SELECT id, name, type FROM users WHERE id = $1', [userId]);
   return result.rows[0] || null;
 }
+
+// The user ids this user is friends with (symmetric — friendships store one
+// row per pair). Returns [] before the friendships table exists (stage 3),
+// so the posts/stories feed degrades to "just your own" rather than 500ing.
+export async function friendIds(userId) {
+  try {
+    const result = await query(
+      `SELECT CASE WHEN user_id_a = $1 THEN user_id_b ELSE user_id_a END AS friend_id
+       FROM social_friendships
+       WHERE user_id_a = $1 OR user_id_b = $1`,
+      [userId]
+    );
+    return result.rows.map((r) => r.friend_id);
+  } catch {
+    return [];
+  }
+}
+
+export async function areFriends(a, b) {
+  if (a === b) return false;
+  const ids = await friendIds(a);
+  return ids.includes(b);
+}
+
+// name + avatar for a set of user ids, as { [userId]: { name, avatar_url } }.
+export async function authorMap(userIds) {
+  const ids = [...new Set(userIds)].filter(Boolean);
+  if (!ids.length) return {};
+  const result = await query(
+    `SELECT u.id, u.name, sp.avatar_url
+     FROM users u
+     LEFT JOIN social_profiles sp ON sp.user_id = u.id
+     WHERE u.id = ANY($1::uuid[])`,
+    [ids]
+  );
+  const map = {};
+  for (const row of result.rows) map[row.id] = { name: row.name, avatar_url: row.avatar_url };
+  return map;
+}

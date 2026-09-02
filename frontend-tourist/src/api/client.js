@@ -683,3 +683,47 @@ export async function updateSocialProfile({ bio, avatar_url }) {
   });
   return handleResponse(res);
 }
+
+async function socialJson(path, method, body) {
+  const res = await fetch(`${API_BASE}/api/social${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return handleResponse(res);
+}
+
+export function createPost({ caption, images }) {
+  return socialJson('/posts', 'POST', { caption, images });
+}
+
+export async function getSocialFeed({ before, limit } = {}) {
+  const params = new URLSearchParams();
+  if (before) params.set('before', before);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE}/api/social/posts/feed${qs ? `?${qs}` : ''}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getUserPosts(userId) {
+  const res = await fetch(`${API_BASE}/api/social/posts/user/${userId}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getPost(id) {
+  const res = await fetch(`${API_BASE}/api/social/posts/${id}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const deletePost = (id) => socialJson(`/posts/${id}`, 'DELETE');
+export const likePost = (id) => socialJson(`/posts/${id}/like`, 'POST');
+export const unlikePost = (id) => socialJson(`/posts/${id}/like`, 'DELETE');
+
+export async function getPostComments(id) {
+  const res = await fetch(`${API_BASE}/api/social/posts/${id}/comments`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const addPostComment = (id, text) => socialJson(`/posts/${id}/comments`, 'POST', { text });
+export const deletePostComment = (id, commentId) => socialJson(`/posts/${id}/comments/${commentId}`, 'DELETE');

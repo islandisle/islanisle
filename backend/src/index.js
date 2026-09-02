@@ -34,6 +34,7 @@ import groupTransferRoutes from './routes/groupTransfers.js';
 import externalPlaceRoutes from './routes/externalPlaces.js';
 import userRoutes from './routes/users.js';
 import socialProfileRoutes from './routes/socialProfiles.js';
+import socialPostRoutes from './routes/socialPosts.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
 
 dotenv.config();
@@ -60,6 +61,7 @@ app.use('/api/payments', express.raw({ type: 'application/json' }), paymentRoute
 // larger limit BEFORE the global parser, same pattern as the Stripe raw
 // mount above. The frontend downscales images before upload.
 app.use('/api/social', express.json({ limit: '8mb' }), socialProfileRoutes);
+app.use('/api/social', express.json({ limit: '8mb' }), socialPostRoutes);
 
 app.use(express.json());
 

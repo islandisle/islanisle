@@ -1043,6 +1043,40 @@ CREATE TABLE social_profiles (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Posts: a caption + one or more photos. Feed is chronological (friends'
+-- posts + your own) — no ranking.
+CREATE TABLE social_posts (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    caption       TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_social_posts_user ON social_posts(user_id, created_at DESC);
+
+CREATE TABLE social_post_media (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+    image_url     TEXT NOT NULL, -- data: URI
+    position      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_social_post_media_post ON social_post_media(post_id, position);
+
+CREATE TABLE social_post_likes (
+    post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE social_post_comments (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text          TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_social_post_comments_post ON social_post_comments(post_id, created_at);
+
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================

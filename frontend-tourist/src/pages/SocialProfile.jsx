@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getSocialProfile, updateSocialProfile } from '../api/client';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getSocialProfile, updateSocialProfile, getUserPosts } from '../api/client';
 import { fileToDownscaledDataUrl } from '../utils/image';
 import Avatar from '../components/social/Avatar';
 
@@ -50,12 +50,44 @@ export default function SocialProfile() {
       <ProfileHeader profile={profile} onChanged={setProfile} />
 
       <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', margin: '24px 0 12px' }}>Posts</h2>
-      <div
-        className="card"
-        style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}
-      >
-        {profile.is_self ? "You haven't posted anything yet." : `${profile.name} hasn't posted anything yet.`}
+      <PostGrid userId={profile.user_id} isSelf={profile.is_self} name={profile.name} />
+    </div>
+  );
+}
+
+function PostGrid({ userId, isSelf, name }) {
+  const [posts, setPosts] = useState(null);
+
+  useEffect(() => {
+    getUserPosts(userId).then((d) => setPosts(d.posts)).catch(() => setPosts([]));
+  }, [userId]);
+
+  if (posts === null) {
+    return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>;
+  }
+  if (posts.length === 0) {
+    return (
+      <div className="card" style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+        {isSelf ? "You haven't posted anything yet." : `${name} hasn't posted anything yet.`}
       </div>
+    );
+  }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
+      {posts.map((p) => (
+        <Link
+          key={p.id}
+          to={`/social/post/${p.id}`}
+          style={{ position: 'relative', aspectRatio: '1', background: 'var(--sand)', overflow: 'hidden' }}
+        >
+          {p.media[0] && (
+            <img src={p.media[0]} alt={p.caption || 'Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+          {p.media.length > 1 && (
+            <span style={{ position: 'absolute', top: 4, right: 4, color: '#fff', fontSize: 12, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>▣</span>
+          )}
+        </Link>
+      ))}
     </div>
   );
 }

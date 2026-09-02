@@ -619,6 +619,48 @@ async function main() {
     changed = true;
   }
 
+  console.log('Checking for social_posts tables (Go Social — posts)...');
+  if (!(await tableExists('social_posts'))) {
+    console.log('Creating social_posts / _media / _likes / _comments...');
+    await pool.query(`
+      CREATE TABLE social_posts (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          caption       TEXT,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_social_posts_user ON social_posts(user_id, created_at DESC)`);
+    await pool.query(`
+      CREATE TABLE social_post_media (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+          image_url     TEXT NOT NULL,
+          position      INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_social_post_media_post ON social_post_media(post_id, position)`);
+    await pool.query(`
+      CREATE TABLE social_post_likes (
+          post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+          user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (post_id, user_id)
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE social_post_comments (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          post_id       UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+          user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          text          TEXT NOT NULL,
+          created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX idx_social_post_comments_post ON social_post_comments(post_id, created_at)`);
+    changed = true;
+  }
+
   console.log(changed ? 'Done — schema is now caught up.' : 'Already up to date, nothing to do.');
   await pool.end();
 }
