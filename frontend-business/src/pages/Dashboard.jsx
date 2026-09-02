@@ -18,6 +18,17 @@ import Tabs from '../components/Tabs';
 
 const BUSINESS_TYPES = ['guesthouse', 'restaurant', 'excursion', 'speedboat', 'shop'];
 
+// Dual pricing (home-menu-pricing-viewport-brief.md item 3): a tourist
+// booking/order is charged the listing's USD tourist_price, a local one its
+// independent MVR local_price. `price_charged` is already in that currency
+// — show it with the matching symbol so the business knows what it will
+// collect in person.
+function money(amount, payerType) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return payerType === 'local' ? 'MVR —' : '$—';
+  return payerType === 'local' ? `MVR ${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [business, setBusiness] = useState(() => {
@@ -129,7 +140,7 @@ export default function Dashboard() {
                   <div key={l.id} className="card" style={{ padding: 12, marginBottom: 10 }}>
                     <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--navy)', margin: '0 0 2px' }}>{l.title}</p>
                     <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                      ${l.tourist_price} tourist · ${l.local_price} local · {l.approval_status}
+                      ${l.tourist_price} tourist · MVR {l.local_price} local · {l.approval_status}
                     </p>
                   </div>
                 ))}
@@ -784,21 +795,36 @@ function AddListingForm({ businessType, businessId, onCreated }) {
           {photos.length} photo{photos.length > 1 ? 's' : ''} selected
         </p>
       )}
+      {/* Two independent prices in two currencies — tourist accounts are
+          charged the USD price, local accounts the MVR price. Not converted
+          from each other; set each to whatever it should really be. */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-        <input
-          className="input-field"
-          type="number"
-          placeholder="Tourist price"
-          value={touristPrice}
-          onChange={(e) => setTouristPrice(e.target.value)}
-        />
-        <input
-          className="input-field"
-          type="number"
-          placeholder="Local price"
-          value={localPrice}
-          onChange={(e) => setLocalPrice(e.target.value)}
-        />
+        <div style={{ flex: 1 }}>
+          <label htmlFor="listing-tourist-price" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+            Tourist price (USD)
+          </label>
+          <input
+            id="listing-tourist-price"
+            className="input-field"
+            type="number"
+            placeholder="e.g. 75"
+            value={touristPrice}
+            onChange={(e) => setTouristPrice(e.target.value)}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="listing-local-price" style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+            Local price (MVR)
+          </label>
+          <input
+            id="listing-local-price"
+            className="input-field"
+            type="number"
+            placeholder="e.g. 900"
+            value={localPrice}
+            onChange={(e) => setLocalPrice(e.target.value)}
+          />
+        </div>
       </div>
 
       {fieldConfig.length > 0 && (
@@ -1324,7 +1350,7 @@ function IncomingActivity({ businessId, businessType }) {
                 {b.title} — {b.customer_name}
               </p>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-                {new Date(b.slot_start).toLocaleString()} · ${b.price_charged}
+                {new Date(b.slot_start).toLocaleString()} · {money(b.price_charged, b.payer_type)}
                 {b.party_size > 1 && ` · Party of ${b.party_size}`}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1356,7 +1382,7 @@ function IncomingActivity({ businessId, businessType }) {
               {b.title} — {b.customer_name}
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-              {new Date(b.slot_start).toLocaleString()} · ${b.price_charged} ({b.payer_type})
+              {new Date(b.slot_start).toLocaleString()} · {money(b.price_charged, b.payer_type)} ({b.payer_type})
               {b.party_size > 1 && ` · Party of ${b.party_size}`}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1427,7 +1453,7 @@ function DepartureManifest({ bookings, businessId, onMarkFulfilled }) {
             {passengers.map((p) => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderTop: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {p.customer_name}{p.party_size > 1 && ` (+${p.party_size - 1})`} · ${p.price_charged}
+                  {p.customer_name}{p.party_size > 1 && ` (+${p.party_size - 1})`} · {money(p.price_charged, p.payer_type)}
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button className="btn-secondary" style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => onMarkFulfilled(p.id)}>
@@ -1503,7 +1529,7 @@ function OrderRow({ order, businessId, onAdvance }) {
         {itemsSummary} — {order.customer_name}
       </p>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
-        ${order.price_charged} · {ORDER_STATUS_LABEL[order.status] || order.status}
+        {money(order.price_charged, order.payer_type)} · {ORDER_STATUS_LABEL[order.status] || order.status}
         {order.fulfillment_method && ` · ${order.fulfillment_method}`}
         {order.party_size > 1 && ` · Party of ${order.party_size}`}
       </p>

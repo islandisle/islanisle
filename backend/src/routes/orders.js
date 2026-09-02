@@ -48,6 +48,7 @@ import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/pa
 import { findFastestDelivery } from '../services/deliveryMatch.js';
 import { awardLoyaltyCreditForCompletion } from '../services/loyalty.js';
 import { reportUnpaidPayAtVisit } from '../services/payAtVisitIncidents.js';
+import { formatMoney } from '../utils/money.js';
 
 const router = Router();
 
@@ -383,14 +384,14 @@ router.post('/', authenticate, requireDocumentOnFile, requireFlightTicketForCros
         recipientId: req.user.id,
         type: 'booking_confirmation',
         title: 'Order confirmed',
-        body: `Your order is confirmed — pay $${priceCharged} in person.`,
+        body: `Your order is confirmed — pay ${formatMoney(priceCharged, payerType)} in person.`,
       });
       await notifyGuesthouseIfNeeded();
       return res.status(201).json({
         order,
         price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
         delivery: deliveryInfo,
-        message: `Order confirmed. Pay $${priceCharged} in person.`,
+        message: `Order confirmed. Pay ${formatMoney(priceCharged, payerType)} in person.`,
       });
     }
 
@@ -539,7 +540,7 @@ router.get('/business/:businessId', authenticate, async (req, res) => {
   }
 
   const ordersResult = await query(
-    `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.fulfillment_method, o.payment_method,
+    `SELECT o.id, o.status, o.escrow_status, o.price_charged, o.payer_type, o.fulfillment_method, o.payment_method,
             o.created_at, u.name AS customer_name,
             1 + (SELECT COUNT(*)::int FROM order_members om WHERE om.order_id = o.id) AS party_size
      FROM orders o

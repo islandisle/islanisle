@@ -6,10 +6,10 @@ import IslandPicker from '../components/IslandPicker';
 import { rememberIslandScope, rememberNationwideScope } from '../homeScope';
 import { formatPrice } from '../utils/currency';
 
-// Section 3.4 pricing visibility — a Local account sees MVR wherever a
-// price shows (utils/currency.js). These are already-charged amounts, but
-// shown in the account's currency for consistency with the rest of the
-// app; the underlying charge is unchanged (payment is deferred).
+// Section 3.4 pricing visibility — a Local is charged a listing's MVR
+// local_price, a tourist its USD tourist_price (independent values,
+// utils/currency.js). These already-charged amounts are in the account's
+// own currency; formatPrice just labels them. Payment is deferred.
 function currentUserIsLocal() {
   try {
     return JSON.parse(localStorage.getItem('atollisle_user') || 'null')?.type === 'local';

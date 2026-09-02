@@ -17,6 +17,16 @@ export const pool = new Pool({
   ssl: { rejectUnauthorized: false }, // Neon requires SSL
 });
 
+// Neon (serverless Postgres) drops idle connections after a short window.
+// When that happens to a client sitting idle in the pool, `pg` emits an
+// 'error' event on the pool — and with no listener attached, Node treats it
+// as an unhandled error and exits the whole process. Swallow it here (the
+// pool discards the dead client and opens a fresh one on the next query);
+// a genuinely unreachable database still surfaces as a failed `query()`.
+pool.on('error', (err) => {
+  console.error('[db] idle pool client error (connection dropped, will reconnect):', err.message);
+});
+
 export async function query(text, params) {
   const start = Date.now();
   const res = await pool.query(text, params);

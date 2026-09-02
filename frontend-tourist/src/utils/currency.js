@@ -1,30 +1,24 @@
-// The Maldivian rufiyaa (MVR) isn't freely floating — the Maldives
-// Monetary Authority keeps it in a managed band, currently sitting
-// around 15.4–15.5 MVR per 1 USD (checked against current market data,
-// not a fixed historical peg — this constant should be reviewed
-// periodically, not treated as permanent). This is a display-only
-// conversion: nothing charged anywhere in the app changes because of
-// this number — see currency-display-brief.md's header for why. Payment
-// (Stripe, Pay at Visit amounts) is untouched; a local is still charged
-// the same underlying amount, only the shown currency/number differs.
-export const USD_TO_MVR_RATE = 15.46;
+// Dual, independent pricing (home-menu-pricing-viewport-brief.md item 3):
+// a listing carries a real USD price (tourist_price) charged to tourist
+// accounts and a real MVR price (local_price) charged to local accounts.
+// They are NOT converted from each other — a business sets each directly,
+// with no fixed ratio. This replaces the earlier "currency-display-brief"
+// approach, which stored one number and multiplied it by ~15.46 MVR/USD
+// for local display only.
+//
+// So `amount` is already in the currency for `isLocal`: local_price (or a
+// charge/refund derived from it) for a local, tourist_price (or a charge
+// derived from it) for a tourist. Just format it — no arithmetic.
+// Accepts a string or a number (Postgres NUMERIC columns come back as
+// strings).
+export function formatPrice(amount, isLocal) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return isLocal ? 'MVR —' : '$—';
 
-// Tourists always see USD; locals always see MVR — never both, never a
-// toggle. `amountUsd` is whatever's already stored/returned (tourist_price
-// or local_price, or a charged/refund amount — all already USD-denominated
-// numbers regardless of who they're charged to). Accepts a string or a
-// number, since Postgres NUMERIC columns come back as strings.
-export function formatPrice(amountUsd, isLocal) {
-  const amount = Number(amountUsd);
-  if (!Number.isFinite(amount)) return isLocal ? 'MVR —' : '$—';
-
-  if (!isLocal) {
-    return `$${amount.toFixed(2)}`;
+  if (isLocal) {
+    // Rufiyaa in everyday pricing is shown as whole numbers (laari, the
+    // subunit, isn't used casually).
+    return `MVR ${Math.round(n).toLocaleString()}`;
   }
-
-  const mvr = amount * USD_TO_MVR_RATE;
-  // Rufiyaa amounts in everyday use are typically shown as whole numbers
-  // (laari, the subunit, isn't commonly used in casual pricing) — round
-  // rather than showing decimals here, unlike the USD side above.
-  return `MVR ${Math.round(mvr).toLocaleString()}`;
+  return `$${n.toFixed(2)}`;
 }

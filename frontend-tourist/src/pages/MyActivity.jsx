@@ -9,12 +9,11 @@ import { friendlyError } from '../friendlyError';
 import { useLanguage } from '../i18n';
 import { formatPrice } from '../utils/currency';
 
-// Section 3.4 pricing visibility — a Local account sees MVR everywhere a
-// price shows (see utils/currency.js). These are already-charged/refund
-// amounts rather than a tourist_price/local_price choice, but they're
-// shown in the same currency the rest of the app would show this account,
-// for consistency — the underlying charge is unchanged (payment is
-// deferred; this is display only).
+// Section 3.4 pricing visibility — a Local account is charged the listing's
+// MVR local_price, a tourist its USD tourist_price (independent values, see
+// utils/currency.js). These already-charged / refund amounts are therefore
+// genuinely in the account's own currency; formatPrice just labels them.
+// Payment itself is deferred (Pay at Visit) regardless.
 function currentUserIsLocal() {
   try {
     return JSON.parse(localStorage.getItem('atollisle_user') || 'null')?.type === 'local';

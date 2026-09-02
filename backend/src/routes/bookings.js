@@ -53,6 +53,7 @@ import { notify } from '../services/notifications.js';
 import { applyPromoCode } from '../services/promoCodes.js';
 import { accruePayAtVisitCommission, isPayAtVisitEligible } from '../services/payAtVisit.js';
 import { PENDING_PAYMENT_TIMEOUT_MINUTES } from '../services/staleCleanup.js';
+import { formatMoney } from '../utils/money.js';
 import { round2, computeRefund } from '../services/refunds.js';
 import { getAgentConnection, recordAgentCommission } from '../services/agentPricing.js';
 import { recordRefundFailure } from '../services/refundFailures.js';
@@ -392,13 +393,13 @@ router.post('/', authenticate, requireDocumentOnFile, requireFlightTicketForCros
         recipientId: req.user.id,
         type: 'booking_confirmation',
         title: 'Booking confirmed',
-        body: `Your booking is confirmed — pay $${priceCharged} in person when you arrive.`,
+        body: `Your booking is confirmed — pay ${formatMoney(priceCharged, payerType)} in person when you arrive.`,
       });
       return res.status(201).json({
         booking,
         price_breakdown: { base_price: basePrice, tourist_service_fee: 0, promo_discount: promoDiscountAmount, total_charged: priceCharged },
         capacity_remaining: capacity - existingCount.rows[0].count - 1,
-        message: `Booking confirmed. Pay $${priceCharged} in person when you arrive.`,
+        message: `Booking confirmed. Pay ${formatMoney(priceCharged, payerType)} in person when you arrive.`,
       });
     }
 
@@ -827,10 +828,10 @@ router.patch('/:id/cancel', authenticate, async (req, res) => {
     type: 'cancellation',
     title: 'Booking cancelled',
     body: refundPending
-      ? `Your booking was cancelled. Your refund of $${refundAmount} is being processed — it may take a little longer than usual.`
+      ? `Your booking was cancelled. Your refund of ${formatMoney(refundAmount, booking.payer_type)} is being processed — it may take a little longer than usual.`
       : isOperatorFault
         ? `Your booking was cancelled by the business — you've been refunded in full, no fee.`
-        : `Your booking was cancelled. You'll receive $${refundAmount} back.`,
+        : `Your booking was cancelled. You'll receive ${formatMoney(refundAmount, booking.payer_type)} back.`,
   });
 
   // Waitlist (Phase 2): this cancellation just freed up listing_id +
