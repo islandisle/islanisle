@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getSocialFeed } from '../api/client';
+import { getSocialFeed, getFriendRequestCount } from '../api/client';
 import PostCard from '../components/social/PostCard';
 import PostComposer from '../components/social/PostComposer';
 
@@ -11,11 +11,13 @@ export default function Social() {
   const [posts, setPosts] = useState(null);
   const [error, setError] = useState('');
   const [composing, setComposing] = useState(false);
+  const [requestCount, setRequestCount] = useState(0);
 
   function load() {
     getSocialFeed()
       .then((d) => setPosts(d.posts))
       .catch((err) => setError(err.message));
+    getFriendRequestCount().then((d) => setRequestCount(d.count)).catch(() => {});
   }
 
   useEffect(() => {
@@ -31,8 +33,16 @@ export default function Social() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--navy)', margin: 0 }}>Go Social</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/social/friends" className="btn-secondary" style={{ padding: '6px 12px', fontSize: 13, textDecoration: 'none', position: 'relative' }}>
+            Friends
+            {requestCount > 0 && (
+              <span style={{ position: 'absolute', top: -6, right: -6, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--coral)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}>
+                {requestCount}
+              </span>
+            )}
+          </Link>
           <Link to="/social/me" className="btn-secondary" style={{ padding: '6px 12px', fontSize: 13, textDecoration: 'none' }}>
-            My profile
+            Profile
           </Link>
           <button className="btn-primary" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setComposing(true)}>
             + Post

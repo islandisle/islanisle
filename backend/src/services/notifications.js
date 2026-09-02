@@ -29,6 +29,8 @@ const CATEGORY_BY_TYPE = {
   boarding_reminder: 'boarding_reminders',
   eta_update: 'boarding_reminders',
   message: 'chat_messages',
+  social_friend_request: 'chat_messages',
+  social_dm: 'chat_messages',
   promo: 'deals_promos',
   // 'sos' is intentionally absent — it only ever targets recipientType
   // 'admin' (no notification_preferences column exists to check anyway)

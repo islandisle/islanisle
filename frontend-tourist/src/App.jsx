@@ -21,6 +21,7 @@ import FindAgent from './pages/FindAgent';
 import Social from './pages/Social';
 import SocialProfile from './pages/SocialProfile';
 import SocialPost from './pages/SocialPost';
+import SocialFriends from './pages/SocialFriends';
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
               {/* Go Social (go-social-feature-brief.md) — built stage by
                   stage; the menu entry comes in the final stage. */}
               <Route path="/social" element={<Social />} />
+              <Route path="/social/friends" element={<SocialFriends />} />
               <Route path="/social/me" element={<SocialProfile />} />
               <Route path="/social/u/:userId" element={<SocialProfile />} />
               <Route path="/social/post/:id" element={<SocialPost />} />

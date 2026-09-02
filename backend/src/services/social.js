@@ -63,6 +63,24 @@ export async function areFriends(a, b) {
   return ids.includes(b);
 }
 
+// Friendships are stored one row per pair with user_id_a < user_id_b.
+export function friendPair(a, b) {
+  return a < b ? [a, b] : [b, a];
+}
+
+export async function createFriendship(a, b) {
+  const [lo, hi] = friendPair(a, b);
+  await query(
+    `INSERT INTO social_friendships (user_id_a, user_id_b) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [lo, hi]
+  );
+}
+
+export async function removeFriendship(a, b) {
+  const [lo, hi] = friendPair(a, b);
+  await query(`DELETE FROM social_friendships WHERE user_id_a = $1 AND user_id_b = $2`, [lo, hi]);
+}
+
 // name + avatar for a set of user ids, as { [userId]: { name, avatar_url } }.
 export async function authorMap(userIds) {
   const ids = [...new Set(userIds)].filter(Boolean);

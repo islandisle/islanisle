@@ -727,3 +727,30 @@ export async function getPostComments(id) {
 
 export const addPostComment = (id, text) => socialJson(`/posts/${id}/comments`, 'POST', { text });
 export const deletePostComment = (id, commentId) => socialJson(`/posts/${id}/comments/${commentId}`, 'DELETE');
+
+export async function searchFriends(q) {
+  const res = await fetch(`${API_BASE}/api/social/friends/search?q=${encodeURIComponent(q)}`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const sendFriendRequest = (toUserId) => socialJson('/friends/requests', 'POST', { to_user_id: toUserId });
+
+export async function getIncomingFriendRequests() {
+  const res = await fetch(`${API_BASE}/api/social/friends/requests/incoming`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export async function getFriendRequestCount() {
+  const res = await fetch(`${API_BASE}/api/social/friends/requests/count`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const acceptFriendRequest = (id) => socialJson(`/friends/requests/${id}/accept`, 'POST');
+export const declineFriendRequest = (id) => socialJson(`/friends/requests/${id}/decline`, 'POST');
+
+export async function getFriends() {
+  const res = await fetch(`${API_BASE}/api/social/friends`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+export const unfriend = (userId) => socialJson(`/friends/${userId}`, 'DELETE');

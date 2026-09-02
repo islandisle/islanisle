@@ -1077,6 +1077,30 @@ CREATE TABLE social_post_comments (
 );
 CREATE INDEX idx_social_post_comments_post ON social_post_comments(post_id, created_at);
 
+-- Friend requests + the resulting symmetric friendships. Friendship is what
+-- gates feed visibility and who can DM whom.
+CREATE TABLE social_friend_requests (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    from_user_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    responded_at  TIMESTAMPTZ,
+    UNIQUE (from_user_id, to_user_id)
+);
+CREATE INDEX idx_social_friend_requests_to ON social_friend_requests(to_user_id, status);
+
+-- One row per pair, always stored (a < b) so the pair is unique regardless
+-- of who sent the request.
+CREATE TABLE social_friendships (
+    user_id_a     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id_b     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id_a, user_id_b),
+    CHECK (user_id_a < user_id_b)
+);
+CREATE INDEX idx_social_friendships_b ON social_friendships(user_id_b);
+
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================

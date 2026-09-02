@@ -9,9 +9,27 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { ensureSocialProfile, getSocialUser, isValidImageDataUri } from '../services/social.js';
+import { ensureSocialProfile, getSocialUser, isValidImageDataUri, friendIds } from '../services/social.js';
 
 const router = Router();
+
+// The viewer's relationship to the profile being viewed.
+async function relationshipTo(viewerId, userId) {
+  if (viewerId === userId) return 'self';
+  if ((await friendIds(viewerId)).includes(userId)) return 'friends';
+  try {
+    const pending = await query(
+      `SELECT from_user_id FROM social_friend_requests
+       WHERE status = 'pending'
+         AND ((from_user_id = $1 AND to_user_id = $2) OR (from_user_id = $2 AND to_user_id = $1))`,
+      [viewerId, userId]
+    );
+    if (!pending.rows.length) return 'none';
+    return pending.rows[0].from_user_id === viewerId ? 'request_sent' : 'request_received';
+  } catch {
+    return 'none';
+  }
+}
 
 // Assembles the public-facing profile object for one user.
 async function profilePayload(userId, viewerId) {
@@ -19,7 +37,7 @@ async function profilePayload(userId, viewerId) {
   if (!user) return null;
   const profile = await ensureSocialProfile(userId);
 
-  const [friendCount, postCount] = await Promise.all([
+  const [friendCount, postCount, relationship] = await Promise.all([
     query(
       `SELECT COUNT(*)::int AS n FROM social_friendships
        WHERE user_id_a = $1 OR user_id_b = $1`,
@@ -27,6 +45,7 @@ async function profilePayload(userId, viewerId) {
     ).catch(() => ({ rows: [{ n: 0 }] })),
     query(`SELECT COUNT(*)::int AS n FROM social_posts WHERE user_id = $1`, [userId])
       .catch(() => ({ rows: [{ n: 0 }] })),
+    relationshipTo(viewerId, userId),
   ]);
 
   return {
@@ -38,6 +57,7 @@ async function profilePayload(userId, viewerId) {
     friend_count: friendCount.rows[0].n,
     post_count: postCount.rows[0].n,
     is_self: userId === viewerId,
+    relationship,
   };
 }
 

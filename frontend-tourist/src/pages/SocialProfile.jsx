@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getSocialProfile, updateSocialProfile, getUserPosts } from '../api/client';
+import { getSocialProfile, updateSocialProfile, getUserPosts, sendFriendRequest, unfriend } from '../api/client';
 import { fileToDownscaledDataUrl } from '../utils/image';
 import Avatar from '../components/social/Avatar';
 
@@ -204,7 +204,59 @@ function ProfileHeader({ profile, onChanged }) {
           Edit profile
         </button>
       )}
+
+      {!profile.is_self && <FriendButton profile={profile} onChanged={onChanged} />}
     </div>
+  );
+}
+
+function FriendButton({ profile, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const rel = profile.relationship;
+
+  async function act(fn, optimisticRel) {
+    setBusy(true);
+    try {
+      await fn();
+      onChanged({ ...profile, relationship: optimisticRel });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (rel === 'friends') {
+    return (
+      <button
+        className="btn-secondary"
+        style={{ marginTop: 14, width: '100%' }}
+        disabled={busy}
+        onClick={() => {
+          if (window.confirm(`Remove ${profile.name} as a friend?`)) {
+            act(() => unfriend(profile.user_id), 'none');
+          }
+        }}
+      >
+        ✓ Friends
+      </button>
+    );
+  }
+  if (rel === 'request_sent') {
+    return <button className="btn-secondary" style={{ marginTop: 14, width: '100%' }} disabled>Request sent</button>;
+  }
+  // 'none' or 'request_received' — sending a request when one is already
+  // incoming auto-accepts it (backend), so both become "friends".
+  return (
+    <button
+      className="btn-primary"
+      style={{ marginTop: 14, width: '100%' }}
+      disabled={busy}
+      onClick={() => act(
+        () => sendFriendRequest(profile.user_id),
+        rel === 'request_received' ? 'friends' : 'request_sent',
+      )}
+    >
+      {rel === 'request_received' ? 'Accept friend request' : 'Add friend'}
+    </button>
   );
 }
 
