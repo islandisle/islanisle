@@ -12,9 +12,11 @@ import { useModalA11y } from '../useModalA11y';
 // it re-anchors on scroll/resize. Escape / outside-click / focus-trap come
 // from the shared useModalA11y hook, same as the app's other popups.
 //
-//   anchorRef — ref to the element the panel hangs off of
-//   align     — 'left' (panel's left edge under the anchor's left, default)
-//               or 'right' (panel's right edge under the anchor's right)
+//   anchorRef   — ref to the element the panel hangs off of
+//   align       — 'left' (panel's left edge under the anchor's left, default)
+//                 or 'right' (panel's right edge under the anchor's right)
+//   translucent — slightly see-through panel (.panel-translucent) instead of
+//                 the opaque .card surface
 export default function AnchoredPopover({
   anchorRef,
   onClose,
@@ -22,6 +24,7 @@ export default function AnchoredPopover({
   ariaLabel,
   width = 260,
   align = 'left',
+  translucent = false,
 }) {
   const [pos, setPos] = useState(null);
   const modalRef = useModalA11y(onClose);
@@ -58,7 +61,7 @@ export default function AnchoredPopover({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className="card"
+        className={translucent ? 'panel-translucent' : 'card'}
         style={{
           position: 'fixed',
           top: pos.top,
@@ -69,6 +72,8 @@ export default function AnchoredPopover({
           overflowY: 'auto',
           padding: 12,
           zIndex: 301,
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border)',
           boxShadow: '0 10px 30px rgba(11, 46, 61, 0.25)',
         }}
         onClick={(e) => e.stopPropagation()}

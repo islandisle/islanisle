@@ -158,17 +158,14 @@ export default function Home() {
 
   // Accessibility features only mean anything for a place to stay
   // (step-free access, wheelchair-accessible room, etc.) and dietary tags
-  // only mean anything for a place to eat — showing both filters under
-  // every category (including Excursion, Speedboat, Shop) let a tourist
-  // apply a filter that silently did nothing once they switched category,
-  // with no way to tell why their results looked off. Each panel now only
-  // appears where it's actually relevant; "All" keeps both, since it
-  // includes guesthouses and restaurants in its results. Switching to a
-  // category where a filter no longer applies also clears that filter's
-  // selections and collapses its panel, so a hidden filter can never keep
-  // silently narrowing results the tourist can't see or reach anymore.
-  const showsAccessibilityFilter = typeFilter === '' || typeFilter === 'guesthouse';
-  const showsDietaryFilter = typeFilter === '' || typeFilter === 'restaurant';
+  // only mean anything for a place to eat. Each panel appears only under
+  // its own category tab — not under "All" and not under any other
+  // category (home-menu-pricing brief item 4). Switching away from that
+  // category also clears the filter's selections and collapses its panel,
+  // so a hidden filter can never keep silently narrowing results the
+  // tourist can't see or reach anymore.
+  const showsAccessibilityFilter = typeFilter === 'guesthouse';
+  const showsDietaryFilter = typeFilter === 'restaurant';
 
   useEffect(() => {
     if (!showsAccessibilityFilter) {
@@ -332,7 +329,13 @@ export default function Home() {
           </Link>
         )}
 
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        {/* Category chips scroll horizontally on one line, no scrollbar
+            chrome (home-menu-pricing brief item 2). overflow-x is scoped to
+            this row so the page itself doesn't scroll sideways. */}
+        <div
+          className="no-scrollbar"
+          style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 10 }}
+        >
           <FilterPill label={t('home.filter_all')} active={typeFilter === ''} onClick={() => setTypeFilter('')} />
           {BUSINESS_TYPES.map((type) => (
             <FilterPill
@@ -660,6 +663,8 @@ function FilterPill({ label, active, onClick }) {
     <button
       onClick={onClick}
       style={{
+        flex: '0 0 auto',
+        whiteSpace: 'nowrap',
         padding: '6px 12px',
         borderRadius: 20,
         fontSize: 12,
@@ -763,7 +768,7 @@ function WeatherPopover({ anchorRef, island, weather, onClose }) {
   }, [island]);
 
   return (
-    <AnchoredPopover anchorRef={anchorRef} onClose={onClose} ariaLabel={`Weather on ${island}`} width={288}>
+    <AnchoredPopover anchorRef={anchorRef} onClose={onClose} ariaLabel={`Weather on ${island}`} width={300} translucent>
       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 2px' }}>
         {island}
       </p>
@@ -773,23 +778,24 @@ function WeatherPopover({ anchorRef, island, weather, onClose }) {
       {forecast.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Forecast unavailable right now.</p>
       ) : (
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
-          {forecast.map((day, i) => (
+        // All 5 days visible at once — no inner scroll (brief item 7).
+        <div style={{ display: 'flex', gap: 3 }}>
+          {forecast.slice(0, 5).map((day, i) => (
             <div
               key={day.date}
               style={{
-                flex: '0 0 auto', minWidth: 54, textAlign: 'center', padding: '6px 4px',
+                flex: '1 1 0', minWidth: 0, textAlign: 'center', padding: '6px 2px',
                 borderRadius: 'var(--radius-sm)', background: i === 0 ? 'var(--lagoon-tint)' : 'transparent',
               }}
             >
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 3px' }}>
+              <p style={{ fontSize: 10, color: 'var(--text-secondary)', margin: '0 0 3px' }}>
                 {i === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
               </p>
-              <p style={{ fontSize: 18, margin: '0 0 3px' }} aria-hidden="true">
+              <p style={{ fontSize: 17, margin: '0 0 3px' }} aria-hidden="true">
                 {FORECAST_ICON[day.condition_type] || FORECAST_ICON.sunny}
               </p>
-              <p style={{ fontSize: 11, color: 'var(--navy)', margin: 0 }}>
-                {Math.round(day.temperature_max)}° / {Math.round(day.temperature_min)}°
+              <p style={{ fontSize: 10, color: 'var(--navy)', margin: 0, whiteSpace: 'nowrap' }}>
+                {Math.round(day.temperature_max)}°/{Math.round(day.temperature_min)}°
               </p>
             </div>
           ))}

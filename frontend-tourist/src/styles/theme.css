@@ -198,6 +198,30 @@ body {
   box-shadow: 0 0 0 2px var(--lagoon-light);
 }
 
+/* A scroll container with no visible scrollbar chrome — the row still
+   scrolls (wheel / swipe / drag), the track+thumb just aren't painted.
+   Used by Home's horizontally-scrolling category filter chips. */
+.no-scrollbar {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* legacy Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                /* Chromium / WebKit */
+}
+
+/* Slightly-see-through panel surface (vs the opaque .card) — the header
+   weather popover uses it, echoing the translucent temperature badge it
+   opens from. Blur keeps dark text readable over whatever's behind. */
+.panel-translucent {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .panel-translucent { background: rgba(18, 45, 55, 0.82); }
+}
+:root[data-theme="dark"] .panel-translucent { background: rgba(18, 45, 55, 0.82); }
+
 .input-field {
   width: 100%;
   border: 1px solid var(--border);
