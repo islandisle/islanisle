@@ -1,4 +1,4 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import NavMenu from './NavMenu';
 import { buildNavMenuItems } from '../navConfig';
 import { runSOS, reportSOSToast } from '../sos';
@@ -19,6 +19,12 @@ export default function AppShell() {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const isNight = isMaldivesNight();
+
+  // Inside the Go Social section the same shared header rebrands to
+  // "Socisle"; everywhere else it stays "Atoll Isle". Label swap only —
+  // same shell, same layout.
+  const inSocial = useLocation().pathname.startsWith('/social');
+  const wordmark = inSocial ? 'Socisle' : 'Atoll Isle';
 
   const menuItems = buildNavMenuItems({
     onSOS: () => runSOS({ report: reportSOSToast(showToast) }),
@@ -46,10 +52,10 @@ export default function AppShell() {
           }}
         >
           <Link
-            to="/"
+            to={inSocial ? '/social' : '/'}
             style={{ color: '#fff', fontWeight: 500, fontSize: 16, textDecoration: 'none' }}
           >
-            Atoll Isle
+            {wordmark}
           </Link>
           <NavMenu items={menuItems} label={t('nav.menu')} />
         </div>

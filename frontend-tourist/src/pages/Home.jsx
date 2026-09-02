@@ -511,7 +511,7 @@ export default function Home() {
         {!nationwide && <ExternalPlacesSection island={island} atoll={atoll} typeFilter={typeFilter} />}
       </div>
 
-      <SOSButton island={nationwide ? null : island} />
+      <MessagesButton />
       <FirstRunTour />
     </div>
   );
@@ -697,107 +697,37 @@ function ExternalPlacesSection({ island, atoll, typeFilter }) {
   );
 }
 
-// Section 8.3 emergency/panic button. Deliberately a small fixed corner
-// button — visible everywhere on Home but out of the way until tapped —
-// rather than a banner or anything competing with normal browsing.
-function SOSButton({ island }) {
-  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
-  const [message, setMessage] = useState('');
-
-  function handleClick() {
-    if (status === 'sending') return;
-    // Shared flow (sos.js) — same confirm + best-effort geolocation + alert
-    // as the nav-menu SOS item; this button just renders its own progress
-    // and result inline instead of via a toast.
-    runSOS({
-      island,
-      report: ({ phase, message: msg }) => {
-        if (phase === 'sending') { setStatus('sending'); setMessage(''); }
-        else if (phase === 'sent') { setStatus('sent'); setMessage(msg || 'Alert sent.'); }
-        else if (phase === 'error') { setStatus('error'); setMessage(msg || ''); }
-      },
-    });
-  }
-
+// Home's fixed corner button. This used to be the SOS/panic button (+ an
+// "Emergency contacts" pill); SOS now lives only in the hamburger menu
+// (on every screen), so this corner slot is a quick jump into the
+// two-tab message bar instead — it opens on the Business & trips tab by
+// default (no ?tab=), and the user can switch to Friends from there.
+function MessagesButton() {
   return (
-    <>
-      <Link
-        to="/emergency-contacts"
-        style={{
-          position: 'fixed',
-          bottom: 82,
-          right: 16,
-          fontSize: 11,
-          color: 'var(--text-secondary)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-pill)',
-          padding: '4px 10px',
-          textDecoration: 'none',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          zIndex: 1000,
-        }}
-      >
-        Emergency contacts
-      </Link>
-
-      <button
-        onClick={handleClick}
-        disabled={status === 'sending'}
-        aria-label="Send SOS alert"
-        style={{
-          position: 'fixed',
-          bottom: 20,
-          right: 16,
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: 'var(--coral)',
-          color: '#fff',
-          border: 'none',
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: 0.5,
-          boxShadow: '0 4px 14px rgba(255, 108, 74, 0.45)',
-          cursor: status === 'sending' ? 'not-allowed' : 'pointer',
-          zIndex: 1000,
-        }}
-      >
-        {status === 'sending' ? '…' : 'SOS'}
-      </button>
-
-      {(status === 'sent' || status === 'error') && (
-        <div
-          role="alert"
-          style={{
-            position: 'fixed',
-            bottom: 86,
-            right: 16,
-            left: 16,
-            maxWidth: 448,
-            margin: '0 auto',
-            background: 'var(--surface)',
-            border: '1px solid var(--coral)',
-            borderRadius: 'var(--radius-md)',
-            padding: 14,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-            zIndex: 1000,
-          }}
-        >
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', margin: '0 0 4px' }}>
-            {status === 'sent' ? 'SOS alert sent' : 'Could not send SOS alert'}
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{message}</p>
-          <button
-            className="btn-secondary"
-            style={{ marginTop: 10, padding: '6px 12px', fontSize: 12 }}
-            onClick={() => setStatus('idle')}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-    </>
+    <Link
+      to="/messages"
+      aria-label="Messages"
+      style={{
+        position: 'fixed',
+        bottom: 20,
+        right: 16,
+        width: 56,
+        height: 56,
+        borderRadius: '50%',
+        background: 'var(--lagoon)',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 14px rgba(14, 124, 102, 0.4)',
+        zIndex: 1000,
+        textDecoration: 'none',
+      }}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 5h16v11H9l-4 3.5V16H4z" />
+      </svg>
+    </Link>
   );
 }
 
