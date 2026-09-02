@@ -73,16 +73,22 @@ function getCurrentUser() {
 // feed. Seeded from what the visitor last landed on (localStorage), so a
 // returning user goes straight back there; a first-time visitor with no
 // stored scope gets a one-off GPS check in the mount effect below.
-const STORED_SCOPE = getStoredHomeScope();
+//
+// Read fresh on every mount (not once at module load) — the island
+// switcher now lives on the My Trips screen (home-menu-pricing brief
+// item 1), which writes the new scope to localStorage and navigates back
+// here; Home is remounted by that navigation and must pick it up.
 
 export default function Home() {
-  const [island, setIsland] = useState(
-    STORED_SCOPE?.mode === 'nationwide' ? 'all' : (STORED_SCOPE?.island || DEFAULT_ISLAND)
-  );
-  const [atoll, setAtoll] = useState(
-    STORED_SCOPE?.mode === 'nationwide' ? '' : (STORED_SCOPE?.atoll ?? DEFAULT_ATOLL)
-  );
-  const [scope, setScope] = useState(STORED_SCOPE?.mode === 'nationwide' ? 'nationwide' : 'island');
+  const [island, setIsland] = useState(() => {
+    const s = getStoredHomeScope();
+    return s?.mode === 'nationwide' ? 'all' : (s?.island || DEFAULT_ISLAND);
+  });
+  const [atoll, setAtoll] = useState(() => {
+    const s = getStoredHomeScope();
+    return s?.mode === 'nationwide' ? '' : (s?.atoll ?? DEFAULT_ATOLL);
+  });
+  const [scope, setScope] = useState(() => (getStoredHomeScope()?.mode === 'nationwide' ? 'nationwide' : 'island'));
   const [pickerAutoOpen, setPickerAutoOpen] = useState(false);
   const nationwide = scope === 'nationwide';
   const [typeFilter, setTypeFilter] = useState('');
@@ -132,7 +138,7 @@ export default function Home() {
   // coordinates to auto-match against). Abroad / denied / unavailable ->
   // the nationwide view. See homeScope.js.
   useEffect(() => {
-    if (STORED_SCOPE) return;
+    if (getStoredHomeScope()) return;
     let cancelled = false;
     detectHomeScope().then((result) => {
       if (cancelled) return;
@@ -289,14 +295,21 @@ export default function Home() {
     <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <AmbientBackground type={typeFilter || 'all'} />
       <LeafBackdrop />
-      <Header
-        island={island}
-        weather={weather}
-        nationwide={nationwide}
-        pickerAutoOpen={pickerAutoOpen}
-        onSelectIsland={selectIsland}
-        onSelectNationwide={selectNationwide}
-      />
+      <Header island={island} weather={weather} nationwide={nationwide} />
+
+      {/* First-run only (no stored scope, GPS says in-country): a one-off
+          "pick your island" prompt. The island switcher itself now lives on
+          the My Trips screen — this is just the onboarding moment. */}
+      {pickerAutoOpen && (
+        <IslandPicker
+          hideTrigger
+          autoOpen
+          value={nationwide ? '' : island}
+          onChange={(isl, atl) => { selectIsland(isl, atl); setPickerAutoOpen(false); }}
+          onNotInMaldives={() => { selectNationwide(); setPickerAutoOpen(false); }}
+          onClose={() => setPickerAutoOpen(false)}
+        />
+      )}
 
       <div style={{ padding: 16 }}>
         <WelcomeBack context={tripContext} />
@@ -425,6 +438,9 @@ export default function Home() {
           </>
         )}
 
+        {/* "Local guide: events, visa & customs" was a duplicate of the
+            hamburger-menu entry (home-menu-pricing brief item 5) — removed
+            from Home; the menu version stays. */}
         <Link
           to="/transfers"
           style={{
@@ -432,26 +448,11 @@ export default function Home() {
             fontSize: 13,
             color: 'var(--lagoon)',
             textDecoration: 'none',
-            marginBottom: 6,
+            marginBottom: 14,
           }}
         >
           {t('home.arriving_by_air')}
         </Link>
-
-        {!nationwide && (
-          <Link
-            to={`/local-guide?island=${encodeURIComponent(island)}`}
-            style={{
-              display: 'block',
-              fontSize: 13,
-              color: 'var(--lagoon)',
-              textDecoration: 'none',
-              marginBottom: 14,
-            }}
-          >
-            {t('home.local_guide_link')}
-          </Link>
-        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>
@@ -673,7 +674,7 @@ function FilterPill({ label, active, onClick }) {
   );
 }
 
-function Header({ island, weather, nationwide, pickerAutoOpen, onSelectIsland, onSelectNationwide }) {
+function Header({ island, weather, nationwide }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const isNight = isMaldivesNight();
@@ -691,34 +692,9 @@ function Header({ island, weather, nationwide, pickerAutoOpen, onSelectIsland, o
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
         <div>
           <p style={{ color: '#fff', fontWeight: 500, fontSize: 16, margin: '0 0 2px' }}>Atoll Isle</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* The selected island as plain tappable text — opens the shared
-                island-search popup as a dropdown from here (was a full-width
-                bar in the page body). FirstRunTour points at this. */}
-            <IslandPicker
-              value={nationwide ? '' : island}
-              onChange={(isl, atl) => onSelectIsland(isl, atl)}
-              autoOpen={pickerAutoOpen}
-              onNotInMaldives={onSelectNationwide}
-              renderTrigger={({ onClick, open }) => (
-                <button
-                  type="button"
-                  onClick={onClick}
-                  aria-haspopup="dialog"
-                  aria-expanded={open}
-                  aria-label={`${nationwide ? 'Browsing every island' : t('home.staying_on', { island })} — change island`}
-                  style={{
-                    background: 'none', border: 'none', padding: 0, margin: 0,
-                    color: 'var(--lagoon-light)', fontSize: 13, fontFamily: 'inherit',
-                    cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {nationwide ? 'Browsing every island' : island}
-                </button>
-              )}
-            />
-            {!nationwide && weather && <WeatherBadge weather={weather} island={island} />}
-          </div>
+          {/* The island switcher moved to My Trips (home-menu-pricing brief
+              item 1); the header just shows current conditions now. */}
+          {!nationwide && weather && <WeatherBadge weather={weather} island={island} />}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
           <HeaderSearch />

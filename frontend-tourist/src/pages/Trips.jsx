@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getMyTrips } from '../api/client';
 import EmptyState from '../components/EmptyState';
+import IslandPicker from '../components/IslandPicker';
+import { rememberIslandScope, rememberNationwideScope } from '../homeScope';
 import { formatPrice } from '../utils/currency';
 
 // Section 3.4 pricing visibility — a Local account sees MVR wherever a
@@ -48,6 +50,7 @@ export default function Trips() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState('timeline');
+  const [switchingIsland, setSwitchingIsland] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem('atollisle_token')) {
@@ -77,9 +80,32 @@ export default function Trips() {
           <ViewToggleButton active={view === 'calendar'} onClick={() => setView('calendar')} label="Calendar" />
         </div>
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
         Your itinerary fills in automatically as you check in to guesthouses.
       </p>
+
+      {/* Island switcher (home-menu-pricing brief item 1) — moved here from
+          the Home header. Opens the same island-search popup; picking an
+          island stores it and drops the user back on Home showing that
+          island's listings. */}
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => setSwitchingIsland(true)}
+        style={{ fontSize: 13, padding: '9px 14px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}
+      >
+        <span aria-hidden="true">🏝️</span> Change island
+      </button>
+      {switchingIsland && (
+        <IslandPicker
+          hideTrigger
+          autoOpen
+          value=""
+          onChange={(isl, atl) => { rememberIslandScope(isl, atl || ''); navigate('/'); }}
+          onNotInMaldives={() => { rememberNationwideScope(); navigate('/'); }}
+          onClose={() => setSwitchingIsland(false)}
+        />
+      )}
 
       {loading && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading…</p>}
       {error && <p className="error-text">{error}</p>}

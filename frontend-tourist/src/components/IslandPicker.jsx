@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useModalA11y } from '../useModalA11y';
 import { useLanguage } from '../i18n';
 import { getIslands } from '../api/client';
-import AnchoredPopover from './AnchoredPopover';
 
 // Section 3.2/11: "a searchable popup organized by atoll — never a native
 // dropdown."
@@ -62,20 +61,25 @@ function loadAtolls() {
   return islandsPromise;
 }
 
-// `renderTrigger` — when given, IslandPicker renders this instead of its
-// default full-width bar button, and opens the island list as a dropdown
-// anchored under the trigger rather than the full-screen bottom sheet. Home
-// uses it to hang the picker off the plain island-name text in the header;
-// every other caller keeps the default bar + bottom sheet untouched.
-//   renderTrigger({ onClick, open }) => ReactNode
-export default function IslandPicker({ value, onChange, id, placeholder, autoOpen = false, onNotInMaldives, renderTrigger }) {
+// `hideTrigger` — render no bar button at all; the caller drives the popup
+// purely via `autoOpen` (and conditional mounting) and gets notified via
+// `onClose` when it's dismissed. Used for the first-run "pick your island"
+// prompt on Home and the "Change island" action on My Trips, where the
+// trigger lives elsewhere (a GPS check, a menu-style row) rather than being
+// a form field. Every other caller renders the default bar + bottom sheet.
+export default function IslandPicker({ value, onChange, id, placeholder, autoOpen = false, onNotInMaldives, hideTrigger = false, onClose }) {
   const { t } = useLanguage();
   const resolvedPlaceholder = placeholder ?? t('home.island_picker_placeholder');
   const [open, setOpen] = useState(Boolean(autoOpen));
   const [search, setSearch] = useState('');
   const [atolls, setAtolls] = useState(ATOLLS);
-  const modalRef = useModalA11y(() => setOpen(false));
-  const triggerRef = useRef(null);
+
+  function close() {
+    setOpen(false);
+    setSearch('');
+    onClose?.();
+  }
+  const modalRef = useModalA11y(close);
 
   useEffect(() => {
     let alive = true;
@@ -175,38 +179,19 @@ export default function IslandPicker({ value, onChange, id, placeholder, autoOpe
     </>
   );
 
-  // Home's header: plain-text trigger + anchored dropdown.
-  if (renderTrigger) {
-    return (
-      <span ref={triggerRef} style={{ display: 'inline-flex', maxWidth: '100%' }}>
-        {renderTrigger({ onClick: () => setOpen((o) => !o), open })}
-        {open && (
-          <AnchoredPopover
-            anchorRef={triggerRef}
-            onClose={() => { setOpen(false); setSearch(''); }}
-            ariaLabel="Choose an island"
-            width={300}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'min(56vh, 420px)' }}>
-              {listBody}
-            </div>
-          </AnchoredPopover>
-        )}
-      </span>
-    );
-  }
-
   return (
     <>
-      <button
-        type="button"
-        id={id}
-        className="input-field"
-        onClick={() => setOpen(true)}
-        style={{ textAlign: 'left', width: '100%', color: value ? 'var(--navy)' : 'var(--text-muted)' }}
-      >
-        {value || resolvedPlaceholder}
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          id={id}
+          className="input-field"
+          onClick={() => setOpen(true)}
+          style={{ textAlign: 'left', width: '100%', color: value ? 'var(--navy)' : 'var(--text-muted)' }}
+        >
+          {value || resolvedPlaceholder}
+        </button>
+      )}
 
       {open && (
         <div
@@ -214,7 +199,7 @@ export default function IslandPicker({ value, onChange, id, placeholder, autoOpe
             position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,
           }}
-          onClick={() => setOpen(false)}
+          onClick={close}
         >
           <div
             ref={modalRef}
@@ -226,7 +211,7 @@ export default function IslandPicker({ value, onChange, id, placeholder, autoOpe
             onClick={(e) => e.stopPropagation()}
           >
             {listBody}
-            <button className="btn-secondary" style={{ marginTop: 10 }} onClick={() => setOpen(false)}>
+            <button className="btn-secondary" style={{ marginTop: 10 }} onClick={close}>
               {t('common.close')}
             </button>
           </div>

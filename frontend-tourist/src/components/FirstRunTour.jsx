@@ -14,7 +14,7 @@ const SEEN_KEY = 'atollisle_tour_seen';
 const STEPS = [
   {
     title: 'Pick an island',
-    body: "Browse everything happening on one island at a time — guesthouses, restaurants, excursions, and transfers. Tap the island name up top to switch anytime.",
+    body: "Browse everything happening on one island at a time — guesthouses, restaurants, excursions, and transfers. Switch islands anytime from “Change island” on your My Trips screen.",
   },
   {
     title: 'Two prices, always',
