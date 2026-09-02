@@ -34,6 +34,9 @@ const ICON_PATHS = {
   settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
   queue: <><path d="M4 6h16M4 12h16M4 18h10" /><circle cx="19" cy="18" r="1.5" /></>,
   guests: <><circle cx="9" cy="8" r="3" /><path d="M3 19c0-3.3 2.7-5 6-5s6 1.7 6 5" /><path d="M16 14c2.5 0 4 1.7 4 4" /><circle cx="17" cy="8.5" r="2.5" /></>,
+  // Go Social — overlapping speech bubbles with a spark, distinct from the
+  // single "messages" bubble and the "guests" people glyph.
+  social: <><path d="M4 5h11v8H8l-3 2.5V13H4z" /><path d="M13 10h6a1 1 0 0 1 1 1v6l-2.5-2H13" /><path d="M9 3v1.5M7.5 4.2l1 1M10.5 4.2l-1 1" /></>,
 };
 
 function Icon({ name }) {

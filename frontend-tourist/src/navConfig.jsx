@@ -12,6 +12,7 @@ export const NAV_LINKS = [
   { to: '/trips', label: 'My trips', icon: 'trips' },
   { to: '/favorites', label: 'Favorites', icon: 'favorites' },
   { to: '/messages', label: 'Messages', icon: 'messages' },
+  { to: '/social', label: 'Go Social', icon: 'social' },
   { to: '/find-agent', label: 'Find an agent', icon: 'guests' },
   { to: '/transfers', label: 'Arrival transfers', icon: 'transfers' },
   { to: '/local-guide', label: 'Local guide', icon: 'guide' },
