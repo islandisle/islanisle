@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMySettings, updateMySettings, updateMyProfile, setup2FA, confirm2FA, disable2FA } from '../api/client';
 import { useTheme } from '../theme';
+import { useGlass } from '../glass';
 
 // Batch 19 — frontend-agent had no Settings page at all: payout bank
 // details could only ever be set once at signup, with no way to review or
@@ -300,6 +301,7 @@ const THEME_OPTIONS = [
 
 function AppearanceSection() {
   const { override, setOverride } = useTheme();
+  const { on: glassOn, setOn: setGlassOn } = useGlass();
 
   return (
     <div className="card" style={{ padding: 16, marginBottom: 20 }}>
@@ -328,6 +330,24 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
+
+      {/* Glass mode — a frosted-glass surface style, on/off independently of
+          light/dark (glass.js). */}
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, cursor: 'pointer' }}>
+        <span>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--navy)' }}>Glass mode</span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)' }}>
+            Frosted, translucent panels. Works with any theme.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={glassOn}
+          onChange={(e) => setGlassOn(e.target.checked)}
+          style={{ width: 20, height: 20, accentColor: 'var(--lagoon)', flexShrink: 0, cursor: 'pointer' }}
+        />
+      </label>
     </div>
   );
 }

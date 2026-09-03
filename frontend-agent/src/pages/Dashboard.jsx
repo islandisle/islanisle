@@ -527,6 +527,7 @@ function ChatPanel({ with: target, onClose }) {
 
   return (
     <div
+      className="glass-scrim"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(11,46,61,0.5)',
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,

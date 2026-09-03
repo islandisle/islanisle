@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { useModalA11y } from '../useModalA11y';
 
@@ -72,8 +73,9 @@ export default function NavMenu({ items, label = 'Menu', buttonStyle }) {
         </svg>
       </button>
 
-      {open && (
+      {open && createPortal((
         <div
+          className="glass-scrim"
           onClick={() => setOpen(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 200,
@@ -84,9 +86,11 @@ export default function NavMenu({ items, label = 'Menu', buttonStyle }) {
           <nav
             ref={sheetRef}
             aria-label={label}
+            className="glass-surface"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 'min(84vw, 300px)', height: '100%',
+              /* 100vh, not 100%: backdrop-filter (glass mode) makes a flex child's height:100% collapse. */
+              width: 'min(84vw, 300px)', height: '100vh',
               background: 'var(--surface)', borderLeft: '1px solid var(--border)',
               padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 2,
               animation: 'nav-slide-in 0.18s ease-out',
@@ -147,7 +151,7 @@ export default function NavMenu({ items, label = 'Menu', buttonStyle }) {
             })}
           </nav>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }

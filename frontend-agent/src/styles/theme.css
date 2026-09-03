@@ -303,3 +303,239 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .leaf-sway { animation: none !important; transform: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GLASS MODE — a frosted-glass surface treatment, toggled independently of
+   light/dark. src/glass.js sets data-glass="on" on <html> (stored in
+   localStorage as 'atollisle_glass', same mechanism as the theme override).
+
+   Reuses every Horizon Line colour; only how surfaces render changes:
+   translucent fills over a backdrop blur, a light top-edge highlight, and a
+   soft layered shadow. Tuned for all four combinations — Light+Solid
+   (default), Dark+Solid, Light+Glass, Dark+Glass.
+
+   How it reaches every surface with almost no markup change: the neutral
+   surface tokens (--surface, --border, --lagoon-tint, --coral-light) are
+   redefined translucent, so every card / button / input / panel that fills
+   with them — via a class OR an inline style — turns to glass for free. The
+   backdrop blur can't come from a token, so it's added to the known surface
+   classes plus a few opt-in helpers: .glass-nav (brand-coloured top bars),
+   .glass-surface (neutral panels that aren't .card), .glass-bubble-me
+   (the outgoing chat bubble).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root[data-glass="on"] {
+  --surface: rgba(255, 255, 255, 0.68);
+  --lagoon-tint: rgba(223, 240, 234, 0.62);
+  --coral-light: rgba(255, 231, 223, 0.6);
+  --border: rgba(255, 255, 255, 0.6);
+
+  --glass-blur: 16px;
+  --glass-brand: rgba(15, 122, 100, 0.74);       /* translucent Lagoon Teal — top bars / FAB */
+  --glass-primary: rgba(15, 122, 100, 0.85);     /* the primary CTA fill */
+  --glass-bubble-me: rgba(15, 122, 100, 0.8);
+  --glass-shadow:
+    0 8px 30px -10px rgba(11, 46, 61, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* Dark + Glass — the two-selector pattern from the base dark theme, so an
+   explicit "Dark" choice and system dark both resolve here. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-glass="on"] {
+    --surface: rgba(20, 46, 56, 0.62);
+    --lagoon-tint: rgba(18, 58, 51, 0.66);
+    --coral-light: rgba(58, 32, 24, 0.64);
+    --border: rgba(255, 255, 255, 0.14);
+    --glass-brand: rgba(9, 36, 30, 0.66);
+    --glass-primary: rgba(34, 182, 150, 0.8);
+    --glass-bubble-me: rgba(34, 182, 150, 0.78);
+    --glass-shadow:
+      0 8px 30px -10px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+}
+:root[data-theme="dark"][data-glass="on"] {
+  --surface: rgba(20, 46, 56, 0.62);
+  --lagoon-tint: rgba(18, 58, 51, 0.66);
+  --coral-light: rgba(58, 32, 24, 0.64);
+  --border: rgba(255, 255, 255, 0.14);
+  --glass-brand: rgba(9, 36, 30, 0.66);
+  --glass-primary: rgba(34, 182, 150, 0.8);
+  --glass-bubble-me: rgba(34, 182, 150, 0.78);
+  --glass-shadow:
+    0 8px 30px -10px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* Give the blur something to reveal: a soft brand-tinted wash pinned to
+   the viewport. A fixed pseudo-element rather than `background-attachment:
+   fixed` on <body>, which forces a full-page repaint on every scroll
+   frame (a real mobile perf cost — see the brief). On Home the
+   drifting-wave + leaf art also sit on top of this. */
+:root[data-glass="on"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(62% 55% at 8% -6%, rgba(15, 122, 100, 0.15), transparent 60%),
+    radial-gradient(46% 40% at 106% 4%, rgba(255, 108, 74, 0.11), transparent 55%),
+    radial-gradient(78% 62% at 58% 110%, rgba(15, 122, 100, 0.1), transparent 62%);
+}
+
+/* The frosted surfaces. backdrop-filter is gated behind @supports so
+   engines without it (some Android WebViews) fall through to the more
+   opaque no-blur fills defined further down, not a see-through mess.
+
+   Deliberately NOT on plain .card: (1) an element with backdrop-filter
+   becomes the containing block for its position:fixed descendants, which
+   would trap any modal/sheet opened from inside a card; (2) the brief
+   flags blur on long card lists as a perf risk. Plain cards instead get
+   the translucent fill + light border + layered shadow (still reads as
+   glass); real backdrop blur is reserved for the chrome that benefits
+   most and is few-at-a-time: top bars, the nav sheet, inputs, and modal
+   panels (.card[role="dialog"]). */
+@supports ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+  :root[data-glass="on"] .card[role="dialog"],
+  :root[data-glass="on"] .btn-secondary,
+  :root[data-glass="on"] .input-field,
+  :root[data-glass="on"] .panel-translucent,
+  :root[data-glass="on"] .glass-surface,
+  :root[data-glass="on"] .glass-bubble-me {
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+  }
+  :root[data-glass="on"] .btn-primary {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  :root[data-glass="on"] .glass-nav {
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 4px));
+    backdrop-filter: blur(calc(var(--glass-blur) + 4px));
+  }
+}
+
+:root[data-glass="on"] .card {
+  box-shadow: var(--glass-shadow);
+}
+
+/* Primary CTA: still the strongest element on screen, just frosted to match
+   — a little translucency + a soft coloured shadow, never a heavy blur that
+   washes out the label. */
+:root[data-glass="on"] .btn-primary {
+  background: var(--glass-primary);
+  box-shadow: 0 6px 20px -8px rgba(15, 122, 100, 0.5);
+}
+:root[data-theme="dark"][data-glass="on"] .btn-primary,
+:root:not([data-theme="light"])[data-glass="on"] .btn-primary {
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Brand-coloured top bars / bottom-nav / FAB opt in with class="glass-nav".
+   The fill only applies in glass mode (inert otherwise). !important beats
+   the component's inline background. */
+:root[data-glass="on"] .glass-nav {
+  background: var(--glass-brand) !important;
+}
+:root[data-glass="on"] header.glass-nav {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Chat: the received bubble already fills with --lagoon-tint (now
+   translucent); the outgoing one opts in with class="glass-bubble-me". */
+:root[data-glass="on"] .glass-bubble-me {
+  background: var(--glass-bubble-me) !important;
+}
+
+/* Modal / bottom-sheet scrims (class="glass-scrim" on the fixed-overlay
+   div): under glass, drop most of the dimming. The panel on top is frosted
+   and blurs its backdrop — over a near-black scrim that reads as murky
+   dark glass with poor text contrast; over a light tint it reads as a
+   clean frosted pane and the panel's own text stays crisp. */
+:root[data-glass="on"] .glass-scrim {
+  background: rgba(11, 46, 61, 0.16) !important;
+}
+:root[data-theme="dark"][data-glass="on"] .glass-scrim,
+:root:not([data-theme="light"])[data-glass="on"] .glass-scrim {
+  background: rgba(0, 0, 0, 0.38) !important;
+}
+
+/* .panel-translucent predates glass mode with its own 0.82 fill — line it
+   up with the rest of the glass surfaces when the mode is on. */
+:root[data-glass="on"] .panel-translucent {
+  background: var(--surface);
+}
+
+/* Smooth the switch rather than hard-cutting. */
+:root .card,
+:root .btn-primary,
+:root .btn-secondary,
+:root .input-field {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* No backdrop-filter support: bump the fills opaque enough to read without
+   the blur — the brief's required graceful degradation. */
+@supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+  :root[data-glass="on"] {
+    --surface: rgba(255, 255, 255, 0.93);
+    --lagoon-tint: rgba(223, 240, 234, 0.93);
+    --coral-light: rgba(255, 231, 223, 0.93);
+    --border: rgba(11, 46, 61, 0.1);
+    --glass-brand: rgba(15, 122, 100, 0.95);
+    --glass-primary: var(--lagoon);
+    --glass-bubble-me: var(--lagoon);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"])[data-glass="on"] {
+      --surface: rgba(20, 46, 56, 0.94);
+      --lagoon-tint: rgba(18, 58, 51, 0.94);
+      --coral-light: rgba(58, 32, 24, 0.94);
+      --border: rgba(255, 255, 255, 0.1);
+      --glass-brand: rgba(9, 36, 30, 0.95);
+    }
+  }
+  :root[data-theme="dark"][data-glass="on"] {
+    --surface: rgba(20, 46, 56, 0.94);
+    --lagoon-tint: rgba(18, 58, 51, 0.94);
+    --coral-light: rgba(58, 32, 24, 0.94);
+    --border: rgba(255, 255, 255, 0.1);
+    --glass-brand: rgba(9, 36, 30, 0.95);
+  }
+}
+
+/* Respect "reduce transparency" (iOS/macOS Accessibility, the Windows
+   equivalent): keep the glass shape — border, shadow — but near-solid
+   fills, and drop the blur. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-glass="on"] {
+    --surface: rgba(255, 255, 255, 0.98);
+    --lagoon-tint: rgba(223, 240, 234, 0.98);
+    --coral-light: rgba(255, 231, 223, 0.98);
+    --glass-brand: rgba(15, 122, 100, 0.98);
+    --glass-primary: var(--lagoon);
+    --glass-bubble-me: var(--lagoon);
+  }
+  :root[data-theme="dark"][data-glass="on"],
+  :root:not([data-theme="light"])[data-glass="on"] {
+    --surface: rgba(20, 46, 56, 0.98);
+    --lagoon-tint: rgba(18, 58, 51, 0.98);
+    --coral-light: rgba(58, 32, 24, 0.98);
+    --glass-brand: rgba(9, 36, 30, 0.98);
+  }
+  @supports ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+    :root[data-glass="on"] .card,
+    :root[data-glass="on"] .btn-primary,
+    :root[data-glass="on"] .btn-secondary,
+    :root[data-glass="on"] .input-field,
+    :root[data-glass="on"] .panel-translucent,
+    :root[data-glass="on"] .glass-surface,
+    :root[data-glass="on"] .glass-bubble-me,
+    :root[data-glass="on"] .glass-nav {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+}
