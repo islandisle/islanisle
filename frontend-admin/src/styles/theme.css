@@ -185,57 +185,11 @@ select {
   to { transform: translateX(0); }
 }
 
-/* Ported from frontend-tourist/src/styles/theme.css — same ambient wave
-   pattern + tropical leaf backdrop, so every app in the product shares
-   the same quiet background identity. The category-tinted --page-bg
-   variants from the tourist app are intentionally left out here — this
-   app has no category filter to key off of, so AmbientBackground is
-   always rendered with type="all" (the plain wave motif). */
-/* Batch 30 Part B — full-page ambient category pattern.
-   --ambient-line is the only knob: a ~6-7% near-invisible line colour, set
-   per theme so it reads faintly on cream and on the dark surface alike. */
-:root { --ambient-line: rgba(11, 46, 61, 0.06); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --ambient-line: rgba(163, 222, 208, 0.07); }
-}
-:root[data-theme="dark"] { --ambient-line: rgba(163, 222, 208, 0.07); }
-
-.ambient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;            /* behind all in-flow content, above the page background */
-  overflow: hidden;
-  pointer-events: none;
-}
-.ambient-bg-svg {
-  position: absolute;
-  top: -140px;
-  left: -140px;
-  width: calc(100% + 280px);
-  height: calc(100% + 280px);
-  animation: ambient-drift 120s linear infinite;
-  will-change: transform;
-}
-.ambient-line {
-  stroke: var(--ambient-line);
-  stroke-width: 1.4;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-/* Exactly one tile of travel, so the loop is seamless and the
-   reduced-motion freeze (global rule) lands identical to the start. */
-@keyframes ambient-drift {
-  from { transform: translate(0, 0); }
-  to   { transform: translate(140px, 140px); }
-}
-
-
 /* Batch 30 (addition) — Home tropical leaf line-art backdrop (LeafBackdrop.jsx).
    --leaf-fill is the deep silhouette, --leaf-vein the lighter interior
    linework — both derived from the Horizon Line navy / lagoon-light, kept
-   at ~5-11% so cards and text stay fully readable. Same fixed z-index -1
-   layer as .ambient-bg: above --page-bg, below every piece of content. */
+   at ~5-11% so cards and text stay fully readable. A fixed z-index -1
+   layer above --page-bg, below every piece of content. */
 :root {
   --leaf-fill: rgba(11, 46, 61, 0.055);
   --leaf-vein: rgba(11, 46, 61, 0.11);
