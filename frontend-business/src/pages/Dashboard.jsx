@@ -98,7 +98,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--lagoon)', color: '#fff', padding: 16, borderRadius: 12, marginBottom: 20 }}>
+      <div className="glass-nav" style={{ background: 'var(--lagoon)', color: '#fff', padding: 16, borderRadius: 12, marginBottom: 20 }}>
         <p style={{ fontSize: 12, opacity: 0.8, margin: '0 0 4px' }}>{business.type}</p>
         <p style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{business.name}</p>
         <p style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>

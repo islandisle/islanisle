@@ -6,6 +6,7 @@ import {
   getPayAtVisitIncidents,
 } from '../api/client';
 import { useTheme } from '../theme';
+import { useGlass } from '../glass';
 import IslandPicker from '../components/IslandPicker';
 import Tabs from '../components/Tabs';
 
@@ -733,6 +734,7 @@ const THEME_OPTIONS = [
 // back to following prefers-color-scheme.
 function AppearanceSection() {
   const { override, setOverride } = useTheme();
+  const { on: glassOn, setOn: setGlassOn } = useGlass();
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16, marginBottom: 16 }}>
@@ -761,6 +763,24 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
+
+      {/* Glass mode — a frosted-glass surface style, on/off independently of
+          light/dark (glass.js). */}
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, cursor: 'pointer' }}>
+        <span>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--navy)' }}>Glass mode</span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)' }}>
+            Frosted, translucent panels. Works with any theme.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={glassOn}
+          onChange={(e) => setGlassOn(e.target.checked)}
+          style={{ width: 20, height: 20, accentColor: 'var(--lagoon)', flexShrink: 0, cursor: 'pointer' }}
+        />
+      </label>
     </div>
   );
 }

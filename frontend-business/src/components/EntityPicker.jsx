@@ -83,6 +83,7 @@ export default function EntityPicker({
 
       {open && (
         <div
+          className="glass-scrim"
           style={{
             position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,

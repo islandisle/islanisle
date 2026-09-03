@@ -2,11 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { initTheme } from './theme';
+import { initGlass } from './glass';
 import { startAutoRetry } from './offlineQueue';
 import { markBookingFulfilledRaw, markOrderStatusRaw } from './api/client';
 import './styles/theme.css';
 
 initTheme();
+initGlass();
 
 // Offline support — see public/sw.js (cached viewing) and offlineQueue.js
 // (queue-and-retry for "mark fulfilled" / order status) for the two
