@@ -67,6 +67,7 @@ export default function FirstRunTour() {
 
   return (
     <div
+      className="glass-scrim"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16,

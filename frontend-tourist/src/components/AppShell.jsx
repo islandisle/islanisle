@@ -45,6 +45,7 @@ export default function AppShell() {
   return (
     <>
       <header
+        className="glass-nav"
         style={{
           position: 'sticky',
           top: 0,

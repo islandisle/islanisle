@@ -24,7 +24,7 @@ export default function ShotComposer({ image, onClose, onPosted }) {
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div className="glass-scrim" style={overlay} onClick={onClose}>
       <div
         ref={modalRef}
         role="dialog"

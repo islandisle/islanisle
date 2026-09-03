@@ -10,6 +10,7 @@ import {
 } from '../api/client';
 import QRPopup from '../components/QRPopup';
 import { useTheme } from '../theme';
+import { useGlass } from '../glass';
 import { useTextSize, TEXT_SIZE_MIN, TEXT_SIZE_MAX, TEXT_SIZE_STEP, TEXT_SIZE_DEFAULT } from '../textSize';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 import { useModalA11y } from '../useModalA11y';
@@ -578,6 +579,7 @@ function DeleteAccountPopup({ onClose, onDeleted }) {
 
   return (
     <div
+      className="glass-scrim"
       style={{ position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}
       onClick={onClose}
     >
@@ -888,6 +890,7 @@ function TextSizeSection() {
 
 function AppearanceSection() {
   const { override, setOverride } = useTheme();
+  const { on: glassOn, setOn: setGlassOn } = useGlass();
 
   return (
     <div className="card" style={{ padding: 16, marginBottom: 20 }}>
@@ -916,6 +919,24 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
+
+      {/* Glass mode — a frosted-glass surface style, on/off independently of
+          light/dark (glass.js). */}
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, cursor: 'pointer' }}>
+        <span>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--navy)' }}>Glass mode</span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)' }}>
+            Frosted, translucent panels. Works with any theme.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={glassOn}
+          onChange={(e) => setGlassOn(e.target.checked)}
+          style={{ width: 20, height: 20, accentColor: 'var(--lagoon)', flexShrink: 0, cursor: 'pointer' }}
+        />
+      </label>
     </div>
   );
 }

@@ -3,12 +3,14 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { initTheme } from './theme';
 import { initTextSize } from './textSize';
+import { initGlass } from './glass';
 import { startAutoRetry } from './offlineQueue';
 import { createBookingRaw, createOrderRaw } from './api/client';
 import './styles/theme.css';
 
 initTheme();
 initTextSize();
+initGlass();
 
 // Offline support — see public/sw.js (cached viewing) and offlineQueue.js
 // (queue-and-retry for booking/order submissions) for the two halves of

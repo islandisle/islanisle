@@ -634,6 +634,7 @@ function MessagesButton() {
     <Link
       to="/messages"
       aria-label="Messages"
+      className="glass-nav"
       style={{
         position: 'fixed',
         bottom: 20,
@@ -694,7 +695,7 @@ function Header({ island, weather, nationwide }) {
     onSelect: (mode) => navigate(mode === 'social' ? '/social' : '/'),
   };
   return (
-    <div style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
+    <div className="glass-nav" style={{ background: isNight ? 'var(--night-sky)' : 'var(--lagoon)', padding: '20px 16px 24px', position: 'relative', overflow: 'hidden' }}>
       {/* Line-art behind the logo, per Section 6.2 / 11 — driven by
           weather.condition_type from GET /api/weather/:atoll, and now also
           by actual Maldives local time so a clear sky shows the moon

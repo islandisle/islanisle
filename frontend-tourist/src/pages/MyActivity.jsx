@@ -294,6 +294,7 @@ function ReviewPopup({ target, onDone, onSkip }) {
 
   return (
     <div
+      className="glass-scrim"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,
@@ -392,6 +393,7 @@ function CancelConfirmPopup({ bookingId, isLocal, onConfirm, onClose }) {
 
   return (
     <div
+      className="glass-scrim"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(11, 46, 61, 0.6)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16,

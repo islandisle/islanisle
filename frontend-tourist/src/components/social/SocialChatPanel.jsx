@@ -42,7 +42,7 @@ export default function SocialChatPanel({ userId, name, onClose, onMessageSent }
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div className="glass-scrim" style={overlay} onClick={onClose}>
       <div
         ref={modalRef}
         className="card"
@@ -63,6 +63,7 @@ export default function SocialChatPanel({ userId, name, onClose, onMessageSent }
           {messages.map((m) => (
             <div
               key={m.id}
+              className={m.from_me ? 'glass-bubble-me' : undefined}
               style={{
                 alignSelf: m.from_me ? 'flex-end' : 'flex-start',
                 maxWidth: '78%',

@@ -51,7 +51,7 @@ export default function PostComposer({ onClose, onPosted }) {
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div className="glass-scrim" style={overlay} onClick={onClose}>
       <div
         ref={modalRef}
         className="card"
